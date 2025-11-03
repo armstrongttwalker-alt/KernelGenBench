@@ -136,11 +136,8 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
-<<<<<<< HEAD
 
 src/*.egg-info/
 .vscode/
 
 old_bench/
-=======
->>>>>>> 8208b3a463063f3a2cc9070eb195f5cf1e4a5066
