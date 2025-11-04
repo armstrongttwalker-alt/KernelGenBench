@@ -126,7 +126,7 @@ config = VerifyConfig(
 
 verifier = Verifier(config)
 
-def test_verifier():
+def test_verifier_operator():
     result = verifier.only_verify(
         name_source_map=[
             VerifyRequest(
@@ -142,4 +142,4 @@ def test_verifier():
 
 
 if __name__ == "__main__":
-    test_verifier()
+    test_verifier_operator()
