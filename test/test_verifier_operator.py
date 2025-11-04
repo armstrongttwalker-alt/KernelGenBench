@@ -1,7 +1,7 @@
 from sandbox.verifier import Verifier, VerifyConfig, VerifyRequest, Source
 
 
-triton_attention_code = """@triton.jit(do_not_specialize=["alpha", "beta"])
+triton_addmm_code = """@triton.jit(do_not_specialize=["alpha", "beta"])
 def addmm_kernel(
     a_ptr,
     b_ptr,
@@ -131,7 +131,7 @@ def test_verifier_operator():
         name_source_map=[
             VerifyRequest(
                 source=[Source(
-                    source=triton_attention_code,
+                    source=triton_addmm_code,
                     function_name="addmm"
                 )]
             )
