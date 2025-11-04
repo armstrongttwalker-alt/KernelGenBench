@@ -4,7 +4,7 @@ import torch
 # import flag_gems
 
 from .performance_utils import GenericBenchmark, vendor_name
-from bench.sandbox.test.test_parametrize import label, parametrize, Param
+from sandbox.verifier.test_parametrize import label, parametrize, Param
 
 
 class AttentionBenchmark(GenericBenchmark):

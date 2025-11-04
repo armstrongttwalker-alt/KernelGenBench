@@ -9,7 +9,7 @@ from .performance_utils import (
     GenericBenchmarkExcluse1D,
     binary_input_fn,
 )
-from bench.sandbox.test.test_parametrize import label, parametrize, Param
+from sandbox.verifier.test_parametrize import label, parametrize, Param
 
 
 # @pytest.mark.gelu_and_mul

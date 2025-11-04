@@ -6,7 +6,7 @@ import torch
 
 # import flag_gems
 # from flag_gems.utils import shape_utils
-from bench.sandbox.utils.utils import size_in_bytes
+from sandbox.utils.utils import size_in_bytes
 
 from .attri_util import FLOAT_DTYPES
 from .performance_utils import (
@@ -15,7 +15,7 @@ from .performance_utils import (
     generate_tensor_input,
     vendor_name,
 )
-from bench.sandbox.test.test_parametrize import label, parametrize, Param
+from sandbox.verifier.test_parametrize import label, parametrize, Param
 
 
 class TensorSelectBenchmark(GenericBenchmark2DOnly):

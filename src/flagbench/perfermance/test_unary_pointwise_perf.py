@@ -5,7 +5,7 @@ import torch
 
 from .attri_util import BOOL_DTYPES, DEFAULT_METRICS, FLOAT_DTYPES, INT_DTYPES
 from .performance_utils import Benchmark, generate_tensor_input, vendor_name
-from bench.sandbox.test.test_parametrize import label, parametrize, Param
+from sandbox.verifier.test_parametrize import label, parametrize, Param
 
 
 class UnaryPointwiseBenchmark(Benchmark):

@@ -11,7 +11,7 @@ import triton
 import yaml
 
 # import flag_gems
-import bench
+import flagbench
 
 from .attri_util import (
     BOOL_DTYPES,
@@ -26,7 +26,7 @@ from .attri_util import (
     check_metric_dependencies,
 )
 from .conftest import Config, torch_device_fn, vendor_name
-from bench.sandbox.register import REGISTERED_OPS
+from sandbox.register import REGISTERED_OPS
 
 # torch_backend_device = flag_gems.runtime.torch_backend_device
 # torch_device_fn = flag_gems.runtime.torch_device_fn
@@ -362,7 +362,7 @@ class Benchmark:
                                 self.gems_op, *args, **kwargs
                             )
                         else:
-                            with bench.use_gems(REGISTERED_OPS):
+                            with flagbench.use_gems(REGISTERED_OPS):
                                 metric.latency = self.get_latency(
                                     self.torch_op, *args, **kwargs
                                 )

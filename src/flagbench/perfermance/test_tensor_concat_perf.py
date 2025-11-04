@@ -11,7 +11,7 @@ from .performance_utils import (
     generate_tensor_input,
     vendor_name,
 )
-from bench.sandbox.test.test_parametrize import label, parametrize, Param
+from sandbox.verifier.test_parametrize import label, parametrize, Param
 
 
 class ConcatBenchmark(Benchmark):

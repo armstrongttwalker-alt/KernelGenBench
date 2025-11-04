@@ -3,7 +3,7 @@ import torch
 
 from .attri_util import FLOAT_DTYPES
 from .performance_utils import GenericBenchmark, unary_input_fn
-from bench.sandbox.test.test_parametrize import label, parametrize, Param
+from sandbox.verifier.test_parametrize import label, parametrize, Param
 
 
 def normal_input_fn(shape, cur_dtype, device):

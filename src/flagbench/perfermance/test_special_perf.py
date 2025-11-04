@@ -15,8 +15,8 @@ from .performance_utils import (
     generate_tensor_input,
     vendor_name,
 )
-from bench.sandbox.test.test_parametrize import label, parametrize, Param
-import bench as fb
+from sandbox.verifier.test_parametrize import label, parametrize, Param
+import flagbench as fb
 
 def topk_input_fn(shape, dtype, device):
     x = torch.randn(shape, device=device, dtype=dtype)

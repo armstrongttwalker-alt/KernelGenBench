@@ -9,7 +9,7 @@ from .performance_utils import (
     generate_tensor_input,
     unary_input_fn,
 )
-from bench.sandbox.test.test_parametrize import label, parametrize, Param
+from sandbox.verifier.test_parametrize import label, parametrize, Param
 
 
 def flip_input_fn(shape, cur_dtype, device):
