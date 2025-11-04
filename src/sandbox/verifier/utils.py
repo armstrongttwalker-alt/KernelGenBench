@@ -292,3 +292,13 @@ class CustomRichHandler(RichHandler):
             omit_repeated_times=True,
             level_width=None,
         )
+
+
+def save_benchmark_result(bench_result: "BenchmarkResult", save_path: Optional[str] = None):
+    """
+    save benchmark result to txt file
+    """
+    with open(save_path, "w") as f:
+        f.write(str(bench_result))
+    if save_path:
+        print(f"Benchmark result saved to {save_path}")

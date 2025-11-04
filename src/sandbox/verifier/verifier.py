@@ -1,4 +1,4 @@
-from .utils import import_tests, expand_params
+from .utils import import_tests, expand_params, save_benchmark_result
 from sandbox.utils.accuracy_utils import VerifyResult
 from sandbox.register_scanner import auto_register_module
 from .test_parametrize import get_funcs_by_label, _label_registry, get_params
@@ -269,7 +269,7 @@ class Verifier:
     def run_tests(
         self, 
         name, 
-        json_path=None, 
+        json_path: str=None, 
         max_failures: Union[str, int] = "all", 
         seed=42, 
         strict_check=False
@@ -293,7 +293,11 @@ class Verifier:
                 total += 1
                 success = True
                 tb_str = None
-                recorded_params = jsonable_encoder(combo, custom_encoder={torch.dtype: str})
+                try:
+                    recorded_params = jsonable_encoder(combo, custom_encoder={torch.dtype: str, Callable: lambda x: x.__name__})
+                except Exception as e:
+                    print(combo)
+                    raise e
                 try:
                     ret = func(**combo)
                 except Exception as e:
@@ -302,6 +306,9 @@ class Verifier:
                 if isinstance(ret, (BenchmarkResult, CustomBenchmarkResult)):
                     if speedup is None:
                         speedup = []
+                    if isinstance(ret, BenchmarkResult):
+                        speed_save_path = json_path.replace(".json", "_speedup.txt") if json_path else None
+                        save_benchmark_result(ret, speed_save_path)
                     speed = asdict(ret) if isinstance(ret, BenchmarkResult) else ret.model_dump()
                     speed["params"] = recorded_params
                     speedup.append(
@@ -328,8 +335,8 @@ class Verifier:
             if speedup is not None:
                 if len(speedup) > 0:
                     avg_speed = {
-                        "ref_time": np.mean([s["ref_time"] for s in speedup]),
-                        "res_time": np.mean([s["res_time"] for s in speedup]),
+                        "ref_time": np.mean([s["latency_base"] for s in speedup]),
+                        "res_time": np.mean([s["latency"] for s in speedup]),
                         "speedup": np.mean([s["speedup"] for s in speedup]),
                         "params": "avg",
                     }

@@ -115,7 +115,7 @@ def addmm(bias, mat1, mat2, *, beta=1, alpha=1):
 
 config = VerifyConfig(
     run_name="test_verifier",
-    test_type="accuracy",
+    test_type="both",
     run_dir="/root/tmp/runs",
     store_type="local",
     strict_check=True,
@@ -136,7 +136,7 @@ def test_verifier():
                 )]
             )
         ], 
-        test_type="both"
+        test_type="both"        # accuracy, performance, both
     )[-1][0]
     print("Verification Result:", result)
 
