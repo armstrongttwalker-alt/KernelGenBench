@@ -445,9 +445,13 @@ class Verifier:
         read_file = lambda s: open(s, "r").read()
         source = [s if not os.path.isfile(s) else read_file(s) for s in source]
         try:
+            self._init_test_func()    # 对于外部的triton kernel开发者，没有必要初始化 flaggems 的测试函数，如果用作benchmark，可以用这一行
+        except Exception as e:
+            logger.error(f"Init test functions failed: {e}")
+            raise e
+        try:
             if USE_GEMS:
                 checked_source = [self._check_code(s, fn_name, ns) for s, fn_name, ns in zip(source, function_name, namespace)]
-            self._init_test_func()    # 对于外部的triton kernel开发者，没有必要初始化 flaggems 的测试函数，如果用作benchmark，可以用这一行
             # TODO 
             # should check the test_func
             if test_func is not None:
@@ -515,7 +519,7 @@ class Verifier:
         test_func_name: str, 
         test_func_code: str, 
         torch_kernel_name: str, 
-        torch_kernel_code: str, 
+        torch_kernel_code: str = None, 
         mark_suffix: str = None,
     ):
         # replace the "bench.triton." to "bench." and handle bench.triton.{torch_kernel_name} patterns
@@ -526,9 +530,10 @@ class Verifier:
         
         # Then, handle more complex patterns like bench.triton.{torch_kernel_name}
         # This regex finds lines containing bench.triton.{torch_kernel_name} and replaces the entire line
-        pattern = rf'(\s*.*?)bench\.triton\.{re.escape(torch_kernel_name)}(.*?)(\n|$)'
-        replacement = rf'\1bench.{torch_kernel_name}\2\3'
-        mocked_test_func_code = re.sub(pattern, replacement, mocked_test_func_code, flags=re.MULTILINE)
+        # pattern = rf'(\s*.*?)bench\.triton\.{re.escape(torch_kernel_name)}(.*?)(\n|$)'
+        # replacement = rf'\1bench.{torch_kernel_name}\2\3'
+        # mocked_test_func_code = re.sub(pattern, replacement, mocked_test_func_code, flags=re.MULTILINE)
+        mocked_test_func_code = test_func_code.replace(f"flagbench.{torch_kernel_name}", f"torch.{torch_kernel_name}")
         
         results_with_mocked_test_func = self.only_verify(
             # name_source_map={
