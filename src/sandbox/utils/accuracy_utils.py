@@ -3,7 +3,7 @@ import itertools
 
 import torch
 from pydantic import BaseModel
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Union, Dict
 from flagbench.perfermance.attri_util import CustomBenchmarkResult
 
 # import flag_gems
@@ -21,7 +21,7 @@ class VerifyResult(BaseModel):
     success: Optional[bool] = None
     traceback: Optional[str] = None
     params: Optional[dict] = None
-    speedup: Optional[List[CustomBenchmarkResult]] = None
+    speedup: Optional[List[Union[CustomBenchmarkResult, Dict]]] = None
     info: Optional[dict] = None
     code: Optional[str] = None
     test_func: Optional[str] = None

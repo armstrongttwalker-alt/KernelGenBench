@@ -88,7 +88,7 @@ def default_converter(o):
 
 from typing import List, Dict, Tuple
 
-USE_GEMS = True
+# USE_GEMS = True
 
 def get_name_list_from_code_dir(code_dir: str) -> List[str]:
     name_list = []
@@ -140,7 +140,8 @@ class Verifier:
         return summary, info
 
     def _check_code(self, code: str, name: str, namespace: str = None):
-        
+        if not code:
+            return None
         def ensure_import_torch(code: str) -> str:
             package_list = ["torch", "triton"]
             # 检查字符串中是否包含 "torch"
@@ -309,11 +310,12 @@ class Verifier:
                     if isinstance(ret, BenchmarkResult):
                         speed_save_path = json_path.replace(".json", "_speedup.txt") if json_path else None
                         save_benchmark_result(ret, speed_save_path)
-                    speed = asdict(ret) if isinstance(ret, BenchmarkResult) else ret.model_dump()
+                    speed = json.loads(ret.to_json()) if isinstance(ret, BenchmarkResult) else ret.model_dump()
                     speed["params"] = recorded_params
-                    speedup.append(
-                        speed
-                    )
+                    # speedup.append(
+                    #     speed
+                    # )
+                    speedup = speed['result']
                     results.append({
                         "params": combo,
                         "success": success,
@@ -335,9 +337,9 @@ class Verifier:
             if speedup is not None:
                 if len(speedup) > 0:
                     avg_speed = {
-                        "ref_time": np.mean([s["latency_base"] for s in speedup]),
-                        "res_time": np.mean([s["latency"] for s in speedup]),
-                        "speedup": np.mean([s["speedup"] for s in speedup]),
+                        "ref_time": np.mean([s["latency_base"] for s in speedup]).item(),
+                        "res_time": np.mean([s["latency"] for s in speedup]).item(),
+                        "speedup": np.mean([s["speedup"] for s in speedup]).item(),
                         "params": "avg",
                     }
                     speedup.append(avg_speed)
@@ -443,15 +445,20 @@ class Verifier:
         test_func = verifyrequest.test_func
         test_func_mark = verifyrequest.test_func_mark
         read_file = lambda s: open(s, "r").read()
-        source = [s if not os.path.isfile(s) else read_file(s) for s in source]
+        source = [s if not s or not os.path.isfile(s) else read_file(s) for s in source]
+        # source = [s if not os.path.isfile(s) else read_file(s) for s in source_or_path]
+        # for s in source_or_path:
+        #     if s and os.path.isfile(s):
+        #         logger.info(f"read source code from file {s}")
+
         try:
             self._init_test_func()    # 对于外部的triton kernel开发者，没有必要初始化 flaggems 的测试函数，如果用作benchmark，可以用这一行
         except Exception as e:
             logger.error(f"Init test functions failed: {e}")
             raise e
         try:
-            if USE_GEMS:
-                checked_source = [self._check_code(s, fn_name, ns) for s, fn_name, ns in zip(source, function_name, namespace)]
+            # if USE_GEMS:
+            checked_source = [self._check_code(s, fn_name, ns) for s, fn_name, ns in zip(source, function_name, namespace)]
             # TODO 
             # should check the test_func
             if test_func is not None:
