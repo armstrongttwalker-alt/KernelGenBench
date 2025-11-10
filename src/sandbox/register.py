@@ -17,7 +17,7 @@ def register(key, has_backward=Autograd.enable, namespace=None):
     """
     Register a function with a key and an optional backward flag.
     """
-    if namespace is None:
+    if not namespace:
         if key in REGISTERED_OPS:
             raise ValueError(f"Operation '{key}' is already registered, now REGISTERED_OPS: {REGISTERED_OPS}")
     else:
@@ -28,7 +28,7 @@ def register(key, has_backward=Autograd.enable, namespace=None):
 
     
     def decorator(func):
-        if namespace is None:
+        if not namespace:
             REGISTERED_OPS[key] = (key, func, has_backward)
         else:
             REGISTERED_OPS[namespace][key] = (key, func, has_backward)
