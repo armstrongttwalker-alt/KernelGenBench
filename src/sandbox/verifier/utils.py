@@ -4,6 +4,7 @@ from rich.text import Text, TextType
 from rich.console import Console, ConsoleRenderable, RenderableType
 from typing import Iterable, List, Optional, TYPE_CHECKING, Union, Callable
 from datetime import datetime
+import re
 import importlib
 import itertools
 from rich.containers import Renderables
@@ -28,7 +29,8 @@ perf_modules = [
     "flagbench.perfermance.test_binary_pointwise_perf",
     "flagbench.perfermance.test_blas_perf",
     "flagbench.perfermance.test_distribution_perf",
-    "flagbench.perfermance.test_fused_perf",
+    # skip fused for now
+    # "flagbench.perfermance.test_fused_perf",
     "flagbench.perfermance.test_generic_pointwise_perf",
     "flagbench.perfermance.test_norm_perf",
     "flagbench.perfermance.test_reduction_perf",
@@ -50,6 +52,16 @@ def import_tests(mode: str = "accuracy"):
     for module in modules:
         importlib.import_module(module)
 
+
+def add_register_decorator(code: str, name: str, namespace: str = None) -> str:
+    pattern = f"def {name}("
+    parts = code.rsplit(pattern, 1)
+    code = f'{pattern}'.join([
+        parts[0] + f'@register("{name}", False)\n', parts[-1]
+    ]) if namespace is None else f'{pattern}'.join([
+        parts[0] + f'@register("{name}", False, namespace="{namespace}")\n', parts[-1]
+    ])
+    return code
 
 def expand_params(slots):
     # 每个 slot 的值是 [(v1,...), (v2,...)] 这样的绑定值

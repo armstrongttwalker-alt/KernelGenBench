@@ -1,4 +1,4 @@
-from .utils import import_tests, expand_params, save_benchmark_result
+from .utils import import_tests, expand_params, save_benchmark_result, add_register_decorator
 from sandbox.utils.accuracy_utils import VerifyResult
 from sandbox.register_scanner import auto_register_module
 from .test_parametrize import get_funcs_by_label, _label_registry, get_params
@@ -168,13 +168,7 @@ class Verifier:
         
         if "@register" not in code:
             code = "from flagbench import register\n" + code
-            pattern = f"def {name}("
-            parts = code.rsplit(pattern, 1)
-            code = f'{pattern}'.join([
-                parts[0] + f'@register("{name}", False)\n', parts[-1]
-            ]) if namespace is None else f'{pattern}'.join([
-                parts[0] + f'@register("{name}", False, namespace="{namespace}")\n', parts[-1]
-            ])
+            code = add_register_decorator(code, name, namespace)
         if not os.path.isfile(code):
             with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as tmp:
                 tmp.write(code)
