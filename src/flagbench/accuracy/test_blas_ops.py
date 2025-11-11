@@ -46,6 +46,34 @@ def test_accuracy_addmm(M, N, K, scalar, dtype):
     gems_assert_close(res_out, ref_out, dtype, reduce_dim=K)
 
 
+# @pytest.mark.addmm
+@label("addmm")
+# @pytest.mark.linear
+@label("linear")
+# @pytest.mark.matmul
+@label("matmul")
+@parametrize("M, N, K", MNK_SHAPES)
+@parametrize("scalar", SCALARS)
+@parametrize("dtype", FLOAT_DTYPES)
+def test_accuracy_addmm_out(M, N, K, scalar, dtype):
+    mat1 = torch.randn((M, K), dtype=dtype, device=device)
+    mat2 = torch.randn((K, N), dtype=dtype, device=device)
+    bias = torch.randn((N,), dtype=dtype, device=device)
+    out = torch.empty((M, N), dtype=dtype, device=device)
+    ref_mat1 = to_reference(mat1, True)
+    ref_mat2 = to_reference(mat2, True)
+    ref_bias = to_reference(bias, True)
+    ref_out = to_reference(out, True)
+
+    alpha = beta = scalar
+
+    torch.addmm(ref_bias, ref_mat1, ref_mat2, alpha=alpha, beta=beta, out=ref_out)
+    with flagbench.use_gems(REGISTERED_OPS):
+        torch.addmm(bias, mat1, mat2, alpha=alpha, beta=beta, out=out)
+
+    gems_assert_close(out, ref_out, dtype, reduce_dim=K)
+
+
 MK_SHAPES = [(3, 4)] if QUICK_MODE else [
     (16, 32),
     (32, 64),
@@ -56,7 +84,7 @@ MK_SHAPES = [(3, 4)] if QUICK_MODE else [
 ]
 
 # @pytest.mark.addmv
-# @label("addmv")
+@label("addmv")
 # @pytest.mark.linear  # 若“linear”标签适用，可保留
 @label("linear")
 # @pytest.mark.mv  # 若有对应 mv 算子标签，可自定义
@@ -83,6 +111,34 @@ def test_accuracy_addmv(M, K, beta, alpha, dtype):
 
     gems_assert_close(res_out, ref_out, dtype, reduce_dim=K)
 
+
+# @pytest.mark.addmv
+@label("addmv")
+# @pytest.mark.linear  # 若“linear”标签适用，可保留
+@label("linear")
+# @pytest.mark.mv  # 若有对应 mv 算子标签，可自定义
+@label("mv")
+@parametrize("M, K", MK_SHAPES)
+@parametrize("beta", SCALARS)
+@parametrize("alpha", SCALARS)
+@parametrize("dtype", FLOAT_DTYPES)
+def test_accuracy_addmv_out(M, K, beta, alpha, dtype):
+    # 构造输入
+    self_tensor = torch.randn((M,), dtype=dtype, device=device)
+    mat = torch.randn((M, K), dtype=dtype, device=device)
+    vec = torch.randn((K,), dtype=dtype, device=device)
+    out = torch.empty((M,), dtype=dtype, device=device)
+    # 转为 reference（CPU 或可靠后端）
+    ref_self = to_reference(self_tensor, True)
+    ref_mat = to_reference(mat, True)
+    ref_vec = to_reference(vec, True)
+    ref_out = to_reference(out, True)
+
+    torch.addmv(ref_self, ref_mat, ref_vec, beta=beta, alpha=alpha, out=ref_out)
+    with flagbench.use_gems():
+        torch.addmv(self_tensor, mat, vec, beta=beta, alpha=alpha, out=out)
+
+    gems_assert_close(out, ref_out, dtype, reduce_dim=K)
 
 
 # @pytest.mark.bmm
