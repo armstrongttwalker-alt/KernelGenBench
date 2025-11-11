@@ -13,27 +13,32 @@ from flagbench.dataset import IMPL_INFO
 REGISTERED_OPS = OrderedDict()
 REGISTERED_OPS_TORCH = []
 
-def register(key, has_backward=Autograd.enable, namespace=None):
+def register(api, key, has_backward=Autograd.enable, namespace=None):
     """
     Register a function with a key and an optional backward flag.
     """
     if not namespace:
-        if key in REGISTERED_OPS:
-            raise ValueError(f"Operation '{key}' is already registered, now REGISTERED_OPS: {REGISTERED_OPS}")
+        if api in REGISTERED_OPS:
+            if key in REGISTERED_OPS[api]:
+                raise ValueError(f"Operation '{key}' is already registered, now REGISTERED_OPS: {REGISTERED_OPS}")
     else:
         if namespace not in REGISTERED_OPS:
             REGISTERED_OPS[namespace] = OrderedDict()
         if key in REGISTERED_OPS[namespace]:
             raise ValueError(f"Operation '{key}' in namespace '{namespace}' is already registered, now REGISTERED_OPS: {REGISTERED_OPS[namespace]}")
 
-    
+
     def decorator(func):
         if not namespace:
-            REGISTERED_OPS[key] = (key, func, has_backward)
+            if api in REGISTERED_OPS:
+                REGISTERED_OPS[api].append((key, func, has_backward))
+            else:
+                REGISTERED_OPS[api] = [(key, func, has_backward)]
+            # REGISTERED_OPS[key] = (key, func, has_backward)
         else:
             REGISTERED_OPS[namespace][key] = (key, func, has_backward)
-        # if key not in IMPL_INFO:
-        logging.warning(f"Operator {key} not found in IMPL_INFO, make sure using bench.{key} directly rather than bench.use_gems")
+        if api not in IMPL_INFO:
+            logging.warning(f"Operator {key} not found in IMPL_INFO, make sure using bench.{key} directly rather than bench.use_gems")
         import sys
         package_name = __name__.split('.')[0]
         bench_module = sys.modules[package_name]
@@ -82,14 +87,14 @@ class Register:
         #     return backend.get_curent_device_unused_op(self.device.vendor_name)
         return []
 
-    def register_impl(self, key, fn, has_backward):
+    def register_impl(self, api, key, fn, has_backward):
         if has_backward is Autograd.enable:
             device_key = self.reg_bac_key
         else:
             device_key = self.reg_key
         self.all_ops.append(key)
         try:
-            impl_info = IMPL_INFO.get(key, [])
+            impl_info = IMPL_INFO.get(api, [])
             if not impl_info:
                 # import sys
                 # package_name = __name__.split('.')[0]
@@ -98,8 +103,12 @@ class Register:
                 # logging.warning(f"Operator {key} not found in IMPL_INFO, setattr to bench_module, make sure using bench.{key} in your test func rather than torch.{key}")
                 raise ValueError(f"Operator {key} not found in IMPL_INFO. Using bench.{key} directly rather than bench.use_gems")
             else:
-                for impl_key, _ in impl_info:
-                    self.lib.impl(impl_key, fn, device_key)
+                # for impl_key, _ in impl_info:
+                #     self.lib.impl(impl_key, fn, device_key)
+                keys = [impl_key.replace(".", "_") for impl_key, _ in impl_info]
+                if key not in keys:
+                    raise ValueError(f"Operator {key} not found in IMPL_INFO[{api}],")
+                self.lib.impl(key, fn, device_key)
             # print(f"\033[92mRegister {key} in torch library\033[0m")
         except RuntimeError as e:
             if "already a kernel registered" in str(e):
@@ -109,13 +118,13 @@ class Register:
     def for_each(self, last=False):
         if last:
             if self.config:
-                namespace, info = list(self.config.items())[-1]
-                _, (key, func, has_backward) = list(info.items())[-1]
-                self.register_impl(key, func, has_backward)
+                api, info = list(self.config.items())[-1]
+                for key, func, has_backward in info:
+                    self.register_impl(api, key, func, has_backward)
         else:
             try:
-                for _, (key, func, has_backward) in self.config.items():
-                    self.register_impl(key, func, has_backward)
+                for api, (key, func, has_backward) in self.config.items():
+                    self.register_impl(api, key, func, has_backward)
             except Exception as e:
                 error.register_error(e)
 

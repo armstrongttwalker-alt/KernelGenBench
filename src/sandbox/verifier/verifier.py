@@ -106,7 +106,7 @@ class Verifier:
 
 
     def _init_test_func(self):
-        import_tests(self.config.test_type)
+        import_tests(self._running_config.test_type)
 
     def _update_config(self, config: VerifyConfig):
         self.config = config
@@ -165,10 +165,12 @@ class Verifier:
         
         # check package import 
         code = ensure_import_torch(code)
-        
+        from flagbench.dataset.kernel_list import IMPL_INFO
         if "@register" not in code:
             code = "from flagbench import register\n" + code
-            code = add_register_decorator(code, name, namespace)
+            for op, _ in IMPL_INFO.get(name, []):
+                operator_name = op.replace(".", "_")
+                code = add_register_decorator(code, operator_name, namespace, api=name)
         if not os.path.isfile(code):
             with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as tmp:
                 tmp.write(code)
@@ -404,7 +406,7 @@ class Verifier:
         verifyresult = self.run_tests(
             name=op_mark, 
             json_path=json_path, 
-            max_failures=1,
+            max_failures="all",
             seed=config.seed, 
             strict_check=config.strict_check,
         )

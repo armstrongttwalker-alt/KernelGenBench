@@ -53,13 +53,14 @@ def import_tests(mode: str = "accuracy"):
         importlib.import_module(module)
 
 
-def add_register_decorator(code: str, name: str, namespace: str = None) -> str:
-    pattern = f"def {name}("
+def add_register_decorator(code: str, operator: str, namespace: str = None, api: str = None) -> str:
+    pattern = f"def {operator}("
+    api = api if api else operator
     parts = code.rsplit(pattern, 1)
     code = f'{pattern}'.join([
-        parts[0] + f'@register("{name}", False)\n', parts[-1]
+        parts[0] + f'@register("{api}", "{operator}", False)\n', parts[-1]
     ]) if namespace is None else f'{pattern}'.join([
-        parts[0] + f'@register("{name}", False, namespace="{namespace}")\n', parts[-1]
+        parts[0] + f'@register("{api}", "{operator}", False, namespace="{namespace}")\n', parts[-1]
     ])
     return code
 
