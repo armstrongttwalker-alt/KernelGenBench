@@ -113,6 +113,55 @@ def addmm(bias, mat1, mat2, *, beta=1, alpha=1):
 #     sample_id: int = 0
 #     save_log: bool = True
 
+triton_arange_code = """import math
+@triton.jit
+def arange_func(y_ptr, start, end, step, size, BLOCK_SIZE: tl.constexpr):
+    pid = tl.program_id(0)
+    y_ptr += pid * BLOCK_SIZE
+    step_offset = pid * BLOCK_SIZE * step
+
+    cols = tl.arange(0, BLOCK_SIZE)
+    arange_val = cols * step + step_offset + start
+    mask = cols + pid * BLOCK_SIZE
+    tl.store(y_ptr + cols, arange_val, mask=mask < size)
+
+def arange_start(
+    start, end, step=1, *, dtype=None, layout=None, device=None, pin_memory=None
+):
+    print("In custom arange_start!!!!!!!!!!!!!!!")
+    if dtype is torch.int64:
+        sgn = (step > 0) - (step < 0)
+        size = (end - start + step - sgn) // step
+    else:
+        size = math.ceil((end - start) / step)
+
+    BLOCK_SIZE = 128
+    grid = triton.cdiv(size, BLOCK_SIZE)
+
+    if dtype is None:
+        dtype = torch.int64
+
+    if pin_memory is None:
+        pin_memory = False
+
+    result = torch.empty((size,), device=device, dtype=dtype, pin_memory=pin_memory)
+    arange_func[grid,](result, start, end, step, size, BLOCK_SIZE)
+    return result
+
+def arange_start_step(
+    start, end, step, *, dtype=None, layout=None, device=None, pin_memory=None
+):
+    print("In custom arange_start_step!!!!!!!!!!!!!!!")
+    return arange_start(
+        start, end, step, dtype=dtype, layout=layout, device=device, pin_memory=pin_memory
+    )
+
+def arange(end, *, dtype=None, layout=None, device=None, pin_memory=None):
+    print("In custom arange!!!!!!!!!!!!!!!")
+    return arange_start(
+        0, end, 1, dtype=dtype, layout=layout, device=device, pin_memory=pin_memory
+    )"""
+
 config = VerifyConfig(
     run_name="test_verifier",
     test_type="both",
@@ -131,12 +180,12 @@ def test_verifier_operator():
         name_source_map=[
             VerifyRequest(
                 source=[Source(
-                    source=triton_addmm_code,
-                    function_name="addmm"
+                    source=triton_arange_code,
+                    function_name="arange"
                 )]
             )
         ], 
-        test_type="both"        # accuracy, performance, both
+        test_type="accuracy"        # accuracy, performance, both
     )[-1][0]
     print("Verification Result:", result)
 
