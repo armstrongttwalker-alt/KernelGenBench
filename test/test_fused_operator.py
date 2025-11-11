@@ -200,7 +200,7 @@ def flash_mla(
         triton.cdiv(head_num, BLOCK_H),
         batch_size,
     )
-    with torch_device_fn.device(device):
+    with torch.cuda.device(device):
         flash_mla_attn_kernel[grid](
             q,
             blocked_k,
