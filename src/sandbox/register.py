@@ -40,7 +40,8 @@ def register(api, key, has_backward=Autograd.enable, namespace=None):
         if api not in IMPL_INFO:
             logging.warning(f"Operator {key} not found in IMPL_INFO, make sure using bench.{key} directly rather than bench.use_gems")
         import sys
-        package_name = __name__.split('.')[0]
+        # package_name = __name__.split('.')[0]
+        package_name = "flagbench"
         bench_module = sys.modules[package_name]
         if namespace:
             if not hasattr(bench_module, namespace):
