@@ -158,17 +158,19 @@ class Verifier:
         
         name = name.split(".")[-1]
         compile(code, name, "exec")
+        from flagbench.dataset.kernel_list import IMPL_INFO
         # assert f"def {name}(" in code, f"no func {name} in code"
-        if f"def {name}(" not in code:
-            logger.error(f"no func {name} in code \n{code}")
-            raise ValueError(f"no func {name} in code, must use def {name}")
+        ops = IMPL_INFO.get(name, []) or [name]
+        for op in ops:
+            if f"def {op}(" not in code:
+                logger.error(f"no func {op} in code \n{code}")
+                raise ValueError(f"no func {op} in code, must include def {op}")
         
         # check package import 
         code = ensure_import_torch(code)
-        from flagbench.dataset.kernel_list import IMPL_INFO
         if "@register" not in code:
             code = "from flagbench import register\n" + code
-            for op, _ in IMPL_INFO.get(name, []):
+            for op in ops:
                 operator_name = op.replace(".", "_")
                 code = add_register_decorator(code, operator_name, namespace, api=name)
         if not os.path.isfile(code):
