@@ -12,6 +12,9 @@ from flagbench.perfermance.attri_util import CustomBenchmarkResult
 # from .config import QUICK_MODE, TO_CPU
 from sandbox.config import QUICK_MODE, TO_CPU
 
+import os
+UPCAST = os.environ.get("FLAGBENCH_UPCAST", "1") == "1"
+
 fp64_is_supported = True
 
 import torch
@@ -207,7 +210,7 @@ def to_reference(inp, upcast=False):
     ref_inp = inp
     if TO_CPU:
         ref_inp = ref_inp.to("cpu")
-    if upcast:
+    if upcast and UPCAST:
         if ref_inp.is_complex():
             ref_inp = ref_inp.to(torch.complex128)
         else:

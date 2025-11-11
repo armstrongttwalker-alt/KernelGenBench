@@ -4,6 +4,7 @@ from sandbox.register_scanner import auto_register_module
 from .test_parametrize import get_funcs_by_label, _label_registry, get_params
 from fastapi.encoders import jsonable_encoder
 import os
+DISPATCH_TORCH_LIB = os.environ.get("DISPATCH_TORCH_LIB", "1") == "1"
 from tqdm import tqdm
 import traceback
 import tempfile
@@ -455,8 +456,8 @@ class Verifier:
             logger.error(f"Init test functions failed: {e}")
             raise e
         try:
-            # if USE_GEMS:
-            checked_source = [self._check_code(s, fn_name, ns) for s, fn_name, ns in zip(source, function_name, namespace)]
+            if DISPATCH_TORCH_LIB:
+                checked_source = [self._check_code(s, fn_name, ns) for s, fn_name, ns in zip(source, function_name, namespace)]
             # TODO 
             # should check the test_func
             if test_func is not None:
