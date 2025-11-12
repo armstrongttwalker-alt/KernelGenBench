@@ -4,6 +4,7 @@ os.environ["FLAGBENCH_UPCAST"] = "0"
 
 import argparse
 from sandbox.verifier import Verifier, VerifyConfig, VerifyRequest, Source
+from flagbench import PYTORCH_OPERATORS
 
 mock_triton_code = "mock triton code"
 
@@ -21,18 +22,34 @@ config = VerifyConfig(
 verifier = Verifier(config)
 
 def test_verifier_operator(name):
-    result = verifier.only_verify(
-        name_source_map=[
-            VerifyRequest(
-                source=[Source(
-                    source=mock_triton_code,
-                    function_name=name
-                )]
-            )
-        ], 
-        test_type="accuracy"        # accuracy, performance, both
-    )[-1][0]
-    print("Verification Result:", result)
+    if name != "all":
+        result = verifier.only_verify(
+            name_source_map=[
+                VerifyRequest(
+                    source=[Source(
+                        source=mock_triton_code,
+                        function_name=name
+                    )]
+                )
+            ], 
+            test_type="accuracy"        # accuracy, performance, both
+        )[-1][0]
+        print("Verification Result:", result)
+    else:
+        names = list(PYTORCH_OPERATORS.keys())
+        for name in names:
+            result = verifier.only_verify(
+                name_source_map=[
+                    VerifyRequest(
+                        source=[Source(
+                            source=mock_triton_code,
+                            function_name=name
+                        )]
+                    )
+                ], 
+                test_type="accuracy"        # accuracy, performance, both
+            )[-1][0]
+            print(f"Verification Result for {name}:", result)
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
