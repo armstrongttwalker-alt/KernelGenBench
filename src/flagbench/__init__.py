@@ -49,6 +49,35 @@ class use_gems:
 def all_ops():
     return current_work_registrar.get_all_ops()
 
+accuracy_modules = [
+    "flagbench.accuracy.test_attention_ops",
+    "flagbench.accuracy.test_binary_pointwise_ops",
+    "flagbench.accuracy.test_blas_ops",
+    "flagbench.accuracy.test_distribution_ops",
+    "flagbench.accuracy.test_general_reduction_ops",
+    "flagbench.accuracy.test_norm_ops",
+    # "flagbench.accuracy.test_pointwise_type_promotion",
+    "flagbench.accuracy.test_reduction_ops",
+    "flagbench.accuracy.test_special_ops",
+    "flagbench.accuracy.test_tensor_constructor_ops",
+    "flagbench.accuracy.test_unary_pointwise_ops",
+]
+perf_modules = [
+    "flagbench.perfermance.test_attention_perf",
+    "flagbench.perfermance.test_binary_pointwise_perf",
+    "flagbench.perfermance.test_blas_perf",
+    "flagbench.perfermance.test_distribution_perf",
+    # skip fused for now
+    # "flagbench.perfermance.test_fused_perf",
+    "flagbench.perfermance.test_generic_pointwise_perf",
+    "flagbench.perfermance.test_norm_perf",
+    "flagbench.perfermance.test_reduction_perf",
+    "flagbench.perfermance.test_select_and_slice_perf",
+    "flagbench.perfermance.test_special_perf",
+    "flagbench.perfermance.test_tensor_concat_perf",
+    "flagbench.perfermance.test_tensor_constructor_perf",
+    "flagbench.perfermance.test_unary_pointwise_perf",
+]
 
 __all__ = [
     "enable",

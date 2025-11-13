@@ -11,48 +11,6 @@ from rich.containers import Renderables
 from rich.table import Table
 
 
-accuracy_modules = [
-    "flagbench.accuracy.test_attention_ops",
-    "flagbench.accuracy.test_binary_pointwise_ops",
-    "flagbench.accuracy.test_blas_ops",
-    "flagbench.accuracy.test_distribution_ops",
-    "flagbench.accuracy.test_general_reduction_ops",
-    "flagbench.accuracy.test_norm_ops",
-    # "flagbench.accuracy.test_pointwise_type_promotion",
-    "flagbench.accuracy.test_reduction_ops",
-    "flagbench.accuracy.test_special_ops",
-    "flagbench.accuracy.test_tensor_constructor_ops",
-    "flagbench.accuracy.test_unary_pointwise_ops",
-]
-perf_modules = [
-    "flagbench.perfermance.test_attention_perf",
-    "flagbench.perfermance.test_binary_pointwise_perf",
-    "flagbench.perfermance.test_blas_perf",
-    "flagbench.perfermance.test_distribution_perf",
-    # skip fused for now
-    # "flagbench.perfermance.test_fused_perf",
-    "flagbench.perfermance.test_generic_pointwise_perf",
-    "flagbench.perfermance.test_norm_perf",
-    "flagbench.perfermance.test_reduction_perf",
-    "flagbench.perfermance.test_select_and_slice_perf",
-    "flagbench.perfermance.test_special_perf",
-    "flagbench.perfermance.test_tensor_concat_perf",
-    "flagbench.perfermance.test_tensor_constructor_perf",
-    "flagbench.perfermance.test_unary_pointwise_perf",
-]
-
-
-def import_tests(mode: str = "accuracy"):
-    if mode == "accuracy":
-        modules = accuracy_modules
-    elif mode == "performance":
-        modules = perf_modules
-    elif mode == "both":
-        modules = accuracy_modules + perf_modules
-    for module in modules:
-        importlib.import_module(module)
-
-
 def add_register_decorator(code: str, operator: str, namespace: str = None, api: str = None) -> str:
     pattern = f"def {operator}("
     api = api if api else operator
