@@ -1,4 +1,4 @@
-from .utils import import_tests, expand_params, save_benchmark_result, add_register_decorator
+from .utils import expand_params, save_benchmark_result, add_register_decorator
 from sandbox.utils.accuracy_utils import VerifyResult
 from sandbox.register_scanner import auto_register_module
 from .test_parametrize import get_funcs_by_label, _label_registry, get_params
@@ -13,6 +13,7 @@ import json
 import torch
 import multiprocessing as mp
 import numpy as np
+import importlib
 from pydantic import BaseModel
 from copy import deepcopy
 from dataclasses import dataclass, asdict
@@ -104,10 +105,36 @@ class Verifier:
     def __init__(self, config: VerifyConfig):
         self.config = config
         self._running_config = deepcopy(config)
+        self.accuracy_modules = []
+        self.perf_modules = []
+
+    def set_modules(self, modules: list, mode: str = "accuracy"):
+        assert mode in ["accuracy", "performance"], f"mode must be accuracy or performance, got {mode}"
+        if mode == "accuracy":
+            self.accuracy_modules = modules
+        if mode == "performance":
+            self.perf_modules = modules
+
+
+    def import_tests(self, mode: str = "accuracy"):
+        if not self.accuracy_modules:
+            from flagbench import accuracy_modules
+            self.accuracy_modules = accuracy_modules
+        if not self.perf_modules:
+            from flagbench import perf_modules
+            self.perf_modules = perf_modules
+        if mode == "accuracy":
+            modules = self.accuracy_modules
+        elif mode == "performance":
+            modules = self.perf_modules
+        elif mode == "both":
+            modules = self.accuracy_modules + self.perf_modules
+        for module in modules:
+            importlib.import_module(module)
 
 
     def _init_test_func(self):
-        import_tests(self._running_config.test_type)
+        self.import_tests(self._running_config.test_type)
 
     def _update_config(self, config: VerifyConfig):
         self.config = config
