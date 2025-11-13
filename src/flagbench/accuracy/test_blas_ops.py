@@ -88,7 +88,7 @@ MK_SHAPES = [(3, 4)] if QUICK_MODE else [
 # @pytest.mark.linear  # 若“linear”标签适用，可保留
 @label("linear")
 # @pytest.mark.mv  # 若有对应 mv 算子标签，可自定义
-@label("mv")
+# @label("mv")
 @parametrize("M, K", MK_SHAPES)
 @parametrize("beta", SCALARS)
 @parametrize("alpha", SCALARS)
@@ -117,7 +117,7 @@ def test_accuracy_addmv(M, K, beta, alpha, dtype):
 # @pytest.mark.linear  # 若“linear”标签适用，可保留
 @label("linear")
 # @pytest.mark.mv  # 若有对应 mv 算子标签，可自定义
-@label("mv")
+# @label("mv")
 @parametrize("M, K", MK_SHAPES)
 @parametrize("beta", SCALARS)
 @parametrize("alpha", SCALARS)
@@ -135,7 +135,7 @@ def test_accuracy_addmv_out(M, K, beta, alpha, dtype):
     ref_out = to_reference(out, True)
 
     torch.addmv(ref_self, ref_mat, ref_vec, beta=beta, alpha=alpha, out=ref_out)
-    with flagbench.use_gems():
+    with flagbench.use_gems(REGISTERED_OPS):
         torch.addmv(self_tensor, mat, vec, beta=beta, alpha=alpha, out=out)
 
     gems_assert_close(out, ref_out, dtype, reduce_dim=K)
