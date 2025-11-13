@@ -831,8 +831,8 @@ def test_accuracy_index_fill(shape, dim, dtype, value):
     ref_out = torch.index_fill(ref_inp, dim, ref_index, value)
 
     # 真正执行
-    # with flagbench.use_gems(REGISTERED_OPS):
-    res_out = flagbench.index_fill(inp, dim, index, value)
+    with flagbench.use_gems(REGISTERED_OPS):
+        res_out = torch.index_fill(inp, dim, index, value)
 
     # 对比结果
     gems_assert_close(res_out, ref_out, dtype=dtype)
