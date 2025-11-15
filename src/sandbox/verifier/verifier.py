@@ -116,6 +116,39 @@ class Verifier:
             self.perf_modules = modules
 
 
+    def _import_module_or_path(self, module_or_path: str):
+        """
+        动态导入模块或文件路径
+        - 如果是文件路径(.py结尾或路径分隔符),则从文件加载
+        - 否则作为模块名导入
+        """
+        import sys
+        import importlib.util
+        
+        # 判断是否是文件路径
+        if os.path.exists(module_or_path) or module_or_path.endswith('.py') or os.path.sep in module_or_path:
+            # 作为文件路径处理
+            if not os.path.exists(module_or_path):
+                raise FileNotFoundError(f"Module file not found: {module_or_path}")
+            
+            # 生成模块名 (从文件名提取)
+            module_name = os.path.splitext(os.path.basename(module_or_path))[0]
+            
+            # 使用 importlib.util 从文件加载
+            spec = importlib.util.spec_from_file_location(module_name, module_or_path)
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Cannot load module from {module_or_path}")
+            
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[module_name] = module
+            spec.loader.exec_module(module)
+            logger.info(f"Loaded module from file: {module_or_path}")
+        else:
+            # 作为模块名处理
+            importlib.import_module(module_or_path)
+            logger.info(f"Imported module: {module_or_path}")
+
+
     def import_tests(self, mode: str = "accuracy"):
         if not self.accuracy_modules:
             from flagbench import accuracy_modules
@@ -130,7 +163,7 @@ class Verifier:
         elif mode == "both":
             modules = self.accuracy_modules + self.perf_modules
         for module in modules:
-            importlib.import_module(module)
+            self._import_module_or_path(module)
 
 
     def _init_test_func(self):
@@ -188,7 +221,8 @@ class Verifier:
         compile(code, name, "exec")
         from flagbench.dataset.kernel_list import IMPL_INFO
         # assert f"def {name}(" in code, f"no func {name} in code"
-        ops = IMPL_INFO.get(name, []) or [name]
+        ops = IMPL_INFO.get(name, [(name, None)])
+        ops = [op.replace(".", "_") for op, _ in ops]
         for op in ops:
             if f"def {op}(" not in code:
                 logger.error(f"no func {op} in code \n{code}")
@@ -199,8 +233,7 @@ class Verifier:
         if "@register" not in code:
             code = "from flagbench import register\n" + code
             for op in ops:
-                operator_name = op.replace(".", "_")
-                code = add_register_decorator(code, operator_name, namespace, api=name)
+                code = add_register_decorator(code, op, namespace, api=name)
         if not os.path.isfile(code):
             with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as tmp:
                 tmp.write(code)
@@ -212,7 +245,7 @@ class Verifier:
     def only_verify(
         self, 
         name_source_map: List[VerifyRequest],
-        test_type: str = None, # accuracy or performance
+        test_type: str = "accuracy", # accuracy or performance
         device_count: int = 1, 
     ) -> Tuple[Dict, List[VerifyResult]]:
         self._running_config.test_type = test_type
@@ -281,15 +314,31 @@ class Verifier:
             ctx = mp.get_context("spawn")
             for verifyrequest in name_source_maps:
                 with ctx.Pool(processes=1) as pool:
-                    res = pool.apply(self._verify, kwds={
-                        # "source": [s.source for s in verifyrequest.source],
-                        # "function_name": [s.function_name for s in verifyrequest.source],
-                        # "test_func": [s for s in verifyrequest.test_func],
-                        # "test_func_mark": verifyrequest.test_func_mark,
-                        # "namespace": [s.namespace for s in verifyrequest.source],
-                        "verifyrequest": verifyrequest, 
-                    })
-                    check_result.append(res)
+                    try:
+                        res = pool.apply_async(self._verify, kwds={
+                            "verifyrequest": verifyrequest, 
+                        })
+                        result = res.get(timeout=300)
+                        check_result.append(result)
+                    except mp.TimeoutError:
+                        logger.error(f"TimeoutError: Test for {verifyrequest.source[0].function_name} timed out.")
+                        check_result.append(VerifyResult(
+                            op_name=verifyrequest.source[0].function_name,
+                            success=False,
+                            traceback="TimeoutError: Test timed out.",
+                            code=verifyrequest.source[0].source if verifyrequest.source else None,
+                            test_func=verifyrequest.test_func[0] if verifyrequest.test_func else None,
+                        ))
+                    except Exception as e:
+                        tb_str = traceback.format_exc()
+                        logger.error(f"Exception during test for {verifyrequest.source[0].function_name}: {tb_str}")
+                        check_result.append(VerifyResult(
+                            op_name=verifyrequest.source[0].function_name,
+                            success=False,
+                            traceback=tb_str,
+                            code=verifyrequest.source[0].source if verifyrequest.source else None,
+                            test_func=verifyrequest.test_func[0] if verifyrequest.test_func else None,
+                        ))
 
         return check_result
 
@@ -436,7 +485,7 @@ class Verifier:
         verifyresult = self.run_tests(
             name=op_mark, 
             json_path=json_path, 
-            max_failures="all",
+            max_failures=config.strict_check and 1 or "all",
             seed=config.seed, 
             strict_check=config.strict_check,
         )
