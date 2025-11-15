@@ -6,6 +6,9 @@ from pydantic import BaseModel
 from typing import Callable, List, Optional, Union, Dict
 from flagbench.perfermance.attri_util import CustomBenchmarkResult
 
+import random
+import numpy as np
+
 # import flag_gems
 
 # from .conftest import QUICK_MODE, TO_CPU
@@ -199,10 +202,12 @@ ALL_FLOAT_DTYPES = FLOAT_DTYPES + [torch.float64] if fp64_is_supported else FLOA
 INT_DTYPES = [torch.int16, torch.int32]
 ALL_INT_DTYPES = INT_DTYPES + [torch.int64]
 BOOL_TYPES = [torch.bool]
+COMPLEX_DTYPES = [torch.complex32, torch.complex64]
 
 SCALARS = [0.001, -0.999, 100.001, -111.999]
 STACK_DIM_LIST = [-2, -1, 0, 1]
 
+ARANGE_START = [0] if TO_CPU else [0, 1, 3]
 
 def to_reference(inp, upcast=False):
     if inp is None:
@@ -247,3 +252,11 @@ def unsqueeze_tensor(inp, max_ndim):
     for _ in range(inp.ndim, max_ndim):
         inp = inp.unsqueeze(-1)
     return inp
+
+
+def init_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
