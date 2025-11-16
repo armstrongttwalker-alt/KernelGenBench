@@ -746,7 +746,7 @@ def test_accuracy_masked_fill(shape, dtype, threshold, value):
 
 
 # @pytest.mark.masked_fill
-@label("masked_fill")
+@label("masked_fill_")
 @parametrize("shape", POINTWISE_SHAPES)
 @parametrize("dtype", FLOAT_DTYPES)
 @parametrize("threshold", [0.3, 0.5, 0.7])
