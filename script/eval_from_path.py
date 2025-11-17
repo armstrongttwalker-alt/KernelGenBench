@@ -62,7 +62,6 @@ def main():
     for sample_idx in range(args.num_samples):
         samples = load_samples_from_path(Path(args.path) / f"code_{sample_idx}")
         if len(results) > 0:
-            success += [res.op_name for res in results[1] if res.success]
             samples = {k: v for k, v in samples.items() if k not in success}
         codes = list(samples.values())
         file_names = list(samples.keys())
