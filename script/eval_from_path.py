@@ -66,7 +66,6 @@ def main():
             samples = {k: v for k, v in samples.items() if k not in success}
         codes = list(samples.values())
         file_names = list(samples.keys())
-        verifier._running_config.sample_id += 1
         results = verifier.only_verify(
             name_source_map=[
                 VerifyRequest(
@@ -79,6 +78,7 @@ def main():
             test_type="accuracy",
             device_count=args.device_count
         )
+        verifier._running_config.sample_id += 1
         print(f"Results for sample index {sample_idx}:")
         print(results[0])
         success += [res.op_name for res in results[1] if res.success]
