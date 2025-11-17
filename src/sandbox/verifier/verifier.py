@@ -40,6 +40,7 @@ class VerifyConfig:
     seed: int = 42
     sample_id: int = 0
     save_log: bool = True
+    acc_timeout: int = 300    # seconds
 
 @dataclass
 class Source:
@@ -318,7 +319,7 @@ class Verifier:
                         res = pool.apply_async(self._verify, kwds={
                             "verifyrequest": verifyrequest, 
                         })
-                        result = res.get(timeout=300)
+                        result = res.get(timeout=self.config.acc_timeout)
                         check_result.append(result)
                     except mp.TimeoutError:
                         logger.error(f"TimeoutError: Test for {verifyrequest.source[0].function_name} timed out.")
