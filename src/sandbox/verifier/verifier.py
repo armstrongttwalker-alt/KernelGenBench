@@ -51,8 +51,8 @@ class Source:
 @dataclass
 class VerifyRequest:
     source: List[Source]
-    test_func: List[str] = None
-    test_func_mark: str = ""
+    test_func: List[str | None] | None = None
+    test_func_mark: str | None = None
 
 import logging
 from .utils import CustomRichHandler, generate_speedup_html
@@ -347,7 +347,7 @@ class Verifier:
         self, 
         name, 
         json_path: str=None, 
-        max_failures: Union[str, int] = "all", 
+        max_failures: str | int = "all", 
         seed=42, 
         strict_check=False
     ) -> VerifyResult:
