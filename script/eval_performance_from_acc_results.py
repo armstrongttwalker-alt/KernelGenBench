@@ -44,7 +44,7 @@ def main():
     )
     args = parser.parse_args()
     config = VerifyConfig(
-        run_name="eval_perf_" + today(),
+        run_name="eval_perf_" + Path(args.path).name + "_" + today(),
         test_type="performance",
         run_dir="./runs",
         store_type="local",
