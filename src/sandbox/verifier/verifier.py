@@ -41,6 +41,7 @@ class VerifyConfig:
     sample_id: int = 0
     save_log: bool = True
     acc_timeout: int = 300    # seconds
+    perf_timeout: int = 600    # seconds
 
 @dataclass
 class Source:
@@ -255,23 +256,28 @@ class Verifier:
         return summary, results
 
 
-    def _verify_with_one_device(self, task_collections: List[VerifyRequest], device_id, result_queue):
+    def _verify_with_one_device(self, task_collections: List[VerifyRequest], device_id: int, result_queue: mp.Queue):
         os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
+        ctx = mp.get_context("spawn")
         for verifyrequest in task_collections:
-            p = mp.Process(
-                target=self._verify, 
-                kwargs={
-                    # "source": [s.source for s in verifyrequest.source],
-                    # "function_name": [s.function_name for s in verifyrequest.source],
-                    # "test_func": [s for s in verifyrequest.test_func],
-                    # "test_func_mark": verifyrequest.test_func_mark,
-                    # "namespace": [s.namespace for s in verifyrequest.source],
-                    "verifyrequest": verifyrequest,
-                    "result_queue": result_queue,
-                }
-            )
+            p  = ctx.Process(target=self._verify, kwargs={
+                "verifyrequest": verifyrequest, 
+                "result_queue": result_queue,
+            })
             p.start()
-            p.join()
+            p.join(timeout=self.config.acc_timeout)
+
+            if p.is_alive():
+                logger.error(f"TimeoutError: Test for {verifyrequest.source[0].function_name} timed out after {self.config.acc_timeout}s.")
+                p.terminate()
+                p.join()
+                result_queue.put(VerifyResult(
+                    op_name=verifyrequest.source[0].function_name,
+                    success=False,
+                    traceback=f"TimeoutError: Test timed out after {self.config.acc_timeout} seconds.",
+                    code=verifyrequest.source[0].source if verifyrequest.source else None,
+                    test_func=verifyrequest.test_func[0] if verifyrequest.test_func else None,
+                ))
 
     def verify(
         self,
@@ -282,64 +288,35 @@ class Verifier:
 
         """
         check_result = []
-        if device_count > 1 and len(name_source_maps) > 1:
-            total_tasks = len(name_source_maps)
-            task_chunks = [[] for _ in range(device_count)]
-            for i, name_source_map in enumerate(name_source_maps):
-                task_chunks[i % device_count].append(name_source_map)
-            result_queue = mp.Queue()
-    
-            # 每个gpu一个进程
-            processes = []
-            for i, chunk in enumerate(task_chunks):
-                p = mp.Process(target=self._verify_with_one_device, args=(chunk, i, result_queue))
-                p.start()
-                processes.append(p)
-            
-            with tqdm(total=total_tasks, desc="All GPUs") as pbar:
-                finished = 0
-                total = 0
-                success = 0
-                while finished < total_tasks:
-                    result = result_queue.get()  # 等子进程消息
-                    s = result.success == True
-                    success += s
-                    check_result.append(result)
-                    total += 1 if result.success is not None else 0
-                    finished += 1
-                    pbar.update(1)
-                    pbar.set_postfix(success=f"{success}/{total}")
-            for p in processes:
-                p.join()
-        else:
-            ctx = mp.get_context("spawn")
-            for verifyrequest in name_source_maps:
-                with ctx.Pool(processes=1) as pool:
-                    try:
-                        res = pool.apply_async(self._verify, kwds={
-                            "verifyrequest": verifyrequest, 
-                        })
-                        result = res.get(timeout=self.config.acc_timeout)
-                        check_result.append(result)
-                    except mp.TimeoutError:
-                        logger.error(f"TimeoutError: Test for {verifyrequest.source[0].function_name} timed out.")
-                        check_result.append(VerifyResult(
-                            op_name=verifyrequest.source[0].function_name,
-                            success=False,
-                            traceback="TimeoutError: Test timed out.",
-                            code=verifyrequest.source[0].source if verifyrequest.source else None,
-                            test_func=verifyrequest.test_func[0] if verifyrequest.test_func else None,
-                        ))
-                    except Exception as e:
-                        tb_str = traceback.format_exc()
-                        logger.error(f"Exception during test for {verifyrequest.source[0].function_name}: {tb_str}")
-                        check_result.append(VerifyResult(
-                            op_name=verifyrequest.source[0].function_name,
-                            success=False,
-                            traceback=tb_str,
-                            code=verifyrequest.source[0].source if verifyrequest.source else None,
-                            test_func=verifyrequest.test_func[0] if verifyrequest.test_func else None,
-                        ))
+        # if device_count > 1 and len(name_source_maps) > 1:
+        total_tasks = len(name_source_maps)
+        task_chunks = [[] for _ in range(device_count)]
+        for i, name_source_map in enumerate(name_source_maps):
+            task_chunks[i % device_count].append(name_source_map)
+        result_queue = mp.Queue()
+
+        # 每个gpu一个进程
+        processes: List[mp.Process] = []
+        for i, chunk in enumerate(task_chunks):
+            p = mp.Process(target=self._verify_with_one_device, args=(chunk, i, result_queue))
+            p.start()
+            processes.append(p)
+        
+        with tqdm(total=total_tasks, desc="All GPUs") as pbar:
+            finished = 0
+            total = 0
+            success = 0
+            while finished < total_tasks:
+                result = result_queue.get()  # 等子进程消息
+                s = result.success == True
+                success += s
+                check_result.append(result)
+                total += 1 if result.success is not None else 0
+                finished += 1
+                pbar.update(1)
+                pbar.set_postfix(success=f"{success}/{total}")
+        for p in processes:
+            p.join()
 
         return check_result
 
