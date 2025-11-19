@@ -55,6 +55,7 @@ def main():
         seed=42,
         sample_id=0,
         save_log=True,
+        acc_timeout=300,
     )
     verifier = Verifier(config)
     results = []
