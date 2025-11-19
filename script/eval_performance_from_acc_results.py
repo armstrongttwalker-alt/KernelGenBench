@@ -42,6 +42,12 @@ def main():
         default=1,
         help="Number of samples to evaluate.",
     )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=1000,
+        help="Timeout for performance evaluation in seconds.",
+    )
     args = parser.parse_args()
     config = VerifyConfig(
         run_name="eval_perf_" + Path(args.path).name + "_" + today(),
@@ -52,7 +58,7 @@ def main():
         seed=42,
         sample_id=0,
         save_log=True,
-        acc_timeout=1000,
+        acc_timeout=args.timeout,
     )
     verifier = Verifier(config)
     results = []

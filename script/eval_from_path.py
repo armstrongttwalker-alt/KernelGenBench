@@ -45,6 +45,12 @@ def main():
         default=1,
         help="Number of samples to evaluate.",
     )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=300,
+        help="Timeout for accuracy evaluation in seconds.",
+    )
     args = parser.parse_args()
     config = VerifyConfig(
         run_name="eval_" + Path(args.path).name + "_" + today(),
@@ -55,7 +61,7 @@ def main():
         seed=42,
         sample_id=0,
         save_log=True,
-        acc_timeout=300,
+        acc_timeout=args.timeout,
     )
     verifier = Verifier(config)
     results = []
