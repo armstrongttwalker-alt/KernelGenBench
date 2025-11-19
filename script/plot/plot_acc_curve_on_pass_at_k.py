@@ -421,7 +421,7 @@ def main():
         description="Calculate pass@k statistics and plot accuracy curves from evaluation results."
     )
     parser.add_argument(
-        "eval_dir",
+        "--eval_dir",
         type=str,
         help="Path to the evaluation directory containing log_0 to log_9 subdirectories"
     )

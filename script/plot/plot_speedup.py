@@ -228,7 +228,7 @@ def main():
         description="Visualize speedup test results from performance evaluation."
     )
     parser.add_argument(
-        "eval_dir",
+        "--eval_dir",
         type=str,
         help="Path to the evaluation directory containing log_0 to log_9 subdirectories"
     )
