@@ -127,7 +127,8 @@ def test_accuracy_argmin(shape, dim, keepdim, dtype):
 # # @pytest.mark.skipif
 # @label("skipif")(flag_gems.vendor_name == "kunlunxin", reason="RESULT TODOFIX")
 # @pytest.mark.CrossEntropyLoss
-@label("CrossEntropyLoss")
+# @label("CrossEntropyLoss")
+@label("cross_entropy")
 @parametrize("label_smoothing, ignore_index, shape", SMOOTH_IGNORE_SHAPE)
 @parametrize("reduction", CROSS_ENTROPY_LOSS_REDUCTION)
 @parametrize("weight", [True, False])

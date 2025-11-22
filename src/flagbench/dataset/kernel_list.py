@@ -254,7 +254,7 @@ IMPL_INFO = {
     "quantile": [("quantile", Autograd.disable)],
     "log_softmax": [("log_softmax.int", Autograd.enable)],
     "outer": [("outer", Autograd.enable)],
-    "cross_entropy_loss": [("cross_entropy_loss", Autograd.enable)],
+    "cross_entropy": [("cross_entropy_loss", Autograd.enable)],
     "nll_loss_forward": [("nll_loss_forward", Autograd.disable)],
     "nll_loss_backward": [("nll_loss_backward", Autograd.disable)],
     "nll_loss2d_forward": [("nll_loss2d_forward", Autograd.disable)],
