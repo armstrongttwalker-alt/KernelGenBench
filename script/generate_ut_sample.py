@@ -280,7 +280,7 @@ Examples:
     # Set verbose logging if requested
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
-    run_name = f"{args.model_name}_num_samples_{args.num_samples}_temp_{args.temperature}_max_tokens_{args.max_tokens}_{today()}"
+    run_name = f"ut_{args.model_name}_num_samples_{args.num_samples}_temp_{args.temperature}_max_tokens_{args.max_tokens}_{today()}"
     # Create generation config
     config = GenerationConfig(
         run_name=run_name,
