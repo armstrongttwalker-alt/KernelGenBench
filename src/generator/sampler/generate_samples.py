@@ -125,12 +125,20 @@ class TorchKernelGenerateArgs(BaseGenerateArgs):
     def op_name(self):
         return self.torch_kernel_name
 
+# class TestFuncGenerateArgs(BaseGenerateArgs):
+#     test_func_name: str
+#     torch_kernel_name: str
+#     triton_kernel_name: str
+#     torch_kernel_code: str
+#     triton_kernel_code: str | None = None
+
+#     @property
+#     def op_name(self):
+#         return self.test_func_name
 class TestFuncGenerateArgs(BaseGenerateArgs):
     test_func_name: str
-    torch_kernel_name: str
-    triton_kernel_name: str
-    torch_kernel_code: str
-    triton_kernel_code: str | None = None
+    kernel_name: str
+    operators: List[dict]
 
     @property
     def op_name(self):

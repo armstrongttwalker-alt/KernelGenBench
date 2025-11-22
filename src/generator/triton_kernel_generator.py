@@ -191,7 +191,7 @@ class TritonKernelGenerator(BaseGenerator):
                 processed_results[i] = self.decouple_bench(processed_results[i], self.kernel_name)
             return processed_results
         else:
-            return [(code, name, sample_id) for code, name, sample_id in zip(processed_results, names, sample_id)]
+            return [[code, name, sample_id] for code, name, sample_id in zip(processed_results, names, sample_id)]
 
     def decouple_bench(self, code: str, kernel_name: str = None) -> str:
         """

@@ -101,41 +101,44 @@ class TestFuncGenerator(BaseGenerator):
         return prompt
 
 
+    # def generate_prompt_for_new(self, info: TestFuncGenerateArgs):
+    #     # Implement the logic to generate the prompt for the test function
+    #     prompt = f"You are a skilled software engineer proficient in PyTorch and Triton. Your task is to generate a test function that compares the outputs of a PyTorch kernel and its \
+    #         Triton implementation. You must strictly adhere to the following specifications:\n"
+    #     prompt += f"The test function name should be {info.op_name}.\n"
+    #     prompt += f"The test function should compare the following two kernels:\n"
+    #     prompt += f"PyTorch kernel:\n```python\n{info.torch_kernel_code}\n```\n"
+    #     prompt += f"Triton kernel:\n```python\n{info.triton_kernel_code}\n```\n"
+    #     prompt += f"The test function must follow exactly this format:\n"
+    #     prompt += f"@label(\"{{torch_kernel_name}}\")\n"
+    #     prompt += f"@parametrize(\"M, N\", [(1, 32), (160, 1024), (5333, 497)])\n"
+    #     prompt += f"@parametrize(\"dtype\", [torch.float16, torch.float32, torch.bfloat16])\n"
+    #     prompt += f"def {{op_name}}(M, N, dtype):\n"
+    #     prompt += f"    # initialize the input data\n"
+    #     prompt += f"    XXXXX\n"
+    #     prompt += f"    # if necessary, cast the input"
+    #     prompt += f"    ref_input = to_reference(input, True)\n"
+    #     prompt += f"    ref_out = bench.{{torch_kernel_name}}(ref_input)\n"
+    #     prompt += f"    res_out = bench.triton.{{triton_kernel_name}}(input)\n\n"
+    #     prompt += f"    assert_close(res_out, ref_out, dtype, reduce_dim=M)\n"
+    #     prompt += f"You must use @parametrize to cover different input shapes and data types, do not import anything else like parametrize, the import logic will be handled automatically.\n"
+    #     prompt += f"Do not consider the import source of to_reference function, it will be added automatically.\n"
+    #     prompt += f"You must use bench.{{torch_kernel_name}} to call the torch kernel and bench.triton.{{triton_kernel_name}} to call the triton kernel rather than call them directly.\n"
+    #     prompt += f"You must generate the valid test function code directly without any explanations or additional text. The code must be complete and ready to run.\n"
+    #     prompt += f"You should use assert_close to compare the outputs of the two kernels as the last step of the test function.\n"
+    #     prompt += f"The func assert_close has been imported for you to compare the outputs of the two kernels.\n"
+    #     prompt += f"It has the following input args: assert_close(res, ref, dtype, equal_nan=False, reduce_dim=1)\n"
+    #     prompt += f"Use the output of torch kernel as the ground truth reference rather than manually create the result yourself.\n"
+    #     prompt += f"You must use ```python ... ``` to format the code block.\n"
+    #     prompt += f"use easy and common sense values for M, N in parametrize rather than extreme values.\n"
+    #     prompt += f"do not use too many parametrize decorators, 2 or 3 are enough.\n"
+    #     prompt += f"If you encounter tensor dtype mismatch issues (e.g., halftensor vs tensor), you can use to_reference(input, True) to cast the input to tf32 to resolve the problem. Note that to_reference only accepts tensor inputs, not tuple or list.\n"
+    #     if info.user_advice:
+    #         prompt += f"And the following user advice should be considered: {info.user_advice}\n"
+    #     return prompt
     def generate_prompt_for_new(self, info: TestFuncGenerateArgs):
-        # Implement the logic to generate the prompt for the test function
-        prompt = f"You are a skilled software engineer proficient in PyTorch and Triton. Your task is to generate a test function that compares the outputs of a PyTorch kernel and its \
-            Triton implementation. You must strictly adhere to the following specifications:\n"
-        prompt += f"The test function name should be {info.op_name}.\n"
-        prompt += f"The test function should compare the following two kernels:\n"
-        prompt += f"PyTorch kernel:\n```python\n{info.torch_kernel_code}\n```\n"
-        prompt += f"Triton kernel:\n```python\n{info.triton_kernel_code}\n```\n"
-        prompt += f"The test function must follow exactly this format:\n"
-        prompt += f"@label(\"{{torch_kernel_name}}\")\n"
-        prompt += f"@parametrize(\"M, N\", [(1, 32), (160, 1024), (5333, 497)])\n"
-        prompt += f"@parametrize(\"dtype\", [torch.float16, torch.float32, torch.bfloat16])\n"
-        prompt += f"def {{op_name}}(M, N, dtype):\n"
-        prompt += f"    # initialize the input data\n"
-        prompt += f"    XXXXX\n"
-        prompt += f"    # if necessary, cast the input"
-        prompt += f"    ref_input = to_reference(input, True)\n"
-        prompt += f"    ref_out = bench.{{torch_kernel_name}}(ref_input)\n"
-        prompt += f"    res_out = bench.triton.{{triton_kernel_name}}(input)\n\n"
-        prompt += f"    assert_close(res_out, ref_out, dtype, reduce_dim=M)\n"
-        prompt += f"You must use @parametrize to cover different input shapes and data types, do not import anything else like parametrize, the import logic will be handled automatically.\n"
-        prompt += f"Do not consider the import source of to_reference function, it will be added automatically.\n"
-        prompt += f"You must use bench.{{torch_kernel_name}} to call the torch kernel and bench.triton.{{triton_kernel_name}} to call the triton kernel rather than call them directly.\n"
-        prompt += f"You must generate the valid test function code directly without any explanations or additional text. The code must be complete and ready to run.\n"
-        prompt += f"You should use assert_close to compare the outputs of the two kernels as the last step of the test function.\n"
-        prompt += f"The func assert_close has been imported for you to compare the outputs of the two kernels.\n"
-        prompt += f"It has the following input args: assert_close(res, ref, dtype, equal_nan=False, reduce_dim=1)\n"
-        prompt += f"Use the output of torch kernel as the ground truth reference rather than manually create the result yourself.\n"
-        prompt += f"You must use ```python ... ``` to format the code block.\n"
-        prompt += f"use easy and common sense values for M, N in parametrize rather than extreme values.\n"
-        prompt += f"do not use too many parametrize decorators, 2 or 3 are enough.\n"
-        prompt += f"If you encounter tensor dtype mismatch issues (e.g., halftensor vs tensor), you can use to_reference(input, True) to cast the input to tf32 to resolve the problem. Note that to_reference only accepts tensor inputs, not tuple or list.\n"
-        if info.user_advice:
-            prompt += f"And the following user advice should be considered: {info.user_advice}\n"
-        return prompt
+        # for test
+        return "hello"
 
     def _init_data(self, kwargs):
         config = kwargs.dict()
@@ -143,16 +146,18 @@ class TestFuncGenerator(BaseGenerator):
             self.from_mcp = config.pop("from_mcp")
         # config["op_name"] = config.pop("test_func_name", None)
         if "check_result" in config and isinstance(config["check_result"], dict):
-            from bench.sandbox.test.run_test import VerifyResult
+            from sandbox.test.run_test import VerifyResult
             config["check_result"] = VerifyResult(**config["check_result"])
         config = TestFuncGenerateArgs(**config)
-        self.kernel_name = config.triton_kernel_name
+        self.kernel_name = config.kernel_name
         return config
     
     def _post_process(self, results: list) -> list:
-        results = super().post_process(results)
+        codes = super().post_process(results)
+        names = [r[1].op_name for r in results]
+        sample_id = [r[1].sample_id for r in results]
         processed_results = []
-        for res in results:
+        for res in codes:
             console.rule("[bold blue]Raw Output from LLM")
             console.print(res)
             console.rule("[bold blue]End of Raw Output")
@@ -165,7 +170,7 @@ class TestFuncGenerator(BaseGenerator):
             else:
                 console.print("Code extraction failed, using raw output.")
                 processed_results.append(res)
-        return processed_results
+        return [[code, name, sample_id] for code, name, sample_id in zip(processed_results, names, sample_id)]
 
     def post_process(self, results: list) -> list:
         results = self._post_process(results)
@@ -181,9 +186,9 @@ import torch
         else:
             test_func_prefix = "import torch\n\nimport pytest\n\n"
         for i in range(len(results)):
-            results[i] = self.decouple_bench(results[i], self.kernel_name) if self.from_mcp else results[i]
-            results[i] = test_func_prefix + results[i]
-            results[i] = results[i].strip()
+            results[i][0] = self.decouple_bench(results[i][0], self.kernel_name) if self.from_mcp else results[i][0]
+            results[i][0] = test_func_prefix + results[i][0]
+            results[i][0] = results[i][0].strip()
         return results
 
     def decouple_bench(self, code: str, kernel_name: str = None) -> str:
