@@ -266,7 +266,6 @@ class Verifier:
             })
             p.start()
             p.join(timeout=self.config.acc_timeout)
-
             if p.is_alive():
                 logger.error(f"TimeoutError: Test for {verifyrequest.source[0].function_name} timed out after {self.config.acc_timeout}s.")
                 p.terminate()
@@ -275,6 +274,16 @@ class Verifier:
                     op_name=verifyrequest.source[0].function_name,
                     success=False,
                     traceback=f"TimeoutError: Test timed out after {self.config.acc_timeout} seconds.",
+                    code=verifyrequest.source[0].source if verifyrequest.source else None,
+                    test_func=verifyrequest.test_func[0] if verifyrequest.test_func else None,
+                ))
+            elif p.exitcode != 0:
+                logger.error(f"Process for {verifyrequest.source[0].function_name} exited with code {p.exitcode}")
+                result_queue.put(VerifyResult(
+                    op_name=verifyrequest.source[0].function_name,
+                    success=False,
+                    # TODO: catch actual traceback from process, stdout/err
+                    traceback=f"Process exited with code {p.exitcode}",
                     code=verifyrequest.source[0].source if verifyrequest.source else None,
                     test_func=verifyrequest.test_func[0] if verifyrequest.test_func else None,
                 ))
