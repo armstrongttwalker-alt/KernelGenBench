@@ -204,66 +204,12 @@ def generate_sample_single(
         return True
 
 
-# def generate_test_func_single(
-#     work: Union[WorkArgs, TestFuncGenerateArgs, TritonKernelGenerateArgs, TorchKernelGenerateArgs],
-#     config: GenerationConfig,
-#     # dataset,
-#     inference_server: callable,
-#     run_dir: str,
-#     return_type: str = "both", # save, return, both
-#     check_result: VerifyResult = None,
-# ) -> bool:
-    
-#     custom_cuda_prompt = prompt_generate_test_func_from_prompt_template(
-#         work.op_name, 
-#         check_result=check_result,
-#     )
-#     if config.log_prompt:
-#         prompt_path = os.path.join(
-#             run_dir,
-#             "prompt",
-#             f"problem_{work.op_name}_sample_{config.sample_id}_prompt.txt",
-#         )
-#         os.makedirs(os.path.dirname(prompt_path), exist_ok=True)
-#         with open(prompt_path, "w") as f:
-#             f.write(custom_cuda_prompt)
-
-#     # Query server with constructed prompt
-#     custom_cuda = inference_server(custom_cuda_prompt)
-#     extracted_custom_cuda = extract_first_code(custom_cuda, ["python", "cpp"])
-#     if extracted_custom_cuda is not None:
-#         custom_cuda = extracted_custom_cuda
-#     else:
-#         logger.warning(f"Code extraction failed for {work.op_name}, using raw output.")
-#     # check LLM is able to generate custom CUDA code
-#     assert custom_cuda is not None, "Custom CUDA code generation failed"
-
-#     if config.verbose:
-#         logger.info(
-#             f"Generated sample {config.sample_id} for problem {work.problem_id}: {work.op_name}"
-#         )
-
-#     # Store to local file
-#     if return_type in ["save", "both"]:
-#         kernel_path = os.path.join(
-#             run_dir,
-#             "code", 
-#             f"problem_{work.op_name}_sample_{config.sample_id}_kernel.py",
-#         )
-#         with open(kernel_path, "w") as f:
-#             f.write(custom_cuda)
-#     if return_type in ["both", "return"]:
-#         return True, work, custom_cuda
-#     else:
-#         return True
-
-
 def generate_sample_launcher(
     work: Union[WorkArgs, TestFuncGenerateArgs, TritonKernelGenerateArgs, TorchKernelGenerateArgs],
     config: GenerationConfig,
-    inference_server: callable,
+    inference_server: Callable,
     run_dir: str,
-    check_result: VerifyResult = None,
+    check_result: VerifyResult | None = None,
     **kwargs
 ):
     try:
@@ -285,7 +231,7 @@ def check_kernel_exists(
     return os.path.exists(kernel_path)
 
 
-def sample(config: GenerationConfig, check_result: List[VerifyResult] = None):
+def sample(config: GenerationConfig, check_result: List[VerifyResult] | None = None):
     """
     Batch Generate Samples for Particular Level
     Store generated kernels in the specified run directory
