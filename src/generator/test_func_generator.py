@@ -138,7 +138,89 @@ class TestFuncGenerator(BaseGenerator):
     #     return prompt
     def generate_prompt_for_new(self, info: TestFuncGenerateArgs):
         # for test
-        return "hello"
+        prompt = "You are a test function generation expert proficient in PyTorch and Triton. Your task is to create a test python script that includes one or more test functions comparing the outputs of a PyTorch function and its Triton implementation. You must strictly adhere to the following specifications:\n\n"
+        
+        # 基本信息
+        prompt += f"## Operator Information\n"
+        prompt += f"- Operator name: {info.kernel_name}\n"
+        prompt += f"- PyTorch API call: torch.ops.aten.{info.kernel_name}(...)\n"
+        prompt += f"- Triton implementation call: Use the same API within `flagbench.use_gems()` context\n\n"
+        
+        # 算子的schema信息
+        if info.operators:
+            prompt += f"## Available Operator Schemas\n"
+            prompt += f"The operator `{info.kernel_name}` has the following variants:\n"
+            prompt += "```json\n"
+            import json
+            prompt += json.dumps(info.operators, indent=2)
+            prompt += "\n```\n"
+            prompt += "You MUST test ALL these variants. Each schema represents a different overload.\n\n"
+        
+        # 测试函数要求
+        prompt += "## Test Function Requirements\n\n"
+        prompt += "### 1. Function Structure\n"
+        prompt += "Each test function must:\n"
+        prompt += f"- Be decorated with `@label(f\"{info.kernel_name}\")`\n"
+        prompt += "- Use `@parametrize()` decorator for test cases (similar to pytest.mark.parametrize)\n"
+        prompt += "- Construct appropriate input tensors/scalars based on the schema\n"
+        prompt += "- Call both PyTorch API and Triton implementation\n"
+        prompt += "- Compare results using `assert_close()`\n\n"
+        
+        prompt += "### 2. API Calling Convention\n"
+        prompt += "```python\n"
+        prompt += f"# PyTorch reference implementation\n"
+        prompt += f"ref_out = torch.ops.aten.{info.kernel_name}(...)\n\n"
+        prompt += f"# Triton implementation\n"
+        prompt += f"with flagbench.use_gems(REGISTERED_OPS):\n"
+        prompt += f"    act_out = torch.ops.aten.{info.kernel_name}(...)\n\n"
+        prompt += f"# Compare results\n"
+        prompt += f"assert_close(act_out, ref_out)\n"
+        prompt += "```\n\n"
+        
+        prompt += "### 3. Test Coverage Strategy\n"
+        prompt += "- For schemas with the SAME number and types of arguments: Use `@parametrize` to test multiple cases in one function\n"
+        prompt += "- For schemas with DIFFERENT argument counts or types: Create separate test functions\n"
+        prompt += f"- When creating multiple test functions, ensure ALL use `@label(\"{info.kernel_name}\")`\n"
+        prompt += "- Test various input shapes: small (e.g., (2, 3)), medium (e.g., (128, 256)), and reasonable large sizes\n"
+        prompt += "- Test common dtypes: torch.float32, torch.float16, torch.bfloat16 (when applicable)\n\n"
+        
+        prompt += "### 4. Example Structure\n"
+        prompt += "```python\n"
+        prompt += "@label(\"example_op\")\n"
+        prompt += '@parametrize("shape", [(2, 3), (128, 256), (512, 512)])\n'
+        prompt += '@parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])\n'
+        prompt += "def test_example_op_tensor(shape, dtype):\n"
+        prompt += "    input_tensor = torch.randn(shape, dtype=dtype, device='cuda')\n"
+        prompt += "    other_tensor = torch.randn(shape, dtype=dtype, device='cuda')\n"
+        prompt += "    \n"
+        prompt += "    # Clone inputs for reference and triton implementations\n"
+        prompt += "    ref_input = input_tensor.clone()\n"
+        prompt += "    ref_other = other_tensor.clone()\n"
+        prompt += "    \n"
+        prompt += "    ref_out = torch.ops.aten.example_op(ref_input, ref_other)\n"
+        prompt += "    \n"
+        prompt += "    with flagbench.use_gems(REGISTERED_OPS):\n"
+        prompt += "        act_out = torch.ops.aten.example_op(input_tensor, other_tensor)\n"
+        prompt += "    \n"
+        prompt += "    assert_close(act_out, ref_out, dtype=dtype)\n"
+        prompt += "```\n\n"
+        
+        prompt += "## Important Constraints\n"
+        prompt += "- DO NOT import `label`, `parametrize`, `assert_close`, or `flagbench` - these will be auto-imported\n"
+        prompt += "- DO NOT include any explanations, comments (除了必要的代码注释), or unrelated code\n"
+        prompt += "- Only output the test function code, ready to run\n"
+        prompt += "- Wrap your output in ```python ``` code blocks\n"
+        prompt += "- Use sensible, realistic values for test parameters (avoid extreme edge cases unless necessary)\n"
+        prompt += "- All tensors should be on 'cuda' device\n"
+        prompt += "- The `assert_close` function signature: `assert_close(res, ref, dtype, equal_nan=False, reduce_dim=1)` - use it to compare outputs\n"
+        prompt += "- Function names should be descriptive, e.g., `test_{info.kernel_name}_tensor`, `test_{info.kernel_name}_scalar`\n\n"
+        
+        if info.user_advice:
+            prompt += f"## Additional User Guidance\n{info.user_advice}\n\n"
+        
+        prompt += "Now generate the complete test functions based on the operator schemas provided above.\n"
+        
+        return prompt
 
     def _init_data(self, kwargs):
         config = kwargs.dict()
@@ -176,11 +258,12 @@ class TestFuncGenerator(BaseGenerator):
         results = self._post_process(results)
         if not self.from_mcp:
             test_func_prefix = """
-import bench
-from bench.sandbox.test.test_parametrize import parametrize, label
-from bench.sandbox.config import DEVICE as device
-from bench.sandbox.utils.accuracy_utils import gems_assert_close as assert_close
-from bench.sandbox.utils.accuracy_utils import to_reference
+import flagbench
+from sandbox.config import DEVICE as device
+from sandbox.verifier.test_parametrize import parametrize, label
+from sandbox.utils.accuracy_utils import gems_assert_close as assert_close
+from sandbox.utils.accuracy_utils import to_reference
+from sandbox.register import REGISTERED_OPS
 import torch
 """.strip() + "\n\n"
         else:
