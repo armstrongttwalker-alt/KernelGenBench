@@ -26,7 +26,7 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from flagbench.dataset.kernel_list import PYTORCH_OPERATORS, IMPL_INFO
+
 from generator.test_func_generator import TestFuncGenerator
 from generator.sampler.generate_samples import (
     TestFuncGenerateArgs,
@@ -100,10 +100,52 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
     # Process each API and collect generate args
     gen_args = []
     api_names = []
+    skipped_results = []  # Track skipped APIs for summary
+    
     for namespace, apis_to_process in namespace_to_process.items():
         logger.info(f"Processing Namespace: {namespace} with {len(apis_to_process)} APIs")
         for api_name, operators in apis_to_process.items():
             logger.info(f"Preparing: {api_name}")
+            
+            # Check if torch.ops.aten.{api_name} exists
+            try:
+                import torch
+                if not hasattr(torch.ops.aten, api_name):
+                    logger.warning(f"⚠ Skipping {api_name}: torch.ops.aten.{api_name} does not exist")
+                    skipped_results.append({
+                        "api_name": api_name,
+                        "kernel_name": api_name.split('.')[-1],
+                        "success": False,
+                        "error": "torch.ops.aten attribute does not exist",
+                        "skipped": True
+                    })
+                    continue
+                
+                # Verify it's callable
+                op = getattr(torch.ops.aten, api_name)
+                if not callable(op):
+                    logger.warning(f"⚠ Skipping {api_name}: torch.ops.aten.{api_name} exists but is not callable")
+                    skipped_results.append({
+                        "api_name": api_name,
+                        "kernel_name": api_name.split('.')[-1],
+                        "success": False,
+                        "error": "torch.ops.aten attribute is not callable",
+                        "skipped": True
+                    })
+                    continue
+                
+                logger.info(f"✓ Verified: torch.ops.aten.{api_name} exists and is callable")
+            except Exception as e:
+                logger.warning(f"⚠ Skipping {api_name}: Error verifying torch.ops.aten.{api_name}: {e}")
+                skipped_results.append({
+                    "api_name": api_name,
+                    "kernel_name": api_name.split('.')[-1],
+                    "success": False,
+                    "error": f"Verification error: {str(e)}",
+                    "skipped": True
+                })
+                continue
+            
             try:
                 # Create generate args for this API
                 for sample_idx in range(config.num_samples):
@@ -113,6 +155,13 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
                     api_names.append(api_name)
             except Exception as e:
                 logger.error(f"✗ Error preparing {api_name}: {e}", exc_info=True)
+                skipped_results.append({
+                    "api_name": api_name,
+                    "kernel_name": api_name.split('.')[-1],
+                    "success": False,
+                    "error": f"Preparation error: {str(e)}",
+                    "skipped": True
+                })
     
     # Generate all Triton kernels
     logger.info(f"Generating {len(gen_args)} Triton kernels...")
@@ -166,28 +215,38 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
                 "error": "Empty or invalid generation result",
             })
     
+    # Combine all results (generated + skipped)
+    all_results = results + skipped_results
+    
     # Calculate statistics
-    total = len(api_names)
+    total = len(api_names) + len(skipped_results)
     successful = sum(1 for r in results if r["success"])
-    failed = total - successful
+    failed_generation = len(api_names) - successful
+    skipped = len(skipped_results)
     
     # Save detailed summary
     summary_path = output_dir / "generation_summary.json"
     with open(summary_path, "w") as f:
         json.dump({
             "total": total,
+            "attempted": len(api_names),
+            "skipped": skipped,
             "successful": successful,
-            "failed": failed,
-            "success_rate": f"{successful / total * 100:.2f}%" if total > 0 else "0%",
-            "results": results,
+            "failed": failed_generation,
+            "success_rate": f"{successful / len(api_names) * 100:.2f}%" if len(api_names) > 0 else "0%",
+            "overall_rate": f"{successful / total * 100:.2f}%" if total > 0 else "0%",
+            "results": all_results,
         }, f, indent=2)
     
     logger.info(f"\n{'='*60}")
     logger.info(f"Generation Summary:")
     logger.info(f"Total APIs: {total}")
+    logger.info(f"Skipped (verification failed): {skipped}")
+    logger.info(f"Attempted: {len(api_names)}")
     logger.info(f"Successful: {successful}")
-    logger.info(f"Failed: {failed}")
-    logger.info(f"Success Rate: {successful / total * 100:.2f}%" if total > 0 else "0%")
+    logger.info(f"Failed: {failed_generation}")
+    logger.info(f"Success Rate (attempted): {successful / len(api_names) * 100:.2f}%" if len(api_names) > 0 else "0%")
+    logger.info(f"Overall Rate: {successful / total * 100:.2f}%" if total > 0 else "0%")
     logger.info(f"Summary saved to: {summary_path}")
     logger.info(f"{'='*60}\n")
 
@@ -237,8 +296,8 @@ Examples:
     parser.add_argument(
         "--model-name",
         type=str,
-        default="deepseek-v3-0324",
-        help="Model name to use (default: deepseek-v3-0324)"
+        default="gpt-4o-mini",
+        help="Model name to use (default: gpt-4o-mini)"
     )
     
     parser.add_argument(
