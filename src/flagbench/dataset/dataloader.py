@@ -35,10 +35,15 @@ class OperatorLoader:
             parser = ijson.kvitems(f, '')
             return [key for key, _ in parser]
     
-    def load_all(self) -> Dict[str, Dict[str, List[Dict]]]:
+    def load_all(self, merge: bool = False) -> Dict[str, Dict[str, List[Dict]]]:
         """加载完整文件（如果内存足够）"""
         with open(self.json_path, 'r') as f:
             data = json.load(f)
+        if merge:
+            merged = {}
+            for namespace, ops in data.items():
+                merged.update(ops)
+            return merged        
         return data
 
 
