@@ -345,6 +345,8 @@ class Verifier:
         strict_check=False
     ) -> VerifyResult:
         set_seed(seed)
+        # get api name from op_mark if it contains "::"
+        report_name, name = name, name.split("::")[-1] if "::" in name else name
         total = 0
         failed = 0
         ret = None
@@ -357,7 +359,7 @@ class Verifier:
             if func is None:
                 logger.info(f"Fail Test function {func_name} not found")
                 console.print(f"[red][bold]Fail[/bold][/red] Test function {func_name} not found")
-                return VerifyResult(op_name=name, success=False, traceback=f"Test function {func_name} not found")
+                return VerifyResult(op_name=report_name, success=False, traceback=f"Test function {func_name} not found")
             params = get_params(func_name, mark)
             for combo in ([{}] if not params else expand_params(params)):
                 total += 1
@@ -418,7 +420,7 @@ class Verifier:
         if total == 0:
             logger.warning(f"[\033[91mFail\033[0m] No valid test cases found for {name}")
             return VerifyResult(
-                op_name=name,
+                op_name=report_name,
                 success=None, 
                 traceback=None,
                 params=None, 
@@ -438,7 +440,7 @@ class Verifier:
             console.print(f"{flag} Test results saved to {json_path}")
 
         return VerifyResult(
-            op_name=name,
+            op_name=report_name,
             success=failed == 0, 
             traceback=tb_str, 
             params=recorded_params,
@@ -456,7 +458,7 @@ class Verifier:
         config: VerifyConfig, 
     ) -> VerifyResult:
         op_mark = op_names.split(".")[-1] if "." in op_names else op_names
-        op_mark = op_mark.split("::")[-1] if "::" in op_mark else op_mark
+
         if config.save_log:
             log_dir = os.path.join(
                 config.run_dir, 
@@ -469,7 +471,7 @@ class Verifier:
         # === 处理 JSON 保存路径 ===
         if log_dir:
             os.makedirs(log_dir, exist_ok=True)
-            json_path = os.path.join(log_dir, f"test_report_{op_names}.json")
+            json_path = os.path.join(log_dir, f"test_report_{op_mark}.json")
             delete_after = False
         else:
             tmpfile = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
