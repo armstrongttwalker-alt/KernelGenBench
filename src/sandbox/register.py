@@ -95,7 +95,7 @@ class Register:
             device_key = self.reg_key
         self.all_ops.append(key)
         try:
-            impl_info = IMPL_INFO.get(api, [])
+            impl_info = IMPL_INFO.get(api)
             if not impl_info:
                 # import sys
                 # package_name = __name__.split('.')[0]
@@ -106,7 +106,7 @@ class Register:
             else:
                 # for impl_key, _ in impl_info:
                 #     self.lib.impl(impl_key, fn, device_key)
-                keys = [impl_key.replace(".", "_") for impl_key, _ in impl_info]
+                keys = [impl_key for impl_key, _ in impl_info]
                 if key not in keys:
                     raise ValueError(f"Operator {key} not found in IMPL_INFO[{api}],")
                 self.lib.impl(key, fn, device_key)

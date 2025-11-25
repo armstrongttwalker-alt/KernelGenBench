@@ -12,7 +12,8 @@ from rich.table import Table
 
 
 def add_register_decorator(code: str, operator: str, namespace: str = None, api: str = None) -> str:
-    pattern = f"def {operator}("
+    op_func_name = operator.replace(".", "_")
+    pattern = f"def {op_func_name}("
     api = api if api else operator
     parts = code.rsplit(pattern, 1)
     code = f'{pattern}'.join([
