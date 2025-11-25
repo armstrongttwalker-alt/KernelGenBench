@@ -2,7 +2,7 @@ import json
 import os, sys
 import yaml
 from dataclasses import dataclass, asdict
-from typing import Callable, Tuple, Optional, Any, List, Union
+from typing import Callable, Dict, Optional, Any, List, Union
 from sandbox.utils.accuracy_utils import VerifyResult
 from pydantic import BaseModel
 import torch
@@ -138,7 +138,7 @@ class TorchKernelGenerateArgs(BaseGenerateArgs):
 class TestFuncGenerateArgs(BaseGenerateArgs):
     test_func_name: str
     kernel_name: str
-    operators: List[dict]
+    operators: Dict[str, str]
 
     @property
     def op_name(self):

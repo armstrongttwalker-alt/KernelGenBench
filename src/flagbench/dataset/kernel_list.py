@@ -1,5 +1,12 @@
 import torch
+from torch import FunctionSchema
 from enum import Enum
+from typing import Dict
+from .dataloader import TorchOpsLoader
+from logging import getLogger
+import os
+
+logger = getLogger(__name__)
 
 class Autograd(Enum):
     enable = True
@@ -8,6 +15,50 @@ class Autograd(Enum):
     @classmethod
     def get_optional_value(cls):
         return [member.name for member in cls]
+
+class DinamicImplInfo:
+    def __init__(self):
+        self._cache = {}
+        self._cache_errors = []
+        self.loader = TorchOpsLoader(to_str=False)
+        self.namespaces = self.loader.list_namespaces()
+
+    def get(self, api: str, *, namespace: str = "aten"):
+        if api in self._cache:
+            return self._cache[api]
+        if api in self._cache_errors:
+            return None
+        assert namespace in self.namespaces, f"namespace {namespace} not found"
+        try:
+            schemas = self.loader.get_operator(namespace, api).schemas
+            self._cache[api] = self._schemas_to_impl_info(schemas, namespace, api)
+            return self._cache[api]
+        except Exception as e:
+            self._cache_errors.append(api)
+            logger.error(f"get impl info for {namespace}.{api} error: {e}")
+            return None
+        
+    def _schemas_to_impl_info(self, schemas, namespace: str, api: str):
+        impl_info = []
+        for overload_name, schema in schemas.items():
+            impl_info.append((f"{api}{'.' + overload_name if overload_name != '' else ''}", Autograd.disable))
+        return impl_info
+
+    def __contains__(self, namespace_api_tuple: tuple[str, str] | str):
+        if isinstance(namespace_api_tuple, str):
+            namespace_api_tuple = ("aten", namespace_api_tuple)
+        namespace, api = namespace_api_tuple
+        impl_info = self.get(api, namespace=namespace)
+        return impl_info is not None
+    
+    def __getitem__(self, namespace_api_tuple: tuple[str, str] | str):
+        if isinstance(namespace_api_tuple, str):
+            namespace_api_tuple = ("aten", namespace_api_tuple)
+        namespace, api = namespace_api_tuple
+        impl_info = self.get(api, namespace=namespace)
+        if impl_info is None:
+            raise KeyError(f"impl info for {namespace}.{api} not found")
+        return impl_info
 
 
 IMPL_INFO = {
@@ -504,3 +555,14 @@ PYTORCH_OPERATORS = {
 
 
 op_name_list = list(PYTORCH_OPERATORS.keys())
+
+if os.environ.get("FLAGBENCH_USE_DYNAMIC_IMPL_INFO", "0") == "1":
+    dinamic_impl_info = DinamicImplInfo()
+    IMPL_INFO = dinamic_impl_info
+
+if __name__ == "__main__":
+    dinamic_impl_info = DinamicImplInfo()
+    namespace = "aten"
+    for op_name in op_name_list:
+        impl_info = dinamic_impl_info.get(namespace, op_name.split(".")[-1])
+        print(f"{op_name}: {impl_info}")
