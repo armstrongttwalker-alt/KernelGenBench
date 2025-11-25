@@ -16,7 +16,7 @@ class Autograd(Enum):
     def get_optional_value(cls):
         return [member.name for member in cls]
 
-class DinamicImplInfo:
+class DynamicImplInfo:
     def __init__(self):
         self._cache = {}
         self._cache_errors = []
@@ -557,12 +557,12 @@ PYTORCH_OPERATORS = {
 op_name_list = list(PYTORCH_OPERATORS.keys())
 
 if os.environ.get("FLAGBENCH_USE_DYNAMIC_IMPL_INFO", "0") == "1":
-    dinamic_impl_info = DinamicImplInfo()
-    IMPL_INFO = dinamic_impl_info
-
+    dynamic_impl_info = DynamicImplInfo()
+    IMPL_INFO = dynamic_impl_info
+    
 if __name__ == "__main__":
-    dinamic_impl_info = DinamicImplInfo()
+    dynamic_impl_info = DynamicImplInfo()
     namespace = "aten"
     for op_name in op_name_list:
-        impl_info = dinamic_impl_info.get(namespace, op_name.split(".")[-1])
+        impl_info = dynamic_impl_info.get(namespace, op_name.split(".")[-1])
         print(f"{op_name}: {impl_info}")
