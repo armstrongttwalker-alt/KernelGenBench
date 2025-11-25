@@ -152,6 +152,10 @@ class Verifier:
 
 
     def import_tests(self, mode: str = "accuracy"):
+        import os
+        if os.environ.get("FLAGBENCH_SKIP_BOTH_TEST", "0") == "1":
+            logger.info("Skipping both accuracy and performance test imports due to FLAGBENCH_SKIP_BOTH_TEST=1")
+            return
         if not self.accuracy_modules:
             from flagbench import accuracy_modules
             self.accuracy_modules = accuracy_modules
@@ -223,12 +227,15 @@ class Verifier:
         compile(code, name, "exec")
         from flagbench.dataset.kernel_list import IMPL_INFO
         # assert f"def {name}(" in code, f"no func {name} in code"
-        ops = IMPL_INFO.get(name, [(name, None)])
-        ops = [op.replace(".", "_") for op, _ in ops]
+        ops = IMPL_INFO.get(name)
+        if not ops:
+            ops = [(name, None)]
+        ops = [op for op, _ in ops]
         for op in ops:
-            if f"def {op}(" not in code:
-                logger.error(f"no func {op} in code \n{code}")
-                raise ValueError(f"no func {op} in code, must include def {op}")
+            op_func_name = op.replace(".", "_")
+            if f"def {op_func_name}(" not in code:
+                logger.error(f"no func {op_func_name} in code \n{code}")
+                raise ValueError(f"no func {op_func_name} in code, must include def {op_func_name}")
         
         # check package import 
         code = ensure_import_torch(code)
@@ -448,7 +455,8 @@ class Verifier:
         op_names: str, 
         config: VerifyConfig, 
     ) -> VerifyResult:
-        op_mark = op_names.split(".")[-1]
+        op_mark = op_names.split(".")[-1] if "." in op_names else op_names
+        op_mark = op_mark.split("::")[-1] if "::" in op_mark else op_mark
         if config.save_log:
             log_dir = os.path.join(
                 config.run_dir, 
@@ -461,7 +469,7 @@ class Verifier:
         # === 处理 JSON 保存路径 ===
         if log_dir:
             os.makedirs(log_dir, exist_ok=True)
-            json_path = os.path.join(log_dir, f"test_report_{op_mark}.json")
+            json_path = os.path.join(log_dir, f"test_report_{op_names}.json")
             delete_after = False
         else:
             tmpfile = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
@@ -592,17 +600,19 @@ class Verifier:
         mark_suffix: str = None,
     ):
         # replace the "bench.triton." to "bench." and handle bench.triton.{torch_kernel_name} patterns
-        import re
+        import os
+        os.environ["DISPATCH_TORCH_LIB"] = "0"
+        os.environ["FLAGBENCH_UPCAST"] = "0"
         
         # First, do the simple replacement
-        mocked_test_func_code = test_func_code.replace("bench.triton.", "bench.")
+        mocked_test_func_code = test_func_code.replace("flagbench.triton.", "flagbench.")
         
         # Then, handle more complex patterns like bench.triton.{torch_kernel_name}
         # This regex finds lines containing bench.triton.{torch_kernel_name} and replaces the entire line
         # pattern = rf'(\s*.*?)bench\.triton\.{re.escape(torch_kernel_name)}(.*?)(\n|$)'
         # replacement = rf'\1bench.{torch_kernel_name}\2\3'
         # mocked_test_func_code = re.sub(pattern, replacement, mocked_test_func_code, flags=re.MULTILINE)
-        mocked_test_func_code = test_func_code.replace(f"flagbench.{torch_kernel_name}", f"torch.{torch_kernel_name}")
+        # mocked_test_func_code = test_func_code.replace(f"flagbench.{torch_kernel_name}", f"torch.{torch_kernel_name}")
         
         results_with_mocked_test_func = self.only_verify(
             # name_source_map={
@@ -623,6 +633,9 @@ class Verifier:
             ]
         )[1][0]
         results_with_mocked_test_func.test_func = test_func_code
+
+        os.environ["DISPATCH_TORCH_LIB"] = "1"
+        os.environ["FLAGBENCH_UPCAST"] = "1"
         return results_with_mocked_test_func
 
     def verify_triton_kernel(
