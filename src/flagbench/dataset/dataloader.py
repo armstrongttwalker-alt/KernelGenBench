@@ -11,15 +11,18 @@ from dataclasses import dataclass
 class APIInfo:
     namespace: str
     api: str
-    schemas: Dict[str, str]
+    schemas: Dict[str, str | FunctionSchema]
+    to_str: bool = True
 
     def __post_init__(self):
-        if self.schemas and isinstance(next(iter(self.schemas.values())), FunctionSchema):
-            self.schemas = {k: str(v) for k, v in self.schemas.items()}
+        if self.to_str:
+            if self.schemas and isinstance(next(iter(self.schemas.values())), FunctionSchema):
+                self.schemas = {k: str(v) for k, v in self.schemas.items()}
 
 class TorchOpsLoader:
-    def __init__(self):
+    def __init__(self, to_str: bool = True):
         self._cache = {}
+        self.to_str = to_str
 
     def load_namespace(self, namespace: str) -> Dict[str, APIInfo]:
         assert namespace in dir(torch.ops), f"Namespace {namespace} not found in torch.ops"
@@ -32,13 +35,19 @@ class TorchOpsLoader:
             op = getattr(ns_module, op_name)
             if callable(op):
                 # ops_dict[op_name] = {"schemas": op._schemas, "api": op.__module__ + "." + op.__name__}
-                ops_dict[op_name] = APIInfo(api=op.__module__ + "." + op.__name__, schemas=op._schemas, namespace=namespace)
+                ops_dict[op_name] = APIInfo(
+                    api=op.__module__ + "." + op.__name__, 
+                    schemas=op._schemas, 
+                    namespace=namespace, 
+                    to_str=self.to_str
+                )
         self._cache[namespace] = ops_dict
         return ops_dict
     
-    def get_operator(self, namespace: str, op_name: str) -> Optional[APIInfo]:
+    def get_operator(self, namespace: str, op_name: str) -> APIInfo:
         ns_data = self.load_namespace(namespace)
-        return ns_data.get(op_name, None)
+        assert op_name in ns_data, f"Operator {op_name} not found in namespace {namespace}"
+        return ns_data[op_name]
     
     def list_namespaces(self) -> List[str]:
         return [ns for ns in dir(torch.ops) if isinstance(getattr(torch.ops, ns), _OpNamespace)]
