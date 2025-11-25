@@ -213,7 +213,7 @@ class TestFuncGenerator(BaseGenerator):
         prompt += "- Use sensible, realistic values for test parameters (avoid extreme edge cases unless necessary)\n"
         prompt += "- All tensors should be on 'cuda' device\n"
         prompt += "- The `assert_close` function signature: `assert_close(res, ref, dtype, equal_nan=False, reduce_dim=1)` - use it to compare outputs\n"
-        prompt += "- Function names should be descriptive, e.g., `test_{info.kernel_name}_tensor`, `test_{info.kernel_name}_scalar`\n\n"
+        prompt += f"- Function names should be descriptive, e.g., `test_{info.kernel_name}_tensor`, `test_{info.kernel_name}_scalar`\n\n"
         
         if info.user_advice:
             prompt += f"## Additional User Guidance\n{info.user_advice}\n\n"
