@@ -491,23 +491,10 @@ class Verifier:
     
     def _verify(
         self,
-        # source: Union[str, List[str]],
-        # function_name: Union[str, List[str]],
-        # test_func: Union[str, List[str]] = None, 
-        # test_func_mark: str = None,
         verifyrequest: VerifyRequest,
         result_queue: mp.Queue = None, 
         namespace: Union[str, List[str]] = None, 
     ) -> VerifyResult:
-        # assert type(source) == type(function_name), f"source and function_name should be same type, got {type(source)} and {type(function_name)}"
-        # source = [source] if isinstance(source, str) else source
-        # namespace = [namespace] if isinstance(namespace, str) or namespace is None else namespace
-        # function_name = [function_name] if isinstance(function_name, str) else function_name
-        # test_func = [test_func] if isinstance(test_func, str) or test_func is None else test_func
-        # assert len(source) == len(function_name), f"source and function_name should be same length, got {len(source)} and {len(function_name)}"
-        # if os.path.isfile(source):
-        #     with open(source, "r") as f:
-        #         source = f.read()
         source = [s.source for s in verifyrequest.source]
         namespace = [s.namespace for s in verifyrequest.source]
         function_name = [s.function_name for s in verifyrequest.source]
@@ -516,10 +503,6 @@ class Verifier:
         test_func_mark = verifyrequest.test_func_mark
         read_file = lambda s: open(s, "r").read()
         source = [s if not s or not os.path.isfile(s) else read_file(s) for s in source]
-        # source = [s if not os.path.isfile(s) else read_file(s) for s in source_or_path]
-        # for s in source_or_path:
-        #     if s and os.path.isfile(s):
-        #         logger.info(f"read source code from file {s}")
 
         try:
             self._init_test_func()    # 对于外部的triton kernel开发者，没有必要初始化 flaggems 的测试函数，如果用作benchmark，可以用这一行
