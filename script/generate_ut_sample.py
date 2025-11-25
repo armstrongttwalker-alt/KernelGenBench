@@ -15,7 +15,8 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any
 from datetime import datetime
-from flagbench.dataset import OperatorLoader
+
+from flagbench.dataset import TorchOpsLoader, APIInfo
 
 def today() -> str:
     return datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -43,7 +44,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def create_ut_generate_args(torch_op_name: str, operators: List[Dict]) -> TestFuncGenerateArgs:
+def create_ut_generate_args(torch_op_name: str, operators: APIInfo) -> TestFuncGenerateArgs:
     """
     Create TestFuncGenerateArgs for a given PyTorch operator.
     
@@ -60,8 +61,8 @@ def create_ut_generate_args(torch_op_name: str, operators: List[Dict]) -> TestFu
     
     return TestFuncGenerateArgs(
         kernel_name=kernel_name,
-        operators=operators,
-        test_func_name=f"test_{kernel_name}",
+        operators=operators.schemas,
+        test_func_name=f"test_accuracy_{operators.namespace}_{kernel_name}",
     )
 
 
@@ -75,7 +76,7 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
         config: Generation configuration
     """
 
-    operator_loader = OperatorLoader()
+    operator_loader = TorchOpsLoader()
 
     # Get the list of APIs to process
     if name.lower() == "all":
@@ -106,46 +107,6 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
         logger.info(f"Processing Namespace: {namespace} with {len(apis_to_process)} APIs")
         for api_name, operators in apis_to_process.items():
             logger.info(f"Preparing: {api_name}")
-            
-            # Check if torch.ops.aten.{api_name} exists
-            try:
-                import torch
-                if not hasattr(torch.ops.aten, api_name):
-                    logger.warning(f"⚠ Skipping {api_name}: torch.ops.aten.{api_name} does not exist")
-                    skipped_results.append({
-                        "api_name": api_name,
-                        "kernel_name": api_name.split('.')[-1],
-                        "success": False,
-                        "error": "torch.ops.aten attribute does not exist",
-                        "skipped": True
-                    })
-                    continue
-                
-                # Verify it's callable
-                op = getattr(torch.ops.aten, api_name)
-                if not callable(op):
-                    logger.warning(f"⚠ Skipping {api_name}: torch.ops.aten.{api_name} exists but is not callable")
-                    skipped_results.append({
-                        "api_name": api_name,
-                        "kernel_name": api_name.split('.')[-1],
-                        "success": False,
-                        "error": "torch.ops.aten attribute is not callable",
-                        "skipped": True
-                    })
-                    continue
-                
-                logger.info(f"✓ Verified: torch.ops.aten.{api_name} exists and is callable")
-            except Exception as e:
-                logger.warning(f"⚠ Skipping {api_name}: Error verifying torch.ops.aten.{api_name}: {e}")
-                skipped_results.append({
-                    "api_name": api_name,
-                    "kernel_name": api_name.split('.')[-1],
-                    "success": False,
-                    "error": f"Verification error: {str(e)}",
-                    "skipped": True
-                })
-                continue
-            
             try:
                 # Create generate args for this API
                 for sample_idx in range(config.num_samples):
@@ -156,8 +117,8 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
             except Exception as e:
                 logger.error(f"✗ Error preparing {api_name}: {e}", exc_info=True)
                 skipped_results.append({
+                    "namespace": namespace,
                     "api_name": api_name,
-                    "kernel_name": api_name.split('.')[-1],
                     "success": False,
                     "error": f"Preparation error: {str(e)}",
                     "skipped": True
@@ -192,8 +153,8 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
                 
                 # Record successful result
                 results.append({
+                    "namespace": namespace,
                     "api_name": api_name,
-                    "kernel_name": gen_arg.kernel_name,
                     "file_path": str(kernel_path),
                     "success": True,
                     "code_length": len(generated_code),
@@ -201,16 +162,16 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
             except Exception as e:
                 logger.error(f"✗ Error saving {api_name}: {e}")
                 results.append({
+                    "namespace": namespace,
                     "api_name": api_name,
-                    "kernel_name": gen_arg.kernel_name,
                     "success": False,
                     "error": f"Save error: {str(e)}",
                 })
         else:
             logger.warning(f"✗ Failed to generate code for {api_name}")
             results.append({
+                "namespace": namespace,
                 "api_name": api_name,
-                "kernel_name": gen_arg.kernel_name,
                 "success": False,
                 "error": "Empty or invalid generation result",
             })
