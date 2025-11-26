@@ -8,6 +8,7 @@ import os
 
 logger = getLogger(__name__)
 
+
 class Autograd(Enum):
     enable = True
     disable = False
@@ -24,6 +25,8 @@ class DynamicImplInfo:
         self.namespaces = self.loader.list_namespaces()
 
     def get(self, api: str, *, namespace: str = "aten"):
+        if "::" in api:
+            namespace, api = api.split("::", 1)
         if api in self._cache:
             return self._cache[api]
         if api in self._cache_errors:
