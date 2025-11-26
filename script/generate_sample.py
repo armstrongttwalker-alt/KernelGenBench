@@ -13,8 +13,10 @@ import sys
 import json
 import logging
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Callable
 from datetime import datetime
+import torch
+from utils import load_api_to_process_from_test_func_result, get_function_signature
 
 def today() -> str:
     return datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -25,7 +27,7 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from flagbench.dataset.kernel_list import PYTORCH_OPERATORS, IMPL_INFO
+from flagbench.dataset.kernel_list import IMPL_INFO
 from generator.triton_kernel_generator import TritonKernelGenerator
 from generator.sampler.generate_samples import (
     TritonKernelGenerateArgs,
@@ -66,25 +68,10 @@ def get_torch_api_signature(torch_op_name: str, torch_op_func) -> Dict[str, Any]
     # In a real implementation, you might want to use inspect module or
     # parse the docstring to extract parameter information
     
-    input_args = [
-        InputArg(
-            arg_name="*args",
-            arg_type="Any",
-            arg_desc="Input arguments to the PyTorch operator"
-        ),
-        InputArg(
-            arg_name="**kwargs",
-            arg_type="Any",
-            arg_desc="Keyword arguments to the PyTorch operator"
-        ),
-    ]
-    
-    output_args = [
-        OutputArg(
-            arg_type="torch.Tensor",
-            arg_desc="Output tensor from the operation"
-        )
-    ]
+    # TODO : Improve argument extraction logic
+    # input_args, output_args, _ = get_function_signature(torch_op_func)
+    input_args = [InputArg(arg_name="args", arg_type="Any", arg_desc="Input arguments")]
+    output_args = [OutputArg(arg_type="Any", arg_desc="Output result")]
     
     return {
         "input_args": input_args,
@@ -93,7 +80,7 @@ def get_torch_api_signature(torch_op_name: str, torch_op_func) -> Dict[str, Any]
     }
 
 
-def create_triton_generate_args(torch_op_name: str, torch_op_func, impl_info) -> TritonKernelGenerateArgs:
+def create_triton_generate_args(torch_op_name: str, torch_op_func: Callable | str, impl_info) -> TritonKernelGenerateArgs:
     """
     Create TritonKernelGenerateArgs for a given PyTorch operator.
     
@@ -109,6 +96,13 @@ def create_triton_generate_args(torch_op_name: str, torch_op_func, impl_info) ->
     kernel_name = torch_op_name.split('.')[-1]
     
     # Get signature information
+    if isinstance(torch_op_func, str):
+        # check torch.ops has the attribute
+        if hasattr(torch.ops, torch_op_func):
+            torch_op_name = f"{torch_op_func}::{torch_op_name}"
+            torch_op_namespace = getattr(torch.ops, torch_op_func)
+            torch_op_func = getattr(torch_op_namespace, kernel_name)
+            torch_op_func_name = f"{torch_op_namespace.__name__}.{kernel_name}"
     sig_info = get_torch_api_signature(torch_op_name, torch_op_func)
     
     # Create a simple torch kernel code snippet as reference
@@ -117,11 +111,11 @@ def create_triton_generate_args(torch_op_name: str, torch_op_func, impl_info) ->
 import torch
 
 def {kernel_name}(*args, **kwargs):
-    return {torch_op_name}(*args, **kwargs)
+    return {torch_op_func_name}(*args, **kwargs)
 """.strip()
     
     return TritonKernelGenerateArgs(
-        triton_kernel_name=kernel_name,
+        triton_kernel_name=torch_op_name,
         func_desc=sig_info["func_desc"],
         torch_kernel_code=torch_kernel_code,
         input_args=sig_info["input_args"],
@@ -132,7 +126,7 @@ def {kernel_name}(*args, **kwargs):
     )
 
 
-def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> None:
+def generate_samples(name: str, output_dir: Path, config: GenerationConfig, test_func_result_path: Path | None = None) -> None:
     """
     Generate Triton kernel samples for the specified APIs.
     
@@ -141,6 +135,11 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
         output_dir: Directory to save generated results
         config: Generation configuration
     """
+    if test_func_result_path:
+        logger.info(f"Loading test function results from: {test_func_result_path}")
+        PYTORCH_OPERATORS = load_api_to_process_from_test_func_result(test_func_result_path)
+    else:
+        from flagbench.dataset.kernel_list import PYTORCH_OPERATORS
     # Get the list of APIs to process
     if name.lower() == "all":
         apis_to_process = PYTORCH_OPERATORS
@@ -166,14 +165,14 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
     gen_args = []
     api_names = []
     
-    for api_name, api_func in apis_to_process.items():
+    for api_name, namespace_or_api_func in apis_to_process.items():
         logger.info(f"Preparing: {api_name}")
         api_name_ = api_name.split('.')[-1]
         try:
             assert api_name_ in IMPL_INFO, f"Implementation info not found for {api_name_}"
             # Create generate args for this API
             for sample_idx in range(config.num_samples):
-                gen_arg = create_triton_generate_args(api_name, api_func, IMPL_INFO[api_name_])
+                gen_arg = create_triton_generate_args(api_name, namespace_or_api_func, IMPL_INFO[api_name_])
                 gen_arg.sample_id = config.sample_id + sample_idx
                 gen_args.append(gen_arg)
                 api_names.append(api_name)
@@ -276,6 +275,13 @@ Examples:
   python script/generate_sample.py --name all --server-type deepseek --model-name deepseek-coder
         """
     )
+
+    parser.add_argument(
+        "--test-func-result-path",
+        type=Path,
+        default=None,
+        help="Path to the test function result file"
+    )
     
     parser.add_argument(
         "--name",
@@ -309,8 +315,8 @@ Examples:
     parser.add_argument(
         "--temperature",
         type=float,
-        default=0.0,
-        help="Temperature for generation (default: 0.0)"
+        default=1.6,
+        help="Temperature for generation (default: 1.6)"
     )
     
     parser.add_argument(
@@ -364,7 +370,7 @@ Examples:
     logger.info(f"Config: {config}")
     output_dir = args.output_dir / run_name
     # Generate samples
-    generate_samples(args.name, output_dir, config)
+    generate_samples(args.name, output_dir, config, test_func_result_path=args.test_func_result_path)
     
     logger.info("Sample generation completed!")
 
