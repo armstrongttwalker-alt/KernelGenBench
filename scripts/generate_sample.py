@@ -370,7 +370,8 @@ Examples:
     logger.info(f"Config: {config}")
     output_dir = args.output_dir / run_name
     # Generate samples
-    generate_samples(args.name, output_dir, config, test_func_result_path=args.test_func_result_path)
+    test_func_result_path = args.test_func_result_path / "result.json" if args.test_func_result_path.name != "result.json" else args.test_func_result_path
+    generate_samples(args.name, output_dir, config, test_func_result_path=test_func_result_path)
     
     logger.info("Sample generation completed!")
 
