@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 from dataclasses import dataclass
 import torch
+from datetime import datetime
 
 
 @dataclass
@@ -21,6 +22,10 @@ class OutputArg:
     arg_type: str
     arg_value: Any = None
     arg_desc: str = ""
+
+
+def today() -> str:
+    return datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
 def load_api_to_process_from_test_func_result(test_func_result_path: Path) -> dict[str, str]:

@@ -17,9 +17,8 @@ from typing import List, Dict, Any
 from datetime import datetime
 
 from flagbench.dataset import TorchOpsLoader, APIInfo
+from utils import today
 
-def today() -> str:
-    return datetime.now().strftime("%Y%m%d-%H%M%S")
 
 # Add project root to path
 SCRIPT_DIR = Path(__file__).resolve().parent

@@ -10,9 +10,8 @@ from sandbox.verifier import Verifier, VerifyConfig, VerifyRequest, Source
 # from flagbench import PYTORCH_OPERATORS
 from flagbench.dataset.dataloader import TorchOpsLoader
 from datetime import datetime
+from utils import today
 
-def today():
-    return datetime.now().strftime("%Y-%m-%d")
 
 mock_triton_code = "mock triton code"
 

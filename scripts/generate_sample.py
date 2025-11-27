@@ -16,10 +16,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Callable
 from datetime import datetime
 import torch
-from utils import load_api_to_process_from_test_func_result, get_function_signature
+from utils import load_api_to_process_from_test_func_result, get_function_signature, today
 
-def today() -> str:
-    return datetime.now().strftime("%Y%m%d-%H%M%S")
 
 # Add project root to path
 SCRIPT_DIR = Path(__file__).resolve().parent

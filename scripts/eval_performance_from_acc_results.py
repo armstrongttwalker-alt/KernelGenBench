@@ -2,14 +2,12 @@ import argparse
 import json
 import os
 from pathlib import Path
-from datetime import datetime
 from typing import List, Dict
 from tqdm import tqdm
+from utils import today
 
 from sandbox.verifier import Verifier, VerifyRequest, VerifyConfig, Source
 
-def today() -> str:
-    return datetime.now().strftime("%Y%m%d-%H%M%S")
 
 def load_right_samples_from_eval_path(path: Path) -> Dict[str, str]:
     paths = path / "result.json"
