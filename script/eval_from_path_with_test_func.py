@@ -26,7 +26,7 @@ def load_samples_from_path(path: Path) -> Dict[str, str]:
         #     "code": code,
         #     "file_name": p.name.split(".")[0],
         # })
-        samples[f"{namespace}::{p.name.split('.')[0]}"] = code
+        samples[f"{p.name.split('.')[0]}"] = code
     return samples
 
 
