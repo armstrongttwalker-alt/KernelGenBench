@@ -9,7 +9,7 @@ class TestFuncGenerator(BaseGenerator):
     def __init__(self, generation_config):
         super().__init__(generation_config)
 
-    @print_prompt
+    # @print_prompt
     def generate_prompt(self, info: TestFuncGenerateArgs):
         if info.check_result is not None and info.check_result.success is False:
             if info.check_result.test_func.strip() == info.old_code.strip():
@@ -21,7 +21,7 @@ class TestFuncGenerator(BaseGenerator):
         if info.old_code is not None and len(info.old_code.strip()) > 0:
             console.print("Generating prompt for test function optimization...")
             return self.generate_prompt_for_optimization(info)
-        console.print("Generating prompt for new test function...")
+        # console.print("Generating prompt for new test function...")
         return self.generate_prompt_for_new(info)
 
     def generate_prompt_for_optimization(self, info: TestFuncGenerateArgs):
