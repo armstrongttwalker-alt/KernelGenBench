@@ -28,7 +28,7 @@ python scripts/test_updated_accuracy_ut.py --path {path from generation} --devic
 ### generate triton code for verified accuracy test function
 
 ```bash
-python scripts/generate_sample.py --test-func-result-path {result path from test_updated_accuracy_ut}
+FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 python scripts/generate_sample.py --test-func-result-path {result path from test_updated_accuracy_ut}
 ```
 
 ### verify generated triton code
