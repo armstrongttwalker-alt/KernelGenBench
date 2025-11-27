@@ -63,6 +63,7 @@ def create_ut_generate_args(torch_op_name: str, operators: APIInfo) -> TestFuncG
         kernel_name=kernel_name,
         operators=operators.schemas,
         test_func_name=f"test_accuracy_{operators.namespace}_{kernel_name}",
+        ops_namespace=operators.namespace,
     )
 
 

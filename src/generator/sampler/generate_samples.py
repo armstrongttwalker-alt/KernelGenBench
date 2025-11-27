@@ -139,6 +139,7 @@ class TestFuncGenerateArgs(BaseGenerateArgs):
     test_func_name: str
     kernel_name: str
     operators: Dict[str, str]
+    ops_namespace: str | None = None
 
     @property
     def op_name(self):
