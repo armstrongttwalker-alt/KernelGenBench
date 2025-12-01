@@ -34,8 +34,14 @@ class VerifyResult(BaseModel):
 
 RESOLUTION = {
     torch.bool: 0,
+    torch.uint8: 0,
+    torch.uint16: 0,
+    torch.uint32: 0,
+    torch.uint64: 0,
+    torch.int8: 0,
     torch.int16: 0,
     torch.int32: 0,
+    torch.int64: 0,
     torch.float16: 1e-3,
     # torch.float32: 1.3e-6,
     # torch.float64: 1e-6,
@@ -44,6 +50,7 @@ RESOLUTION = {
     torch.bfloat16: 0.016,
     torch.complex32: 1e-3,
     torch.complex64: 1.3e-6,
+    torch.complex128: 1e-6,
 }
 
 
