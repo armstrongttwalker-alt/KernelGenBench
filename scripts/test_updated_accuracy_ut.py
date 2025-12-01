@@ -35,9 +35,14 @@ def create_verify_args(paths, names, namespaces = None) -> list[VerifyRequest]:
     return verify_requests
 
 
-def test_verifier_operator(name, path: Path, device_count=8):
+def test_verifier_operator(
+        name, 
+        path: Path, 
+        num_samples=1, 
+        device_count=8
+    ):
     config = VerifyConfig(
-        run_name=f"{path.parent.name}_accuracy_test_{today()}",
+        run_name=f"{path.name}_accuracy_test_{today()}",
         test_type="both",
         run_dir=f"cache/runs",
         store_type="local",
@@ -84,48 +89,63 @@ def test_verifier_operator(name, path: Path, device_count=8):
     else:
         # All operators test with statistics
         namespaces = list(all_operators.keys())
-        paths = []
-        names_ = []
-        namespaces_ = []
         results_summary = []
+        success = []
+        total = []
         
         missing_test = 0
         
-        for namespace in namespaces:
-            operators = all_operators[namespace]
-            names = list(operators.keys())
-            for op_name in names:
-                test_path = path / f"test_accuracy_{namespace}_{op_name}.py"
-                result_entry = {
-                    "operator": f"{namespace}::{op_name}",
-                    "test_file": str(test_path),
-                }
-                
-                # Check if test file exists
-                if not test_path.exists():
-                    result_entry["status"] = "missing_test_file"
-                    result_entry["success"] = False
-                    result_entry["error"] = f"Test file {test_path} does not exist"
-                    missing_test += 1
-                    results_summary.append(result_entry)
-                    print(f"⚠ Missing test file for {op_name}")
-                    continue
-                paths.append(test_path)
-                names_.append(op_name)
-                namespaces_.append(namespace)
+        for sample_idx in range(num_samples):
+            paths = []
+            names_ = []
+            namespaces_ = []
+            ut_path = path / f"ut_{sample_idx}"
+            for namespace in namespaces:
+                operators = all_operators[namespace]
+                names = list(operators.keys())
+                for op_name in names:
+                    total.append(f"{namespace}::{op_name}")
+                    if f"{namespace}::{op_name}" in success:
+                        continue
+                    test_path = ut_path / f"test_accuracy_{namespace}_{op_name}.py"
+                    result_entry = {
+                        "operator": f"{namespace}::{op_name}",
+                        "test_file": str(test_path),
+                        "success": None,
+                    }
+                    
+                    # Check if test file exists
+                    if not test_path.exists():
+                        result_entry["status"] = "missing_test_file"
+                        result_entry["success"] = False
+                        result_entry["error"] = f"Test file {test_path} does not exist"
+                        missing_test += 1
+                        results_summary.append(result_entry)
+                        print(f"⚠ Missing test file for test_accuracy_{namespace}_{op_name}.py")
+                        continue
+                    paths.append(test_path)
+                    names_.append(op_name)
+                    namespaces_.append(namespace)
         
-        verify_args = create_verify_args(paths, names_, namespaces_)
-        results = verifier.only_verify(
-            name_source_map=verify_args,
-            device_count=device_count,
-        )
-        from pprint import pprint
-        pprint(results)
+            verify_args = create_verify_args(paths, names_, namespaces_)
+            results = verifier.only_verify(
+                name_source_map=verify_args,
+                device_count=device_count,
+            )
+            success += [res.op_name for res in results[1] if res.success]
+            verifier._running_config.sample_id += 1
+        # from pprint import pprint
+        # pprint(results)
+        total = set(total)
+        print("=== Accuracy Test Summary ===")
+        print(len(success) / len(total))
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", type=str, required=True)
     parser.add_argument("--path", type=str, required=True)
+    parser.add_argument("--num-samples", type=int, default=1)
     parser.add_argument("--device_count", type=int, default=8)
     args = parser.parse_args()
     return args
@@ -133,4 +153,4 @@ def parse_arguments():
 if __name__ == "__main__":
     args = parse_arguments()
     path = Path(args.path)
-    test_verifier_operator(args.name, path, device_count=args.device_count)
+    test_verifier_operator(args.name, path, num_samples=args.num_samples, device_count=args.device_count)
