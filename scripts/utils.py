@@ -55,12 +55,12 @@ def load_api_to_process_from_test_func_result(test_func_result_path: Path, get_s
     return api_info
 
 
-def load_right_test_function_from_result_path(path: Path) -> Dict[str, str]:
+def load_right_test_function_from_result_path(path: Path, get_success: bool = True) -> Dict[str, str]:
     with open(path, "r") as f:
         eval_result = json.load(f)
     test_funcs = {}
     for item in eval_result:
-        if item["success"]:
+        if item["success"] == get_success:
             test_funcs[item["op_name"]] = item["test_func"]
     return test_funcs
 
