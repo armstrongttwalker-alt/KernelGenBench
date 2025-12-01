@@ -146,13 +146,15 @@ class TestFuncGenerateArgs(BaseGenerateArgs):
         return self.test_func_name
 
 class BenchmarkFuncGenerateArgs(BaseGenerateArgs):
-    test_func_name: str
+    test_perf_func_name: str
+    kernel_name: str
     test_func_code: str
-    triton_kernel_name: str | None = None
+    operators: Dict[str, str]
+    ops_namespace: str | None = None
 
     @property
     def op_name(self):
-        return self.test_func_name
+        return self.test_perf_func_name
 
 def generate_sample_single(
     work: Union[WorkArgs, TestFuncGenerateArgs, TritonKernelGenerateArgs, TorchKernelGenerateArgs, BenchmarkFuncGenerateArgs],
