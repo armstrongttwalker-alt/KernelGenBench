@@ -163,6 +163,7 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig, test
     gen_args = []
     api_names = []
     
+    # FIXME: DynamicImplInfo do not have items method !
     for api_name, namespace_or_api_func in apis_to_process.items():
         logger.info(f"Preparing: {api_name}")
         api_name_ = api_name.split('.')[-1]
