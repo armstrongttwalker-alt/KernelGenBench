@@ -139,7 +139,7 @@ def add_benchmark(A_shape, B_shape, dtype):
         self.kernel_name = ""
         if "from_mcp" in config:
             self.from_mcp = config.pop("from_mcp")
-            self.kernel_name = config.pop("triton_kernel_name")
+            # self.kernel_name = config.pop("triton_kernel_name")
         # config["op_name"] = config.pop("test_func_name", None)
         if "check_result" in config and isinstance(config["check_result"], dict):
             from bench.sandbox.test.run_test import VerifyResult
@@ -148,33 +148,43 @@ def add_benchmark(A_shape, B_shape, dtype):
         return config
 
     def _post_process(self, results: list) -> list:
-        results = super().post_process(results)
+        codes = super().post_process(results)
+        names = [r[1].op_name for r in results]
+        sample_id = [r[1].sample_id for r in results]
         processed_results = []
-        for res in results:
+        for res in codes:
+            console.rule("[bold blue]Raw Output from LLM")
+            console.print(res, markup=False)
+            console.rule("[bold blue]End of Raw Output")
             extracted_code = extract_first_code(res, ["python", "cpp"])
+            console.rule("[bold blue]Extracted Code Block")
+            console.print(extracted_code, markup=False)
+            console.rule("[bold blue]End of Extracted Code Block")
             if extracted_code is not None:
                 processed_results.append(extracted_code)
             else:
                 console.print("Code extraction failed, using raw output.")
                 processed_results.append(res)
-        return processed_results
+        return [[code, name, sample_id] for code, name, sample_id in zip(processed_results, names, sample_id)]
 
     def post_process(self, results: list) -> list:
         results = self._post_process(results)
         if not self.from_mcp:
             test_func_prefix = """
-import bench
-from bench.sandbox.test.test_parametrize import parametrize, label
-from bench.sandbox.config import DEVICE as device
+import flagbench
+from sandbox.config import DEVICE as device
+from sandbox.verifier.test_parametrize import parametrize, label
+from sandbox.utils.accuracy_utils import gems_assert_close as assert_close
+from sandbox.utils.accuracy_utils import to_reference
+from sandbox.register import REGISTERED_OPS
 import torch
-import triton
 """.strip() + "\n\n"
         else:
             test_func_prefix = "import torch\n\nimport pytest\n\nimport triton\n\n"
         for i in range(len(results)):
-            results[i] = self.decouple_bench(results[i], self.kernel_name) if self.from_mcp else results[i]
-            results[i] = test_func_prefix + results[i]
-            results[i] = results[i].strip()
+            results[i][0] = self.decouple_bench(results[i][0], self.kernel_name) if self.from_mcp else results[i][0]
+            results[i][0] = test_func_prefix + results[i][0]
+            results[i][0] = results[i][0].strip()
         return results
 
     def decouple_bench(self, code: str, kernel_name: str = "") -> str:
