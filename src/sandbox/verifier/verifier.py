@@ -366,6 +366,7 @@ class Verifier:
                 success = True
                 tb_str = None
                 try:
+                    # FIXME: use default_converter to convert params ?
                     recorded_params = jsonable_encoder(combo, custom_encoder={torch.dtype: str, Callable: lambda x: x.__name__})
                 except Exception as e:
                     print(combo)
