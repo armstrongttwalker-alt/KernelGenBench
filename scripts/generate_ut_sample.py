@@ -17,7 +17,7 @@ from typing import List, Dict, Any
 from datetime import datetime
 
 from flagbench.dataset import TorchOpsLoader, APIInfo
-from utils import today
+from utils import today, load_right_test_function_from_result_path
 
 
 # Add project root to path
@@ -27,9 +27,11 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 sys.path.insert(0, str(PROJECT_ROOT))
 
 
-from generator.test_func_generator import TestFuncGenerator
+from generator import GENERATOR
+
 from generator.sampler.generate_samples import (
     TestFuncGenerateArgs,
+    BenchmarkFuncGenerateArgs,
     GenerationConfig,
     InputArg,
     OutputArg,
@@ -66,7 +68,27 @@ def create_ut_generate_args(torch_op_name: str, operators: APIInfo) -> TestFuncG
     )
 
 
-def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> None:
+def create_benchmark_generate_args(torch_op_name: str, operators: APIInfo, test_func_code: str) -> BenchmarkFuncGenerateArgs:
+    """
+    Create BenchmarkFuncGenerateArgs for a given PyTorch operator.
+    
+    Args:
+        torch_op_name: Full name of the torch operator (e.g., 'torch.add')
+        torch_op_func: The actual torch function object
+        test_func: The test function code as a string
+    Returns:
+        BenchmarkFuncGenerateArgs instance
+    """
+    return BenchmarkFuncGenerateArgs(
+        kernel_name=torch_op_name.split('.')[-1],
+        operators=operators.schemas,
+        test_perf_func_name=f"test_perf_{operators.namespace}_{torch_op_name.split('.')[-1]}",
+        test_func_code=test_func_code,
+        ops_namespace=operators.namespace,
+    )
+
+
+def generate_samples(name: str, output_dir: Path, config: GenerationConfig, test_type: str = "accuracy", test_func_result_path: Path | None = None) -> None:
     """
     Generate Triton kernel samples for the specified APIs.
     
@@ -75,12 +97,32 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
         output_dir: Directory to save generated results
         config: Generation configuration
     """
+    assert test_type in ["accuracy", "performance"], "test_type must be either 'accuracy' or 'performance'"
 
+    acc_test_results = None
+    if test_func_result_path:
+        logger.info(f"Loading test function results from: {test_func_result_path}")
+        acc_test_results = load_right_test_function_from_result_path(test_func_result_path)
+        
     operator_loader = TorchOpsLoader()
 
     # Get the list of APIs to process
     if name.lower() == "all":
         namespace_to_process = operator_loader.load_all()
+        if test_type == "performance" and acc_test_results is not None:
+            # Filter APIs based on accuracy test results
+            filtered_namespace_to_process = {}
+            for namespace, apis in namespace_to_process.items():
+                filtered_apis = {}
+                for api_name, api_info in apis.items():
+                    full_api_name = f"{namespace}::{api_name}"
+                    if full_api_name in acc_test_results:
+                        filtered_apis[api_name] = api_info
+                if filtered_apis:
+                    filtered_namespace_to_process[namespace] = filtered_apis
+            namespace_to_process = filtered_namespace_to_process
+            logger.info(f"Filtered APIs based on accuracy test results. Remaining APIs: {sum(len(apis) for apis in namespace_to_process.values())}")
+                
         logger.info(f"Processing all {len(namespace_to_process)} PyTorch Namespaces.")
     else:
         # Check if the specified name exists
@@ -96,7 +138,7 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
         code_dir.mkdir(exist_ok=True)
     
     # Initialize the generator
-    generator = TestFuncGenerator(config)
+    generator = GENERATOR[test_type](config)
     
     # Process each API and collect generate args
     gen_args = []
@@ -110,7 +152,15 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
             try:
                 # Create generate args for this API
                 for sample_idx in range(config.num_samples):
-                    gen_arg = create_ut_generate_args(api_name, operators)
+                    if test_type == "performance":
+                        assert acc_test_results is not None, "Accuracy test results must be provided for performance test generation"
+                        gen_arg = create_benchmark_generate_args(
+                            api_name, 
+                            operators, 
+                            test_func_code=acc_test_results.get(f"{namespace}::{api_name}", "")
+                        )
+                    else:
+                        gen_arg = create_ut_generate_args(api_name, operators)
                     gen_arg.sample_id = config.sample_id + sample_idx
                     gen_args.append(gen_arg)
                     api_names.append(api_name)
@@ -212,6 +262,13 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig) -> N
     logger.info(f"{'='*60}\n")
 
 
+def check_args_validity(args: argparse.Namespace) -> None:
+    assert args.type in ["accuracy", "performance"], "type must be either 'accuracy' or 'performance'"
+    if args.type == "performance":
+        assert args.test_func_result_path is not None, "test_func_result_path must be provided for performance tests"
+        assert Path(args.test_func_result_path).exists(), f"test_func_result_path {args.test_func_result_path} does not exist"
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Generate Triton kernels from PyTorch APIs",
@@ -237,6 +294,20 @@ Examples:
         type=str,
         default="all",
         help="Name of the PyTorch API to generate (default: all). Use 'all' to generate for all APIs."
+    )
+
+    parser.add_argument(
+        "--type", 
+        type=str,
+        default="accuracy",
+        help="Type of test to generate (default: accuracy). Options: accuracy, performance."
+    )
+
+    parser.add_argument(
+        "--test-func-result-path",
+        type=Path,
+        default=None,
+        help="Path to test function result JSON file (required for performance tests)"
     )
     
     parser.add_argument(
@@ -296,11 +367,13 @@ Examples:
     )
     
     args = parser.parse_args()
-    
+    # check args validity
+    check_args_validity(args)
+
     # Set verbose logging if requested
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
-    run_name = f"ut_{args.model_name}_num_samples_{args.num_samples}_temp_{args.temperature}_max_tokens_{args.max_tokens}_{today()}"
+    run_name = f"ut_{args.model_name}_{args.type}_num_samples_{args.num_samples}_temp_{args.temperature}_max_tokens_{args.max_tokens}_{today()}"
     # Create generation config
     config = GenerationConfig(
         run_name=run_name,
@@ -318,8 +391,9 @@ Examples:
     logger.info("Starting sample generation...")
     logger.info(f"Config: {config}")
     output_dir = args.output_dir / run_name
+    test_func_result_path = args.test_func_result_path / "result.json" if args.test_func_result_path.name != "result.json" else args.test_func_result_path
     # Generate samples
-    generate_samples(args.name, output_dir, config)
+    generate_samples(args.name, output_dir, config, args.type, test_func_result_path)
     
     logger.info("Sample generation completed!")
 
