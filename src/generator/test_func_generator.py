@@ -241,11 +241,11 @@ class TestFuncGenerator(BaseGenerator):
         processed_results = []
         for res in codes:
             console.rule("[bold blue]Raw Output from LLM")
-            console.print(res)
+            console.print(res, markup=False)
             console.rule("[bold blue]End of Raw Output")
             extracted_code = extract_first_code(res, ["python", "cpp"])
             console.rule("[bold blue]Extracted Code Block")
-            console.print(extracted_code)
+            console.print(extracted_code, markup=False)
             console.rule("[bold blue]End of Extracted Code Block")
             if extracted_code is not None:
                 processed_results.append(extracted_code)
