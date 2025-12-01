@@ -4,3 +4,7 @@ from .triton_kernel_generator import TritonKernelGenerator, TritonKernelAdviceGe
 from .torch_kernel_generator import TorchKernelGenerator, TorchKernelAdviceGenerator, TorchKernelGenerateArgs
 from .generator import print_prompt
 from .generator import BaseGenerator
+
+
+GENERATOR = {"accuracy": TestFuncGenerator,
+             "performance": BenchmarkFuncGenerator}
