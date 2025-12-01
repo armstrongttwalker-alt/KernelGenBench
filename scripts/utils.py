@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 from dataclasses import dataclass
 import torch
+from logging import getLogger
 from datetime import datetime
 
+logger = getLogger(__name__)
 
 @dataclass
 class InputArg:
@@ -28,7 +30,7 @@ def today() -> str:
     return datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
-def load_api_to_process_from_test_func_result(test_func_result_path: Path) -> dict[str, str]:
+def load_api_to_process_from_test_func_result(test_func_result_path: Path, get_success: bool = True) -> dict[str, str]:
     """Load API information from a test function result file.
 
     Args:
@@ -42,11 +44,14 @@ def load_api_to_process_from_test_func_result(test_func_result_path: Path) -> di
     api_info = {}
     for result in test_func_results:
         api_name = result["op_name"]
-        success = result["success"]
-        if success:
+        ok = result["success"] == get_success
+        if ok:
             if "::" in api_name:
                 namespace, name = api_name.split("::", 1)
-            api_info[name] = namespace
+                api_info[name] = namespace
+            else:
+                logger.warning(f"API name {api_name} does not contain namespace info, defaulting to 'aten'")
+                api_info[api_name] = "aten"
     return api_info
 
 
