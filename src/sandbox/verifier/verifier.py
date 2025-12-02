@@ -367,7 +367,8 @@ class Verifier:
                 tb_str = None
                 try:
                     # recorded_params = jsonable_encoder(combo, custom_encoder={torch.dtype: str, Callable: lambda x: x.__name__})
-                    recorded_params = {k: default_converter(v) for k, v in combo.items()}
+                    # recorded_params = {k: default_converter(v) for k, v in combo.items()}
+                    recorded_params = json.loads(json.dumps(combo, default=default_converter))
                 except Exception as e:
                     print(combo)
                     raise e
