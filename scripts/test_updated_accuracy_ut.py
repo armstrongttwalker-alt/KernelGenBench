@@ -38,28 +38,33 @@ def create_verify_args(paths, names, namespaces = None) -> list[VerifyRequest]:
 def test_verifier_operator(
         name, 
         path: Path, 
+        test_type="accuracy",   # accuracy, performance
+        run_dir="cache/runs",
         num_samples=1, 
-        device_count=8
+        device_count=8, 
+        timeout=300,
     ):
     config = VerifyConfig(
-        run_name=f"{path.name}_accuracy_test_{today()}",
-        test_type="both",
-        run_dir=f"cache/runs",
+        run_name=f"{path.name}_{test_type}_test_{today()}",
+        test_type=test_type,
+        run_dir=run_dir,
         store_type="local",
         strict_check=True,
         seed=42,
         sample_id=0,
         save_log=True,
+        acc_timeout=timeout,
+        perf_timeout=timeout,
     )
 
     verifier = Verifier(config)
-    verifier.set_modules([], "accuracy")
+    verifier.set_modules([], test_type)
     loader = TorchOpsLoader()
     all_operators = loader.load_all()
     
     if name != "all":
         # Single operator test
-        test_path = path / f"test_accuracy_{name}.py"
+        test_path = path / f"test_accuracy_{name}.py" if test_type == "accuracy" else path / f"test_perf_{name}.py"
         try:
             assert test_path.exists(), f"Test file {test_path} does not exist."
         except AssertionError as e:
@@ -67,7 +72,7 @@ def test_verifier_operator(
             return
         
         updated_accuracy_tests = [test_path]
-        verifier.set_modules(updated_accuracy_tests, "accuracy")
+        verifier.set_modules(updated_accuracy_tests, test_type)
         
         try:
             result = verifier.only_verify(
@@ -79,7 +84,7 @@ def test_verifier_operator(
                         )]
                     )
                 ], 
-                test_type="accuracy"        # accuracy, performance, both
+                test_type=test_type        # accuracy, performance, both
             )[-1][0]
             print("Verification Result:", result)
         except Exception as e:
@@ -104,10 +109,11 @@ def test_verifier_operator(
                 operators = all_operators[namespace]
                 names = list(operators.keys())
                 for op_name in names:
+                    file_name = f"test_accuracy_{namespace}_{op_name}.py" if test_type == "accuracy" else ut_path / f"test_perf_{namespace}_{op_name}.py"
                     total.append(f"{namespace}::{op_name}")
                     if f"{namespace}::{op_name}" in success:
                         continue
-                    test_path = ut_path / f"test_accuracy_{namespace}_{op_name}.py"
+                    test_path = ut_path / file_name
                     result_entry = {
                         "operator": f"{namespace}::{op_name}",
                         "test_file": str(test_path),
@@ -121,7 +127,7 @@ def test_verifier_operator(
                         result_entry["error"] = f"Test file {test_path} does not exist"
                         missing_test += 1
                         results_summary.append(result_entry)
-                        print(f"⚠ Missing test file for test_accuracy_{namespace}_{op_name}.py")
+                        print(f"⚠ Missing test file for {file_name}")
                         continue
                     paths.append(test_path)
                     names_.append(op_name)
@@ -145,12 +151,23 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", type=str, required=True)
     parser.add_argument("--path", type=str, required=True)
+    parser.add_argument("--test-type", type=str, default="accuracy")
+    parser.add_argument("--run-dir", type=str, default="cache/runs")
     parser.add_argument("--num-samples", type=int, default=1)
-    parser.add_argument("--device_count", type=int, default=8)
+    parser.add_argument("--device-count", type=int, default=8)
+    parser.add_argument("--timeout", type=int, default=300)
     args = parser.parse_args()
     return args
 
 if __name__ == "__main__":
     args = parse_arguments()
     path = Path(args.path)
-    test_verifier_operator(args.name, path, num_samples=args.num_samples, device_count=args.device_count)
+    test_verifier_operator(
+        args.name, 
+        path, 
+        num_samples=args.num_samples, 
+        test_type=args.test_type, 
+        run_dir=args.run_dir,
+        device_count=args.device_count,
+        timeout=args.timeout
+    )
