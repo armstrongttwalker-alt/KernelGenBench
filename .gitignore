@@ -144,3 +144,5 @@ old_bench/
 cache/
 output/
 runs/
+debug_log/
+successful_operators.txt
