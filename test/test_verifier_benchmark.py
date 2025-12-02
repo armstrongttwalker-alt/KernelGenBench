@@ -1,5 +1,10 @@
 from sandbox.verifier import Verifier, VerifyConfig, VerifyRequest, Source
 
+import os
+os.environ["DISPATCH_TORCH_LIB"] = "0"
+os.environ["FLAGBENCH_UPCAST"] = "0"
+os.environ["FLAGBENCH_SKIP_BOTH_TEST"] = "1"
+
 benchmark_code = """from flagbench.perfermance.performance_utils import GenericBenchmark
 from sandbox.verifier.test_parametrize import label, parametrize, Param
 import torch
