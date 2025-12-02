@@ -13,6 +13,7 @@ def load_samples_from_path(path: Path) -> Dict[str, str]:
     paths = [p for p in Path(path).glob("*.py")]
     samples = {}
     for p in paths:
+        # FIXME: namespace handling
         if "::" not in p.name:
             namespace = "aten"
         else:
