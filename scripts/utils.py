@@ -8,26 +8,105 @@ import torch
 from logging import getLogger
 from datetime import datetime
 
+from generator.sampler.generate_samples import (
+    TritonKernelGenerateArgs,
+    GenerationConfig,
+    InputArg,
+    OutputArg,
+)
+
 logger = getLogger(__name__)
-
-@dataclass
-class InputArg:
-    arg_name: str
-    arg_type: str
-    arg_value: Any = None
-    arg_default: Any = None
-    arg_desc: str = ""
-
-
-@dataclass
-class OutputArg:
-    arg_type: str
-    arg_value: Any = None
-    arg_desc: str = ""
 
 
 def today() -> str:
     return datetime.now().strftime("%Y%m%d-%H%M%S")
+
+
+def _placeholder(*args, **kwargs):
+    raise NotImplementedError("This is a placeholder function.")
+
+
+def get_torch_api_signature(torch_op_name: str, torch_op_func) -> Dict[str, Any]:
+    """
+    Extract signature information from a PyTorch API.
+    
+    Args:
+        torch_op_name: Full name of the torch operator (e.g., 'torch.add')
+        torch_op_func: The actual torch function object
+    
+    Returns:
+        Dictionary containing input_args, output_args, and func_desc
+    """
+    # Try to get the docstring for description
+    func_desc = f"PyTorch operator: {torch_op_name}"
+    if hasattr(torch_op_func, '__doc__') and torch_op_func.__doc__:
+        # Extract first line of docstring as description
+        doc_lines = torch_op_func.__doc__.strip().split('\n')
+        if doc_lines:
+            func_desc = doc_lines[0].strip()
+    
+    # For now, we'll use generic input/output args since we don't have
+    # detailed parameter information without runtime inspection
+    # In a real implementation, you might want to use inspect module or
+    # parse the docstring to extract parameter information
+    
+    # TODO : Improve argument extraction logic
+    # input_args, output_args, _ = get_function_signature(torch_op_func)
+    input_args = [InputArg(arg_name="args", arg_type="Any", arg_desc="Input arguments")]
+    output_args = [OutputArg(arg_type="Any", arg_desc="Output result")]
+    
+    return {
+        "input_args": input_args,
+        "output_args": output_args,
+        "func_desc": func_desc,
+    }
+
+
+def create_triton_generate_args(torch_op_name: str, torch_op_func: Callable | str, impl_info) -> TritonKernelGenerateArgs:
+    """
+    Create TritonKernelGenerateArgs for a given PyTorch operator.
+    
+    Args:
+        torch_op_name: Full name of the torch operator (e.g., 'torch.add')
+        torch_op_func: The actual torch function object
+    
+    Returns:
+        TritonKernelGenerateArgs instance
+    """
+    # Extract the function name from the full path
+    # e.g., 'torch.add' -> 'add', 'torch.nn.functional.gelu' -> 'gelu'
+    kernel_name = torch_op_name.split('.')[-1]
+    
+    # Get signature information
+    if isinstance(torch_op_func, str):
+        # check torch.ops has the attribute
+        if hasattr(torch.ops, torch_op_func):
+            # torch_op_func actually is the namespace
+            torch_op_name = f"{torch_op_func}::{torch_op_name}"
+            torch_op_namespace = getattr(torch.ops, torch_op_func)
+            torch_op_func = getattr(torch_op_namespace, kernel_name)
+            torch_op_func_name = f"{torch_op_namespace.__name__}.{kernel_name}"
+    sig_info = get_torch_api_signature(torch_op_name, torch_op_func)
+    
+    # Create a simple torch kernel code snippet as reference
+    torch_kernel_code = f"""
+# Reference PyTorch implementation for {torch_op_name}
+import torch
+
+def {kernel_name}(*args, **kwargs):
+    return {torch_op_func_name}(*args, **kwargs)
+""".strip()
+    
+    return TritonKernelGenerateArgs(
+        triton_kernel_name=torch_op_name,
+        func_desc=sig_info["func_desc"],
+        torch_kernel_code=torch_kernel_code,
+        input_args=sig_info["input_args"],
+        output_args=sig_info["output_args"],
+        impl_info=impl_info,
+        # func_type="other",  # Could be refined based on operator analysis
+        from_mcp=False,
+    )
 
 
 def load_api_to_process_from_test_func_path(test_func_result_path: Path, get_success: bool = True) -> dict[str, str]:
