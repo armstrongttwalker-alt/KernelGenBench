@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Callable
 from datetime import datetime
 import torch
-from utils import load_api_to_process_from_test_func_result, get_function_signature, today
+from utils import load_api_to_process_from_test_func_path, get_function_signature, today
 
 
 # Add project root to path
@@ -135,7 +135,7 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig, test
     """
     if test_func_result_path:
         logger.info(f"Loading test function results from: {test_func_result_path}")
-        PYTORCH_OPERATORS = load_api_to_process_from_test_func_result(test_func_result_path)
+        PYTORCH_OPERATORS = load_api_to_process_from_test_func_path(test_func_result_path)
     else:
         from flagbench.dataset.kernel_list import PYTORCH_OPERATORS
     # Get the list of APIs to process
@@ -167,11 +167,13 @@ def generate_samples(name: str, output_dir: Path, config: GenerationConfig, test
     for api_name, namespace_or_api_func in apis_to_process.items():
         logger.info(f"Preparing: {api_name}")
         api_name_ = api_name.split('.')[-1]
+        if isinstance(namespace_or_api_func, str):
+            total_name = f"{namespace_or_api_func}::{api_name}"
         try:
-            assert api_name_ in IMPL_INFO, f"Implementation info not found for {api_name_}"
+            assert total_name in IMPL_INFO, f"Implementation info not found for {api_name_}"
             # Create generate args for this API
             for sample_idx in range(config.num_samples):
-                gen_arg = create_triton_generate_args(api_name, namespace_or_api_func, IMPL_INFO[api_name_])
+                gen_arg = create_triton_generate_args(api_name, namespace_or_api_func, IMPL_INFO[total_name])
                 gen_arg.sample_id = config.sample_id + sample_idx
                 gen_args.append(gen_arg)
                 api_names.append(api_name)
@@ -369,8 +371,8 @@ Examples:
     logger.info(f"Config: {config}")
     output_dir = args.output_dir / run_name
     # Generate samples
-    test_func_result_path = args.test_func_result_path / "result.json" if args.test_func_result_path.name != "result.json" else args.test_func_result_path
-    generate_samples(args.name, output_dir, config, test_func_result_path=test_func_result_path)
+    # test_func_result_path = args.test_func_result_path / "result.json" if args.test_func_result_path.name != "result.json" else args.test_func_result_path
+    generate_samples(args.name, output_dir, config, test_func_result_path=args.test_func_result_path)
     
     logger.info("Sample generation completed!")
 
