@@ -5,9 +5,20 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict
 from tqdm import tqdm
-from utils import load_right_test_function_from_result_path, today
+from utils import (
+    load_right_test_function_from_test_func_dir, 
+    load_right_kernel_code_from_acc_verify_dir,
+    today
+)
 
 from sandbox.verifier import Verifier, VerifyRequest, VerifyConfig, Source
+
+def check_args_validity(args: argparse.Namespace) -> None:
+    # TODO: implement argument validity checks
+    assert args.test_func_path != "" or args.benchmark_func_path != "", "At least one of --test-func-path or --benchmark-func-path must be provided."
+    assert os.path.exists(args.path), f"The specified path {args.path} does not exist."
+    assert args.device_count > 0, "Device count must be a positive integer."
+    assert args.num_samples > 0, "Number of samples must be a positive integer."
 
 def load_samples_from_path(path: Path) -> Dict[str, str]:
     paths = [p for p in Path(path).glob("*.py")]
@@ -45,8 +56,14 @@ def main():
     parser.add_argument(
         "--test-func-path",
         type=str,
-        required=True,
-        help="Path to the test function result file.",
+        default="",
+        help="Path to the accuracy performance test function result file.",
+    )
+    parser.add_argument(
+        "--benchmark-func-path",
+        type=str,
+        default="",
+        help="Path to the benchmark function test result file.",
     )
     parser.add_argument(
         "--device-count",
@@ -68,13 +85,21 @@ def main():
     )
     args = parser.parse_args()
 
+    check_args_validity(args)
+
     # get right test function
-    test_funcs = load_right_test_function_from_result_path(Path(args.test_func_path) / "result.json")
-    
+    if args.test_func_path != "":
+        test_funcs = load_right_test_function_from_test_func_dir(Path(args.test_func_path))
+        print(f"Loaded {len(test_funcs)} test functions for evaluation.")
+    elif args.benchmark_func_path != "":
+        test_funcs = load_right_test_function_from_test_func_dir(Path(args.benchmark_func_path))
+        print(f"Loaded {len(test_funcs)} benchmark functions for evaluation.")
+
+    run_name = "eval_" + Path(args.path).name + "_" + today() if args.benchmark_func_path == "" else "eval_perf_" + Path(args.path).name + "_" + today()
 
     # verify
     config = VerifyConfig(
-        run_name="eval_" + Path(args.path).name + "_" + today(),
+        run_name=run_name,
         test_type="accuracy",
         run_dir="./runs",
         store_type="local",
@@ -88,7 +113,11 @@ def main():
     results = []
     success = []
     for sample_idx in range(args.num_samples):
-        samples = load_samples_from_path(Path(args.path) / f"code_{sample_idx}")
+        if args.test_func_path != "":
+            samples = load_samples_from_path(Path(args.path) / f"code_{sample_idx}")
+        else:
+            samples = load_right_kernel_code_from_acc_verify_dir(Path(args.path) / f"log_{sample_idx}" / "result.json")
+        print(f"Loaded {len(samples)} kernel codes for sample index {sample_idx}.")
         if len(results) > 0:
             samples = {k: v for k, v in samples.items() if k not in success}
         if args.name != "all":
