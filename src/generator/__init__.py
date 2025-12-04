@@ -6,5 +6,16 @@ from .generator import print_prompt
 from .generator import BaseGenerator
 
 
-GENERATOR = {"accuracy": TestFuncGenerator,
-             "performance": BenchmarkFuncGenerator}
+GENERATOR = {
+    "triton": TritonKernelGenerator,
+    "torch": TorchKernelGenerator,
+    "accuracy": TestFuncGenerator,
+    "performance": BenchmarkFuncGenerator
+}
+
+GENERATOR_ARGS = {
+    "triton": TritonKernelGenerateArgs,
+    "torch": TorchKernelGenerateArgs,
+    "accuracy": TestFuncGenerateArgs,
+    "performance": BenchmarkFuncGenerateArgs
+}
