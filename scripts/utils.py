@@ -30,6 +30,17 @@ def today() -> str:
     return datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
+def load_api_to_process_from_test_func_path(test_func_result_path: Path, get_success: bool = True) -> dict[str, str]:
+    # check the path is dir or file
+    if test_func_result_path.is_dir():
+        dirs = [x for x in test_func_result_path.iterdir() if x.is_dir() and x.name.startswith("log_")]
+        api_info = {}
+        for d in dirs:
+            api_info.update(load_api_to_process_from_test_func_result(d, get_success))
+        return api_info
+    else:
+        return load_api_to_process_from_test_func_result(test_func_result_path, get_success)
+
 def load_api_to_process_from_test_func_result(test_func_result_path: Path, get_success: bool = True) -> dict[str, str]:
     """Load API information from a test function result file.
 
@@ -38,6 +49,10 @@ def load_api_to_process_from_test_func_result(test_func_result_path: Path, get_s
     Returns:
         A list of API information dictionaries.
     """
+    test_func_result_path = test_func_result_path / "result.json" if test_func_result_path.name != "result.json" else test_func_result_path
+    if not test_func_result_path.exists():
+        logger.warning(f"Test function result path {test_func_result_path} does not exist.")
+        return {}
     with open(test_func_result_path, "r") as f:
         test_func_results = json.load(f)
 
@@ -55,7 +70,23 @@ def load_api_to_process_from_test_func_result(test_func_result_path: Path, get_s
     return api_info
 
 
+def load_right_test_function_from_test_func_dir(path: Path, get_success: bool = True) -> Dict[str, str]:
+    # check the path is dir or file
+    if path.is_dir():
+        dirs = [x for x in path.iterdir() if x.is_dir() and x.name.startswith("log_")]
+        test_funcs = {}
+        for d in dirs:
+            test_funcs.update(load_right_test_function_from_result_path(d / "result.json", get_success))
+        return test_funcs
+    else:
+        return load_right_test_function_from_result_path(path, get_success)
+
+
 def load_right_test_function_from_result_path(path: Path, get_success: bool = True) -> Dict[str, str]:
+    path = path / "result.json" if path.name != "result.json" else path
+    if not path.exists():
+        logger.warning(f"Test function result path {path} does not exist.")
+        return {}
     with open(path, "r") as f:
         eval_result = json.load(f)
     test_funcs = {}
@@ -63,6 +94,33 @@ def load_right_test_function_from_result_path(path: Path, get_success: bool = Tr
         if item["success"] == get_success:
             test_funcs[item["op_name"]] = item["test_func"]
     return test_funcs
+
+
+def load_right_kernel_code_from_acc_verify_dir(path: Path, get_success: bool = True) -> Dict[str, str]:
+    # check the path is dir or file
+    # breakpoint()
+    if path.is_dir():
+        dirs = [x for x in path.iterdir() if x.is_dir() and x.name.startswith("log_")]
+        kernel_code = {}
+        for d in dirs:
+            kernel_code.update(load_right_kernel_code_from_acc_verify_result_path(d / "result.json", get_success))
+        return kernel_code
+    else:
+        return load_right_kernel_code_from_acc_verify_result_path(path, get_success)
+
+
+def load_right_kernel_code_from_acc_verify_result_path(path: Path, get_success: bool = True) -> Dict[str, str]:
+    path = path / "result.json" if path.name != "result.json" else path
+    if not path.exists():
+        logger.warning(f"Test function result path {path} does not exist.")
+        return {}
+    with open(path, "r") as f:
+        eval_result = json.load(f)
+    kernel_code = {}
+    for item in eval_result:
+        if item["success"] == get_success:
+            kernel_code[item["op_name"]] = item["code"]
+    return kernel_code
 
 
 def get_function_signature(func: Callable) -> Dict[str, Any]:
