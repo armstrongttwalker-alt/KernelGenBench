@@ -28,10 +28,10 @@ def load_speedup_results(eval_dir: Path) -> Tuple[Dict[str, float], List[Dict]]:
     """
     successful_ops = {}
     failed_ops = []
-    
+    paths = [p for p in eval_dir.iterdir() if p.is_dir() and p.name.startswith("log_")]
     # Iterate through log_0 to log_9 directories
-    for i in range(10):
-        log_dir = eval_dir / f"log_{i}"
+    for p in paths:
+        log_dir = p
         if not log_dir.exists():
             continue
         
@@ -62,7 +62,7 @@ def load_speedup_results(eval_dir: Path) -> Tuple[Dict[str, float], List[Dict]]:
                 # 1. speedup data (success case)
                 # 2. success=False with traceback (failure case)
                 has_speedup = speedup_data is not None
-                has_failure = success is False and op_result.get('traceback') is not None
+                has_failure = success is not False
                 
                 if not has_speedup and not has_failure:
                     # Operator not tested in this log (success=None, no speedup, no traceback)
@@ -80,14 +80,15 @@ def load_speedup_results(eval_dir: Path) -> Tuple[Dict[str, float], List[Dict]]:
                     traceback = op_result.get('traceback', 'No traceback available')
                     failed_ops.append({
                         'op_name': op_name,
-                        'log_id': i,
+                        'log_id': log_dir.name,
                         'traceback': traceback
                     })
         
         except Exception as e:
             print(f"Error loading {result_file}: {e}")
             continue
-    
+    print(f"Total successful operators loaded: {len(successful_ops)}")
+    print(f"Total failed operators loaded: {len(failed_ops)}")
     return successful_ops, failed_ops
 
 
