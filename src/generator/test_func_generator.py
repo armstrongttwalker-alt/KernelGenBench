@@ -143,7 +143,7 @@ class TestFuncGenerator(BaseGenerator):
         # 基本信息
         prompt += f"## Operator Information\n"
         prompt += f"- Operator name: {info.kernel_name}\n"
-        prompt += f"- PyTorch API call: torch.ops.aten.{info.kernel_name}(...)\n"
+        prompt += f"- PyTorch API call: torch.ops.{info.ops_namespace}.{info.kernel_name}(...)\n"
         prompt += f"- Triton implementation call: Use the same API within `flagbench.use_gems()` context\n\n"
         
         # 算子的schema信息
@@ -197,10 +197,10 @@ class TestFuncGenerator(BaseGenerator):
         prompt += "    ref_input = input_tensor.clone()\n"
         prompt += "    ref_other = other_tensor.clone()\n"
         prompt += "    \n"
-        prompt += "    ref_out = torch.ops.aten.example_op(ref_input, ref_other)\n"
+        prompt += f"    ref_out = torch.ops.{info.ops_namespace}.{info.kernel_name}(ref_input, ref_other)\n"
         prompt += "    \n"
         prompt += "    with flagbench.use_gems(REGISTERED_OPS):\n"
-        prompt += "        act_out = torch.ops.aten.example_op(input_tensor, other_tensor)\n"
+        prompt += f"        act_out = torch.ops.{info.ops_namespace}.{info.kernel_name}(input_tensor, other_tensor)\n"
         prompt += "    \n"
         prompt += "    assert_close(act_out, ref_out, dtype=dtype)\n"
         prompt += "```\n\n"
