@@ -17,7 +17,8 @@ import importlib
 from pydantic import BaseModel
 from copy import deepcopy
 from dataclasses import dataclass, asdict
-from flagbench.perfermance.attri_util import BenchmarkResult, CustomBenchmarkResult
+from flagbench.perfermance.attri_util import BenchmarkResult
+from sandbox.utils.accuracy_utils import CustomBenchmarkResult
 
 
 def set_seed(seed):

@@ -162,13 +162,6 @@ def custom_json_encoder(obj):
         return str(obj)
     raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
 
-
-class CustomBenchmarkResult(BaseModel):
-    ref_time: float
-    res_time: float
-    speedup: float
-    params: Union[dict, str] = None
-
 @dataclass
 class BenchmarkResult:
     """Record the benchmark result for each operator."""
