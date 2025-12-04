@@ -46,6 +46,7 @@ class PassAtKTester:
         gen_config: GenerationConfig,
         verify_config: VerifyConfig,
         device_count: int = 8,
+        debug: bool = False,
     ):
         self.output_dir = output_dir
         self.test_type = test_type
@@ -53,6 +54,8 @@ class PassAtKTester:
         self.verify_config = verify_config
         self.device_count = device_count
         self.operator_loader = TorchOpsLoader()
+
+        self.debug = debug
         
         # Track results
         self.all_operators: Dict[str, Dict[str, APIInfo]] = {}
@@ -63,12 +66,15 @@ class PassAtKTester:
         
     def initialize_operators(self, namespace: str = "all") -> None:
         """Initialize the list of operators to test."""
+        if self.debug:
+            namespace = "aten"
         if namespace.lower() == "all":
             self.all_operators = self.operator_loader.load_all()
         else:
             self.all_operators = {namespace: self.operator_loader.load_namespace(namespace=namespace)}
         # for debug, use a subset of operators
-        self.all_operators = {ns: dict(list(apis.items())[:2]) for ns, apis in self.all_operators.items()}
+        if self.debug:
+            self.all_operators = {ns: dict(list(apis.items())[:10]) for ns, apis in self.all_operators.items()}
         total_ops = sum(len(ops) for ops in self.all_operators.values())
         logger.info(f"Initialized {total_ops} operators across {len(self.all_operators)} namespaces")
     
@@ -95,6 +101,12 @@ class PassAtKTester:
             ops_namespace=namespace,
         )
     
+    def store_generated_code(self, op_name: str, round_idx: int, code: str) -> None:
+        # Store the generated code
+        if op_name not in self.generated_codes:
+            self.generated_codes[op_name] = {}
+        self.generated_codes[op_name][round_idx] = code
+
     def generate_round(self, round_idx: int, remaining_operators: Dict[str, Dict[str, APIInfo]]) -> Path:
         """Generate tests for remaining operators in this round."""
         round_dir = self.output_dir / f"round_{round_idx}"
@@ -109,6 +121,12 @@ class PassAtKTester:
         api_names = []
         for namespace, apis in remaining_operators.items():
             for api_name, api_info in apis.items():
+                if Path(round_dir / f"test_accuracy_{namespace}::{api_name}.py").exists():
+                    logger.info(f"Skipping already existing test for {namespace}::{api_name}")
+                    with open(round_dir / f"test_accuracy_{namespace}::{api_name}.py", "r") as f:
+                        code = f.read()
+                    self.store_generated_code(f"{namespace}::{api_name}", round_idx, code)
+                    continue
                 gen_arg = self.create_ut_generate_args(api_name, api_info, namespace)
                 gen_arg.sample_id = round_idx
                 gen_args.append(gen_arg)
@@ -148,11 +166,7 @@ class PassAtKTester:
                     result_entry["success"] = True
                     result_entry["code_length"] = len(generated_code)
                     saved_count += 1
-                    
-                    # Store the generated code
-                    if name not in self.generated_codes:
-                        self.generated_codes[name] = {}
-                    self.generated_codes[name][round_idx] = generated_code
+                    self.store_generated_code(full_name, round_idx, generated_code)
                     
                 except Exception as e:
                     result_entry["error"] = str(e)
@@ -162,8 +176,21 @@ class PassAtKTester:
             
             generation_results.append(result_entry)
         
+        round_summary_path = round_dir / "generation_summary.json"
+        if round_summary_path.exists():
+            exist_summary = json.load(open(round_summary_path, "r"))
+            generation_results = exist_summary.get("results", []) + generation_results
+            # Remove duplicates based on operator name
+            seen_ops = set()
+            unique_results = []
+            for res in generation_results:
+                if res["operator"] not in seen_ops:
+                    unique_results.append(res)
+                    seen_ops.add(res["operator"])
+            generation_results = unique_results
+
         # Calculate statistics
-        total = len(gen_args)
+        total = len(generation_results)
         successful = sum(1 for r in generation_results if r["success"])
         failed = total - successful
         
@@ -182,7 +209,6 @@ class PassAtKTester:
         }
         
         # Save round generation summary
-        round_summary_path = round_dir / "generation_summary.json"
         with open(round_summary_path, "w") as f:
             json.dump(generation_summary, f, indent=2, ensure_ascii=False)
         
@@ -220,7 +246,7 @@ class PassAtKTester:
         logger.info(f"{'='*60}")
         
         # Update verifier config
-        self.verify_config.run_name = f"pass_at_k_round_{round_idx}_{today()}"
+        # self.verify_config.run_name = f"pass_at_k_round_{round_idx}_{today()}"
         self.verify_config.sample_id = round_idx
         
         verifier = Verifier(self.verify_config)
@@ -228,7 +254,7 @@ class PassAtKTester:
         # Prepare verification requests
         verify_requests = []
         op_names = []
-        
+        exist_newly_passed = set()
         for namespace, apis in remaining_operators.items():
             for api_name in apis.keys():
                 test_file = round_dir / f"test_accuracy_{namespace}::{api_name}.py"
@@ -236,14 +262,25 @@ class PassAtKTester:
                 if not test_file.exists():
                     logger.warning(f"Missing test file: {test_file}")
                     continue
-                
+                verify_result_path = Path(test_file).parent.parent / "verification" / f"log_{round_idx}" / f"test_report_{namespace}::{api_name}.json"
+                if verify_result_path.exists():
+                    logger.info(f"Skipping already verified test for {namespace}::{api_name}")
+                    # check previous result
+                    with open(verify_result_path, "r") as f:
+                        report = json.load(f)
+                    if all(item["success"] for item in report):
+                        logger.info(f"Test already passed for {namespace}::{api_name}")
+                        exist_newly_passed.add(f"{namespace}::{api_name}")
+                        self.passed_operators.add(f"{namespace}::{api_name}")
+                    continue
+
                 verify_req = self.create_verify_args(test_file, api_name, namespace)
                 verify_requests.append(verify_req)
                 op_names.append(f"{namespace}::{api_name}")
         
         if not verify_requests:
-            logger.info("No tests to verify")
-            return set()
+            logger.info("No tests to verify this time.")
+            return exist_newly_passed
         
         logger.info(f"Verifying {len(verify_requests)} tests...")
         
@@ -253,15 +290,13 @@ class PassAtKTester:
             device_count=self.device_count,
         )
         
-        # Collect newly passed operators and update first pass round
+        # Collect newly passed operators
         newly_passed = set()
         for result in results:
             if result.success:
                 newly_passed.add(result.op_name)
-                # Update operator details with first pass round
-                if result.op_name in self.generated_codes:
-                    # This will be used when saving results
-                    pass
+        
+        newly_passed.update(exist_newly_passed)
         
         logger.info(f"Passed: {len(newly_passed)}/{len(verify_requests)} tests")
         return newly_passed
@@ -269,7 +304,7 @@ class PassAtKTester:
     def run_pass_at_k(self, max_rounds: int = 10) -> None:
         """Run pass@k testing for multiple rounds."""
         logger.info(f"\n{'='*60}")
-        logger.info(f"Starting Pass@K Testing (max {max_rounds} rounds)")
+        logger.info(f"Starting Pass@{max_rounds} Testing")
         logger.info(f"{'='*60}\n")
         
         total_operators = sum(len(ops) for ops in self.all_operators.values())
@@ -385,6 +420,7 @@ def main():
     
     parser.add_argument("--name", type=str, default="all", help="Namespace to test (default: all)")
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
+    parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
     parser.add_argument("--test-type", type=str, default="accuracy", choices=["accuracy", "performance"])
     parser.add_argument("--max-rounds", type=int, default=10, help="Maximum number of rounds (default: 10)")
     parser.add_argument("--device-count", type=int, default=8, help="Number of devices for testing")
@@ -393,20 +429,27 @@ def main():
     # Generation config
     parser.add_argument("--server-type", type=str, default="panda")
     parser.add_argument("--model-name", type=str, default="gpt-4o-mini")
-    parser.add_argument("--temperature", type=float, default=0.0)
+    parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--max-tokens", type=int, default=16384)
     parser.add_argument("--num-workers", type=int, default=150)
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     
     args = parser.parse_args()
     
-    # Create output directory
-    run_name = f"pass_at_{args.max_rounds}_{args.model_name}_{args.test_type}_{today()}"
-    output_dir = args.output_dir / run_name
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Determine output directory and resume mode
+    if args.resume_from:
+        output_dir = args.resume_from
+        logger.info(f"Resuming from: {output_dir}")
+    else:
+        run_name = f"pass_at_{args.max_rounds}_{args.model_name}_{args.test_type}_{today()}"
+        output_dir = args.output_dir / run_name
+        output_dir.mkdir(parents=True, exist_ok=True)
+    
+    run_name = output_dir.name
     
     # Create generation config
     gen_config = GenerationConfig(
-        run_name=run_name,
+        run_name="",
         server_type=args.server_type,
         model_name=args.model_name,
         temperature=args.temperature,
@@ -420,7 +463,7 @@ def main():
     
     # Create verification config
     verify_config = VerifyConfig(
-        run_name=run_name,
+        run_name="",
         test_type=args.test_type,
         run_dir=str(output_dir / "verification"),
         store_type="local",
@@ -439,6 +482,7 @@ def main():
         gen_config=gen_config,
         verify_config=verify_config,
         device_count=args.device_count,
+        debug=args.debug,
     )
     
     tester.initialize_operators(args.name)
