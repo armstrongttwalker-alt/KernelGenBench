@@ -88,6 +88,9 @@ def default_converter(o):
         return o.model_dump()
     if isinstance(o, Callable):
         return o.__name__
+    if isinstance(o, complex):
+        return str(o)
+    
     raise TypeError(f"Object of type {type(o)} is not JSON serializable")
 
 from typing import List, Dict, Tuple
@@ -180,6 +183,22 @@ class Verifier:
         self._running_config = deepcopy(config)
 
     def _summary(self, result: List):
+        # check if result.json exists and load it
+        log_dir = os.path.join(
+            self._running_config.run_dir, 
+            self._running_config.run_name, 
+            f"log_{self._running_config.sample_id}"
+        )
+        if os.path.exists(os.path.join(log_dir, "result.json")):
+            with open(os.path.join(log_dir, "result.json"), "r") as f:
+                existing_result = json.load(f)
+                existing_result = [VerifyResult(**r) for r in existing_result]
+            # merge existing result with new result, avoid duplicate by op_name
+            existing_op_names = set(r.op_name for r in existing_result)
+            for r in result:
+                if r.op_name not in existing_op_names:
+                    existing_result.append(r)
+            result = existing_result
         summary = {
             "total": len(result),
             "passed": sum(1 for r in result if r.success is True),
@@ -192,12 +211,6 @@ class Verifier:
             "no_test_list": no_test_list, 
             "failed_name_list": [r.op_name for r in result if r.success is False]
         }
-        # save result and summary
-        log_dir = os.path.join(
-            self._running_config.run_dir, 
-            self._running_config.run_name, 
-            f"log_{self._running_config.sample_id}"
-        )
         os.makedirs(log_dir, exist_ok=True)
         with open(os.path.join(log_dir, "result.json"), "w") as f:
             json.dump(result, f, indent=2, default=default_converter)
