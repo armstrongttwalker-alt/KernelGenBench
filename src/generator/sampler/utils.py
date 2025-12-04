@@ -226,7 +226,7 @@ def query_server(
                 api_key=PANDA_API_KEY,
                 base_url="https://api.pandalla.ai/v1",
                 timeout=10000000,
-                max_retries=3,
+                max_retries=10,
             )
             model = model_name
 
