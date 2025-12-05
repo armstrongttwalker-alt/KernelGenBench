@@ -1,19 +1,21 @@
 import os
-
-os.environ["FLAGBENCH_UPCAST"] = "0"
-os.environ["FLAGBENCH_SKIP_BOTH_TEST"] = "1"
-
+os.environ["FLAGBENCH_USE_DYNAMIC_IMPL_INFO"] = "1"
 import argparse
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Set, List
+from typing import Dict, Set, List, Optional
 import sys
 from datetime import datetime
 
 from flagbench.dataset import TorchOpsLoader, APIInfo
+from flagbench.dataset import IMPL_INFO
 from sandbox.verifier import Verifier, VerifyConfig, VerifyRequest, Source
-from utils import today
+from utils import (
+    today, 
+    _placeholder, 
+    create_triton_generate_args
+)
 
 # Add project root to path
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -29,12 +31,17 @@ from generator.sampler.generate_samples import (
     GenerationConfig,
 )
 
+def check_args_validity(args):
+    assert args.test_type in ["accuracy", "performance", "triton"], "Invalid test type, must be one of accuracy, performance, triton."
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+mock_triton_code = "mock triton code"
 
 
 class PassAtKTester:
@@ -44,17 +51,26 @@ class PassAtKTester:
         test_type: str,
         gen_config: GenerationConfig,
         verify_config: VerifyConfig,
+        acc_test_func_path: str = "",
+        bench_test_func_path: str = "",
         device_count: int = 8,
         debug: bool = False,
+        reflection: bool = False,
     ):
         self.output_dir = output_dir
         self.test_type = test_type
         self.gen_config = gen_config
         self.verify_config = verify_config
+        self.acc_test_func_path = acc_test_func_path
+        self.bench_test_func_path = bench_test_func_path
         self.device_count = device_count
         self.operator_loader = TorchOpsLoader()
+        self.impl_info = IMPL_INFO
+        self.create_generate_args = _placeholder
+        self.create_verify_args = _placeholder
 
         self.debug = debug
+        self.reflection = reflection
         
         # Track results
         self.all_operators: Dict[str, Dict[str, APIInfo]] = {}
@@ -62,20 +78,50 @@ class PassAtKTester:
         self.results_by_round: List[Dict] = []
         self.generated_codes: Dict[str, Dict[int, str]] = {}  # {op_name: {round: code}}
         self.generation_summaries: List[Dict] = []  # Track generation summaries for each round
-        
+        self.verify_results: Dict[str, Dict[int, List[Dict]]] = {}  # {op_name: {round: [test_results]}}
+
+        self.setup()
+
+    def setup(self):
+        """Setup the os environment variables."""
+        os.environ["FLAGBENCH_UPCAST"] = "0"
+        if self.test_type in ["accuracy", "performance"]:
+            os.environ["DISPATCH_TORCH_LIB"] = "0"
+            os.environ["FLAGBENCH_SKIP_BOTH_TEST"] = "1"
+        if self.test_type == "triton":
+            self.create_verify_args = self.create_triton_kernel_verify_args
+            self.create_generate_args = create_triton_generate_args
+            from flagbench.dataset.kernel_list import PYTORCH_OPERATORS
+            self.operator_loader = {"aten": PYTORCH_OPERATORS}
+        elif self.test_type == "accuracy":
+            self.create_verify_args = self.create_acc_test_verify_args
+            self.create_generate_args = self.create_ut_generate_args
+        elif self.test_type == "performance":
+            raise NotImplementedError("Performance test type is not supported yet.")
+        else:
+            raise ValueError(f"Unsupported test type: {self.test_type}")
+
     def initialize_operators(self, namespace: str = "all") -> None:
         """Initialize the list of operators to test."""
-        if self.debug:
-            namespace = "aten"
-        if namespace.lower() == "all":
-            self.all_operators = self.operator_loader.load_all()
+        if not isinstance(self.operator_loader, dict):
+            if self.debug:
+                namespace = "aten"
+            if namespace.lower() == "all":
+                self.all_operators = self.operator_loader.load_all()
+            else:
+                self.all_operators = {namespace: self.operator_loader.load_namespace(namespace=namespace)}
+            # for debug, use a subset of operators
+            if self.debug:
+                self.all_operators = {ns: dict(list(apis.items())[:8]) for ns, apis in self.all_operators.items()}
+            total_ops = sum(len(ops) for ops in self.all_operators.values())
+            logger.info(f"Initialized {total_ops} operators across {len(self.all_operators)} namespaces")
         else:
-            self.all_operators = {namespace: self.operator_loader.load_namespace(namespace=namespace)}
-        # for debug, use a subset of operators
-        if self.debug:
-            self.all_operators = {ns: dict(list(apis.items())[:10]) for ns, apis in self.all_operators.items()}
-        total_ops = sum(len(ops) for ops in self.all_operators.values())
-        logger.info(f"Initialized {total_ops} operators across {len(self.all_operators)} namespaces")
+            if self.debug:
+                self.all_operators = {ns: dict(list(apis.items())[:8]) for ns, apis in self.operator_loader.items()}
+            else:
+                self.all_operators = self.operator_loader
+            total_ops = sum(len(ops) for ops in self.all_operators.values())
+            logger.info(f"Initialized {total_ops} operators from predefined list")
     
     def get_remaining_operators(self) -> Dict[str, Dict[str, APIInfo]]:
         """Get operators that haven't passed yet."""
@@ -83,31 +129,21 @@ class PassAtKTester:
         for namespace, apis in self.all_operators.items():
             remaining_apis = {}
             for api_name, api_info in apis.items():
-                full_name = f"{namespace}::{api_name}"
-                if full_name not in self.passed_operators:
+                full_name = f"{namespace}::{api_name.split('.')[-1]}" if namespace else api_name
+                if api_name.split('.')[-1] not in self.passed_operators:
                     remaining_apis[api_name] = api_info
             if remaining_apis:
                 remaining[namespace] = remaining_apis
         return remaining
     
-    def create_ut_generate_args(self, api_name: str, operators: APIInfo, namespace: str) -> TestFuncGenerateArgs:
+    def create_ut_generate_args(self, torch_op_name: str, torch_op_func_or_namespace: str, impl_info: APIInfo) -> TestFuncGenerateArgs:
         """Create test generation arguments."""
-        kernel_name = api_name.split('.')[-1]
+        kernel_name = torch_op_name.split('.')[-1]
         return TestFuncGenerateArgs(
             kernel_name=kernel_name,
-            operators=operators.schemas,
-            test_func_name=f"test_accuracy_{namespace}::{kernel_name}",
-            ops_namespace=namespace,
-        )
-    
-    def create_triton_generate_args(self, api_name: str, operators: APIInfo, namespace: str) -> TritonKernelGenerateArgs:
-        """Create test generation arguments."""
-        kernel_name = api_name.split('.')[-1]
-        return TritonKernelGenerateArgs(
-            kernel_name=kernel_name,
-            operators=operators.schemas,
-            test_func_name=f"test_accuracy_{namespace}::{kernel_name}",
-            ops_namespace=namespace,
+            operators=impl_info.schemas,
+            test_func_name=f"test_accuracy_{torch_op_func_or_namespace}::{kernel_name}",
+            ops_namespace=torch_op_func_or_namespace,
         )
     
     def store_generated_code(self, op_name: str, round_idx: int, code: str) -> None:
@@ -115,6 +151,18 @@ class PassAtKTester:
         if op_name not in self.generated_codes:
             self.generated_codes[op_name] = {}
         self.generated_codes[op_name][round_idx] = code
+    
+    def get_previous_verify_result(self, op_name: str, round_idx: int) -> Optional[List[Dict]]:
+        """Get verify result from previous round (from memory)."""
+        if op_name in self.verify_results and round_idx in self.verify_results[op_name]:
+            return self.verify_results[op_name][round_idx]
+        return None
+    
+    def store_verify_result(self, op_name: str, round_idx: int, test_results: List[Dict]) -> None:
+        """Store verify result to memory."""
+        if op_name not in self.verify_results:
+            self.verify_results[op_name] = {}
+        self.verify_results[op_name][round_idx] = test_results
 
     def generate_round(self, round_idx: int, remaining_operators: Dict[str, Dict[str, APIInfo]]) -> Path:
         """Generate tests for remaining operators in this round."""
@@ -123,6 +171,8 @@ class PassAtKTester:
         
         logger.info(f"\n{'='*60}")
         logger.info(f"Round {round_idx}: Generating tests")
+        if self.reflection and round_idx > 0:
+            logger.info(f"Reflection enabled: Using previous round's verify results as feedback")
         logger.info(f"{'='*60}")
         
         # Prepare generation arguments
@@ -130,16 +180,59 @@ class PassAtKTester:
         api_names = []
         for namespace, apis in remaining_operators.items():
             for api_name, api_info in apis.items():
-                if Path(round_dir / f"test_accuracy_{namespace}::{api_name}.py").exists():
-                    logger.info(f"Skipping already existing test for {namespace}::{api_name}")
-                    with open(round_dir / f"test_accuracy_{namespace}::{api_name}.py", "r") as f:
+                api_name = api_name.split('.')[-1]
+                if namespace:
+                    file_name = f"test_accuracy_{namespace}::{api_name}.py"
+                    full_name = f"{namespace}::{api_name}"
+                else:
+                    file_name = f"test_accuracy_{api_name.split('.')[-1]}.py"
+                    full_name = api_name
+                    
+                if Path(round_dir / file_name).exists():
+                    logger.info(f"Skipping already existing test for {full_name}")
+                    with open(round_dir / file_name, "r") as f:
                         code = f.read()
-                    self.store_generated_code(f"{namespace}::{api_name}", round_idx, code)
+                    self.store_generated_code(full_name, round_idx, code)
                     continue
-                gen_arg = self.create_ut_generate_args(api_name, api_info, namespace)
+                    
+                gen_arg = self.create_generate_args(
+                    torch_op_name=api_name,
+                    torch_op_func_or_namespace=namespace if namespace else "aten", 
+                    impl_info=self.impl_info.get(api_name.split('.')[-1])
+                )
                 gen_arg.sample_id = round_idx
+                
+                # Add reflection: use previous round's verify results as feedback
+                if self.reflection and round_idx > 0:
+                    prev_verify_result = self.get_previous_verify_result(full_name, round_idx - 1)
+                    if prev_verify_result:
+                        from sandbox.utils.accuracy_utils import VerifyResult
+                        # Extract failed test cases
+                        failed_cases = [item for item in prev_verify_result if not item.get("success", False)]
+                        if failed_cases:
+                            # Take first few failures to avoid context overflow
+                            sample_failures = failed_cases[:3]
+                            verify_result_obj = VerifyResult(
+                                op_name=full_name,
+                                success=False,
+                                traceback="\n\n".join([
+                                    f"Test case {i+1}:\nParams: {item.get('params', {})}\nError: {item.get('traceback', 'Unknown error')}"
+                                    for i, item in enumerate(sample_failures)
+                                ]),
+                                params=None,
+                                info={"total_failures": len(failed_cases), "total_tests": len(prev_verify_result)},
+                                code=self.generated_codes[full_name][round_idx - 1],
+                            )
+                            gen_arg.check_result = verify_result_obj
+                            gen_arg.old_code = self.generated_codes[full_name][round_idx - 1]
+                            logger.info(f"Added reflection for {full_name}: {len(failed_cases)} failures from round {round_idx - 1}")
+                
+                        # Load previous generated code if available
+                        if full_name in self.generated_codes and (round_idx - 1) in self.generated_codes[full_name]:
+                            gen_arg.old_code = self.generated_codes[full_name][round_idx - 1]
+                
                 gen_args.append(gen_arg)
-                api_names.append(f"{namespace}::{api_name}")
+                api_names.append(full_name)
         
         if not gen_args:
             logger.info("No operators to generate")
@@ -148,6 +241,7 @@ class PassAtKTester:
         logger.info(f"Generating {len(gen_args)} tests...")
         
         # Generate tests
+        self.gen_config.sample_id = round_idx
         generator = GENERATOR[self.test_type](self.gen_config)
         generated_codes = generator(gen_args)
         
@@ -168,7 +262,7 @@ class PassAtKTester:
             
             if generated_code and isinstance(generated_code, str) and len(generated_code.strip()) > 0:
                 try:
-                    test_file = round_dir / f"{name}.py"
+                    test_file = round_dir / f"{name.split('.')[-1]}.py"
                     with open(test_file, "w") as f:
                         f.write(generated_code)
                     
@@ -236,15 +330,30 @@ class PassAtKTester:
         
         return round_dir
     
-    def create_verify_args(self, kernel_path: Path, test_path: Path, op_name: str, namespace: str) -> VerifyRequest:
+    def create_triton_kernel_verify_args(self, kernel_path: Path, test_path: Path, op_name: str, namespace: str) -> VerifyRequest:
         """Create verification request."""
-        with open(test_path, "r") as f:
-            test_func = f.read()
+        test_func = None
+        if test_path.is_file() and test_path.exists():
+            with open(test_path, "r") as f:
+                test_func = f.read()
+        assert kernel_path.exists(), f"Kernel file does not exist: {kernel_path}"
         with open(kernel_path, "r") as f:
             kernel_code = f.read()
         return VerifyRequest(
             source=[Source(
                 source=kernel_code,
+                function_name=f"{namespace}::{op_name}" if namespace else op_name.split('.')[-1]
+            )],
+            test_func=[test_func] if test_func else None,
+        )
+    
+    def create_acc_test_verify_args(self, test_path: Path, op_name: str, namespace: str) -> VerifyRequest:
+        """Create verification request."""
+        with open(test_path, "r") as f:
+            test_func = f.read()
+        return VerifyRequest(
+            source=[Source(
+                source=mock_triton_code,
                 function_name=f"{namespace}::{op_name}"
             )],
             test_func=[test_func],
@@ -268,26 +377,46 @@ class PassAtKTester:
         exist_newly_passed = set()
         for namespace, apis in remaining_operators.items():
             for api_name in apis.keys():
-                test_file = round_dir / f"test_accuracy_{namespace}::{api_name}.py"
-                
-                if not test_file.exists():
-                    logger.warning(f"Missing test file: {test_file}")
+                full_name = f"{namespace}::{api_name.split('.')[-1]}" if namespace else api_name
+                kernel_file_name = f"{full_name}.py"
+                kernel_path = round_dir / kernel_file_name
+
+                if not kernel_path.exists():
+                    logger.warning(f"Missing kernel file: {kernel_path}")
                     continue
-                verify_result_path = Path(test_file).parent.parent / "verification" / f"log_{round_idx}" / f"test_report_{namespace}::{api_name}.json"
+
+                if self.test_type == "triton":
+                    test_file_path = Path("")
+                else:
+                    test_file_path = round_dir / f"test_accuracy_{full_name.split('.')[-1]}.py"
+                
+                if not test_file_path.exists() and self.test_type != "triton":
+                    logger.warning(f"Missing test file: {test_file_path}")
+                    continue
+                verify_result_path = Path(test_file_path).parent.parent / "verification" / f"log_{round_idx}" / f"test_report_{full_name.split('.')[-1]}.json"
                 if verify_result_path.exists():
-                    logger.info(f"Skipping already verified test for {namespace}::{api_name}")
+                    logger.info(f"Skipping already verified test for {full_name}")
                     # check previous result
                     with open(verify_result_path, "r") as f:
                         report = json.load(f)
+                    # Store verify result to memory
+                    result_json_file = verify_result_path.parent / "result.json"
+                    assert result_json_file.exists(), f"Result JSON file does not exist: {result_json_file}"
+                    self.store_verify_result(full_name, round_idx, report)
                     if all(item["success"] for item in report):
-                        logger.info(f"Test already passed for {namespace}::{api_name}")
-                        exist_newly_passed.add(f"{namespace}::{api_name}")
-                        self.passed_operators.add(f"{namespace}::{api_name}")
+                        logger.info(f"Test already passed for {full_name}")
+                        exist_newly_passed.add(f"{full_name}")
+                        self.passed_operators.add(f"{full_name}")
                     continue
 
-                verify_req = self.create_verify_args(kernel_path, test_file, api_name, namespace)
+                verify_req = self.create_triton_kernel_verify_args(
+                    kernel_path, 
+                    test_file_path, 
+                    api_name, 
+                    namespace
+                )
                 verify_requests.append(verify_req)
-                op_names.append(f"{namespace}::{api_name}")
+                op_names.append(f"{full_name}")
         
         if not verify_requests:
             logger.info("No tests to verify this time.")
@@ -301,9 +430,21 @@ class PassAtKTester:
             device_count=self.device_count,
         )
         
-        # Collect newly passed operators
+        # Collect newly passed operators and store verify results
         newly_passed = set()
-        for result in results:
+        for result, op_name in zip(results, op_names):
+            # Load and store the detailed test report from file
+            kernel_name = op_name.split("::")[-1]
+            verify_result_path = self.output_dir / "verification" / f"log_{round_idx}" / f"test_report_{kernel_name}.json"
+            if verify_result_path.exists():
+                try:
+                    with open(verify_result_path, "r") as f:
+                        test_report = json.load(f)
+                    self.store_verify_result(op_name, round_idx, test_report)
+                    logger.debug(f"Stored verify result for {op_name} round {round_idx}")
+                except Exception as e:
+                    logger.warning(f"Failed to load test report for {op_name}: {e}")
+            
             if result.success:
                 newly_passed.add(result.op_name)
         
@@ -430,9 +571,11 @@ def main():
     parser = argparse.ArgumentParser(description="Test Pass@K for operator generation")
     
     parser.add_argument("--name", type=str, default="all", help="Namespace to test (default: all)")
+    parser.add_argument("--acc-test-func-path", type=str, default="", help="Path to the accuracy test function directory")
+    parser.add_argument("--benchmark-func-path", type=str, default="", help="Path to the performance test function directory")
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
     parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
-    parser.add_argument("--test-type", type=str, default="accuracy", choices=["accuracy", "performance"])
+    parser.add_argument("--test-type", type=str, default="accuracy", choices=["accuracy", "performance", "triton"])
     parser.add_argument("--max-rounds", type=int, default=10, help="Maximum number of rounds (default: 10)")
     parser.add_argument("--device-count", type=int, default=8, help="Number of devices for testing")
     parser.add_argument("--timeout", type=int, default=300, help="Timeout for each test")
@@ -444,8 +587,11 @@ def main():
     parser.add_argument("--max-tokens", type=int, default=16384)
     parser.add_argument("--num-workers", type=int, default=150)
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    parser.add_argument("--reflection", action="store_true", help="Enable reflection: use previous round's verify results as feedback for next generation")
     
     args = parser.parse_args()
+
+    check_args_validity(args)
     
     # Determine output directory and resume mode
     if args.resume_from:
@@ -490,10 +636,13 @@ def main():
     tester = PassAtKTester(
         output_dir=output_dir,
         test_type=args.test_type,
+        acc_test_func_path=args.acc_test_func_path,
+        bench_test_func_path=args.benchmark_func_path,
         gen_config=gen_config,
         verify_config=verify_config,
         device_count=args.device_count,
         debug=args.debug,
+        reflection=args.reflection,
     )
     
     tester.initialize_operators(args.name)
