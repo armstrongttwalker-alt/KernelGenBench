@@ -97,6 +97,7 @@ def create_triton_generate_args(torch_op_name: str, torch_op_func: Callable | st
     if isinstance(torch_op_func, str):
         # check torch.ops has the attribute
         if hasattr(torch.ops, torch_op_func):
+            # torch_op_func actually is the namespace
             torch_op_name = f"{torch_op_func}::{torch_op_name}"
             torch_op_namespace = getattr(torch.ops, torch_op_func)
             torch_op_func = getattr(torch_op_namespace, kernel_name)
