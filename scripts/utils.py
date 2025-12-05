@@ -393,3 +393,42 @@ def get_function_signature_simple(func: Callable) -> tuple[List[InputArg], List[
     """
     sig_info = get_function_signature(func)
     return sig_info["input_args"], sig_info["output_args"]
+
+
+def query_operator_wiki(operator_name: str) -> str:
+    """Query DeepWiki for information about a given operator.
+
+    Args:
+        operator_name (str): The name of the operator to query.
+    Returns:
+        str: The information retrieved from DeepWiki about the operator.
+    """
+    import requests
+
+    DEEPWIKI_API_URL = "http://120.92.108.161/chat/completions/stream"
+    headers = {
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "repo_url": "https://github.com/triton/triton",
+        "type": "github",
+        "messages": [{
+            "role": "user",
+            "content": (
+                f"请仅返回一个 JSON 字符串，该字符串是一个列表，形如 "
+                f'[{{\"link\": \"算子文件路径\", \"code\": \"代码\"}}, ...]。'
+                f"每个对象必须包含 link（算子文件路径）和 code（算子代码，无省略、无额外注释）。"
+                f"总结果最多返回 5 条，优先返回 python 和 triton 算子，如果没有的话可以返回其他算子（比如 .h 文件）。"
+                f"不要返回任何解释、前后缀、Markdown 或自然语言。"
+                f"代码内容禁止包含行号、'第几行'、'36-63' 等描述，更不要出现额外括号或非 JSON 符号。"
+                f"相关任务要求是：用 triton 实现 {operator_name} 这个算子。"
+            ), 
+        }],
+        "provider": "openai",
+        "model": "gpt-4.1",
+        "language": "zh",
+    }
+    response = requests.post(DEEPWIKI_API_URL, headers=headers, json=payload)
+    response.raise_for_status()
+    data = response.json()
+    return data
