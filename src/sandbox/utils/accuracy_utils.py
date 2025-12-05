@@ -4,7 +4,7 @@ import itertools
 import torch
 from pydantic import BaseModel
 from typing import Callable, List, Optional, Union, Dict
-from flagbench.perfermance.attri_util import CustomBenchmarkResult
+
 
 import random
 import numpy as np
@@ -21,6 +21,12 @@ UPCAST = os.environ.get("FLAGBENCH_UPCAST", "1") == "1"
 fp64_is_supported = True
 
 import torch
+
+class CustomBenchmarkResult(BaseModel):
+    ref_time: float
+    res_time: float
+    speedup: float
+    params: Union[dict, str] = None
 
 class VerifyResult(BaseModel):
     op_name: str = None

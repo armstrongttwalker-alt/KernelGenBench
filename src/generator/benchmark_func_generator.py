@@ -98,7 +98,7 @@ class BenchmarkFuncGenerator(BaseGenerator):
 # @parametrize("dtype", [torch.float16, torch.float32, torch.bfloat16])
 # def add_benchmark(A_shape, B_shape, dtype):
 #     import torch.utils.benchmark as benchmark
-#     from bench.sandbox.test.perfermance.attri_util import CustomBenchmarkResult
+#     from sandbox.utils.accuracy_utils import CustomBenchmarkResult
 
 #     quantiles = [0.5, 0.2, 0.8]
 
