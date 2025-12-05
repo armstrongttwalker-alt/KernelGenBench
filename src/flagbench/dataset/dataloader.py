@@ -45,6 +45,8 @@ class TorchOpsLoader:
         return ops_dict
     
     def get_operator(self, namespace: str, op_name: str) -> APIInfo:
+        if namespace == "":
+            namespace = "aten"
         ns_data = self.load_namespace(namespace)
         assert op_name in ns_data, f"Operator {op_name} not found in namespace {namespace}"
         return ns_data[op_name]
