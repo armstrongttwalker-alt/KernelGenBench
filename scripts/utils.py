@@ -62,7 +62,7 @@ def get_torch_api_signature(torch_op_name: str, torch_op_func) -> Dict[str, Any]
     }
 
 
-def create_triton_generate_args(torch_op_name: str, torch_op_func: Callable | str, impl_info) -> TritonKernelGenerateArgs:
+def create_triton_generate_args(torch_op_name: str, torch_op_func_or_namespace: Callable | str, impl_info) -> TritonKernelGenerateArgs:
     """
     Create TritonKernelGenerateArgs for a given PyTorch operator.
     
@@ -78,14 +78,17 @@ def create_triton_generate_args(torch_op_name: str, torch_op_func: Callable | st
     kernel_name = torch_op_name.split('.')[-1]
     
     # Get signature information
-    if isinstance(torch_op_func, str):
+    if isinstance(torch_op_func_or_namespace, str) and len(torch_op_func_or_namespace) > 0:
         # check torch.ops has the attribute
-        if hasattr(torch.ops, torch_op_func):
+        if hasattr(torch.ops, torch_op_func_or_namespace):
             # torch_op_func actually is the namespace
-            torch_op_name = f"{torch_op_func}::{torch_op_name}"
-            torch_op_namespace = getattr(torch.ops, torch_op_func)
+            torch_op_name = f"{torch_op_func_or_namespace}::{kernel_name}"
+            torch_op_namespace = getattr(torch.ops, torch_op_func_or_namespace)
             torch_op_func = getattr(torch_op_namespace, kernel_name)
             torch_op_func_name = f"{torch_op_namespace.__name__}.{kernel_name}"
+    else:
+        torch_op_func = torch_op_func_or_namespace
+        torch_op_func_name = torch_op_name
     sig_info = get_torch_api_signature(torch_op_name, torch_op_func)
     
     # Create a simple torch kernel code snippet as reference
