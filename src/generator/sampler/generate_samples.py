@@ -177,7 +177,7 @@ def generate_sample_single(
     if config.log_prompt:
         prompt_path = os.path.join(
             run_dir,
-            "prompt",
+            f"prompt_{config.sample_id}",
             f"problem_{work.op_name}_sample_{config.sample_id}_prompt.txt",
         )
         os.makedirs(os.path.dirname(prompt_path), exist_ok=True)
@@ -227,7 +227,7 @@ def generate_sample_launcher(
         return generate_sample_single(work, config, inference_server, run_dir, check_result=check_result, **kwargs)
     except Exception as e:
         logger.error(f"Error generating sample {work.op_name} {config.sample_id}: {e}")
-        return None
+        return False, work, ""
 
 
 def check_kernel_exists(
