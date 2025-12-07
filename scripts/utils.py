@@ -428,7 +428,7 @@ def query_operator_wiki(operator_name: str) -> str:
         "model": "gpt-4.1",
         "language": "zh",
     }
-    response = requests.post(DEEPWIKI_API_URL, headers=headers, json=payload)
+    response = requests.post(DEEPWIKI_API_URL, headers=headers, json=payload, timeout=300)
     response.raise_for_status()
     data = response.json()
     return data
