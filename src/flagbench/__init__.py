@@ -61,6 +61,7 @@ accuracy_modules = [
     "flagbench.accuracy.test_special_ops",
     "flagbench.accuracy.test_tensor_constructor_ops",
     "flagbench.accuracy.test_unary_pointwise_ops",
+    "flagbench.accuracy.test_non_flaggems_ops",
 ]
 perf_modules = [
     "flagbench.perfermance.test_attention_perf",

@@ -656,15 +656,15 @@ BENCHMARK_OPERATORS = {
 # These operators are not in FlagGems but have test functions generated
 NON_FLAGGEMS_OPERATORS = {
     'torch.ops.aten.log_normal': torch.ops.aten.log_normal,
-    'torch.bernoulli': torch.bernoulli,
+    'torch.ops.aten.bernoulli': torch.ops.aten.bernoulli,
     'torch.ops.aten.unfold_backward': torch.ops.aten.unfold_backward,
     'torch.ops.aten.logit_backward': torch.ops.aten.logit_backward,
     'torch.ops.aten.convolution': torch.ops.aten.convolution,
-    'torch.linalg.cross': torch.linalg.cross,
-    'torch.nn.functional.avg_pool3d': torch.nn.functional.avg_pool3d,
-    'torch.round': torch.round,
-    'torch.baddbmm': torch.baddbmm,
-    'torch.addbmm': torch.addbmm,
+    'torch.ops.aten.linalg_cross': torch.ops.aten.linalg_cross,
+    'torch.ops.aten.avg_pool3d': torch.ops.aten.avg_pool3d,
+    'torch.ops.aten.round': torch.ops.aten.round,
+    'torch.ops.aten.baddbmm': torch.ops.aten.baddbmm,
+    'torch.ops.aten.addbmm': torch.ops.aten.addbmm,
 }
 
 if os.environ.get("FLAGBENCH_USE_DYNAMIC_IMPL_INFO", "0") == "1":
