@@ -4,7 +4,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Set, List, Optional
+from typing import Dict, Set, List, Optional, Any
 import sys
 from datetime import datetime
 
@@ -14,7 +14,8 @@ from sandbox.verifier import Verifier, VerifyConfig, VerifyRequest, Source
 from utils import (
     today, 
     _placeholder, 
-    create_triton_generate_args
+    create_triton_generate_args, 
+    query_operator_wiki
 )
 
 # Add project root to path
@@ -56,6 +57,7 @@ class PassAtKTester:
         device_count: int = 8,
         debug: bool = False,
         reflection: bool = False,
+        use_wiki: bool = False,
     ):
         self.output_dir = output_dir
         self.test_type = test_type
@@ -78,7 +80,11 @@ class PassAtKTester:
         self.results_by_round: List[Dict] = []
         self.generated_codes: Dict[str, Dict[int, str]] = {}  # {op_name: {round: code}}
         self.generation_summaries: List[Dict] = []  # Track generation summaries for each round
-        self.verify_results: Dict[str, Dict[int, List[Dict]]] = {}  # {op_name: {round: [test_results]}}
+        self.verify_results: Dict[str, Dict[int, Dict]] = {}  # {op_name: {round: [test_results]}}
+        
+        # Wiki cache for operator references
+        self.use_wiki = use_wiki
+        self.wiki_cache: Dict[str, Any] = {}  # {operator_name: wiki_info}
 
         self.setup()
 
@@ -152,17 +158,35 @@ class PassAtKTester:
             self.generated_codes[op_name] = {}
         self.generated_codes[op_name][round_idx] = code
     
-    def get_previous_verify_result(self, op_name: str, round_idx: int) -> Optional[List[Dict]]:
+    def get_previous_verify_result(self, op_name: str, round_idx: int) -> Optional[Dict]:
         """Get verify result from previous round (from memory)."""
         if op_name in self.verify_results and round_idx in self.verify_results[op_name]:
             return self.verify_results[op_name][round_idx]
         return None
     
-    def store_verify_result(self, op_name: str, round_idx: int, test_results: List[Dict]) -> None:
+    def store_verify_result(self, op_name: str, round_idx: int, test_results: Dict) -> None:
         """Store verify result to memory."""
         if op_name not in self.verify_results:
             self.verify_results[op_name] = {}
         self.verify_results[op_name][round_idx] = test_results
+    
+    def query_wiki_with_cache(self, operator_name: str) -> Optional[Any]:
+        """Query Wiki for operator reference with caching.
+        
+        Args:
+            operator_name: The name of the operator to query.
+        Returns:
+            Wiki information or None if query fails.
+        """
+        if operator_name not in self.wiki_cache:
+            try:
+                wiki_info = query_operator_wiki(operator_name)
+                self.wiki_cache[operator_name] = wiki_info
+                logger.info(f"Queried Wiki for operator: {operator_name}")
+            except Exception as e:
+                logger.warning(f"Failed to query Wiki for {operator_name}: {e}")
+                self.wiki_cache[operator_name] = None
+        return self.wiki_cache[operator_name]
 
     def generate_round(self, round_idx: int, remaining_operators: Dict[str, Dict[str, APIInfo]]) -> Path:
         """Generate tests for remaining operators in this round."""
@@ -202,29 +226,29 @@ class PassAtKTester:
                 )
                 gen_arg.sample_id = round_idx
                 
+                # Query Wiki for reference implementations
+                kernel_name = api_name.split('.')[-1]
+                
+                if self.use_wiki:
+                    wiki_info = self.query_wiki_with_cache(kernel_name)
+                    gen_arg.wiki_reference = wiki_info
+                
                 # Add reflection: use previous round's verify results as feedback
                 if self.reflection and round_idx > 0:
                     prev_verify_result = self.get_previous_verify_result(full_name, round_idx - 1)
                     if prev_verify_result:
                         from sandbox.utils.accuracy_utils import VerifyResult
                         # Extract failed test cases
-                        failed_cases = [item for item in prev_verify_result if not item.get("success", False)]
+                        failed_cases = prev_verify_result
                         if failed_cases:
                             # Take first few failures to avoid context overflow
-                            sample_failures = failed_cases[:3]
+                            sample_failures = failed_cases
                             verify_result_obj = VerifyResult(
-                                op_name=full_name,
-                                success=False,
-                                traceback="\n\n".join([
-                                    f"Test case {i+1}:\nParams: {item.get('params', {})}\nError: {item.get('traceback', 'Unknown error')}"
-                                    for i, item in enumerate(sample_failures)
-                                ]),
-                                params=None,
-                                info={"total_failures": len(failed_cases), "total_tests": len(prev_verify_result)},
-                                code=self.generated_codes[full_name][round_idx - 1],
+                                **sample_failures
                             )
                             gen_arg.check_result = verify_result_obj
                             gen_arg.old_code = self.generated_codes[full_name][round_idx - 1]
+                            assert gen_arg.check_result.code == gen_arg.old_code, "Mismatch between stored code and verify result code"
                             logger.info(f"Added reflection for {full_name}: {len(failed_cases)} failures from round {round_idx - 1}")
                 
                         # Load previous generated code if available
@@ -393,17 +417,20 @@ class PassAtKTester:
                 if not test_file_path.exists() and self.test_type != "triton":
                     logger.warning(f"Missing test file: {test_file_path}")
                     continue
-                verify_result_path = Path(test_file_path).parent.parent / "verification" / f"log_{round_idx}" / f"test_report_{full_name.split('.')[-1]}.json"
+                # verify_result_path = Path(test_file_path).parent.parent / "verification" / f"log_{round_idx}" / f"test_report_{full_name.split('.')[-1]}.json"
+                verify_result_path = Path(test_file_path).parent.parent / "verification" / f"log_{round_idx}" / "result.json"
                 if verify_result_path.exists():
                     logger.info(f"Skipping already verified test for {full_name}")
                     # check previous result
                     with open(verify_result_path, "r") as f:
-                        report = json.load(f)
+                        reports = json.load(f)
                     # Store verify result to memory
-                    result_json_file = verify_result_path.parent / "result.json"
-                    assert result_json_file.exists(), f"Result JSON file does not exist: {result_json_file}"
-                    self.store_verify_result(full_name, round_idx, report)
-                    if all(item["success"] for item in report):
+                    current_report = {}
+                    for report in reports:
+                        if report["op_name"] == full_name.split("::")[-1]:
+                            current_report = report
+                            self.store_verify_result(full_name, round_idx, current_report)
+                    if current_report.get("success", False):
                         logger.info(f"Test already passed for {full_name}")
                         exist_newly_passed.add(f"{full_name}")
                         self.passed_operators.add(f"{full_name}")
@@ -435,12 +462,17 @@ class PassAtKTester:
         for result, op_name in zip(results, op_names):
             # Load and store the detailed test report from file
             kernel_name = op_name.split("::")[-1]
-            verify_result_path = self.output_dir / "verification" / f"log_{round_idx}" / f"test_report_{kernel_name}.json"
+            # verify_result_path = self.output_dir / "verification" / f"log_{round_idx}" / f"test_report_{kernel_name}.json"
+            verify_result_path = self.output_dir / "verification" / f"log_{round_idx}" / "result.json"
             if verify_result_path.exists():
                 try:
                     with open(verify_result_path, "r") as f:
-                        test_report = json.load(f)
-                    self.store_verify_result(op_name, round_idx, test_report)
+                        test_reports = json.load(f)
+                    current_report = {}
+                    for report in test_reports:
+                        if report["op_name"] == op_name.split("::")[-1]:
+                            current_report = report
+                    self.store_verify_result(op_name, round_idx, current_report)
                     logger.debug(f"Stored verify result for {op_name} round {round_idx}")
                 except Exception as e:
                     logger.warning(f"Failed to load test report for {op_name}: {e}")
@@ -588,7 +620,8 @@ def main():
     parser.add_argument("--num-workers", type=int, default=150)
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument("--reflection", action="store_true", help="Enable reflection: use previous round's verify results as feedback for next generation")
-    
+    parser.add_argument("--use-wiki", action="store_true", help="Use Wiki references for generation")
+
     args = parser.parse_args()
 
     check_args_validity(args)
@@ -598,10 +631,27 @@ def main():
         output_dir = args.resume_from
         logger.info(f"Resuming from: {output_dir}")
     else:
-        run_name = f"pass_at_{args.max_rounds}_{args.model_name}_{args.test_type}_{today()}"
+        postfix = ""
+        if args.debug:
+            postfix += "_debug"
+        if args.reflection:
+            postfix += "_reflection"
+        if args.use_wiki:
+            postfix += "_wiki"
+        run_name = f"pass_at_{args.max_rounds}_{args.model_name}_{args.test_type}{postfix}_{today()}"
         output_dir = args.output_dir / run_name
         output_dir.mkdir(parents=True, exist_ok=True)
     
+    # save args to output dir
+    args_file = output_dir / "args.json"
+    with open(args_file, "w") as f:
+        args_dict = vars(args).copy()
+        # Convert Path objects to strings for JSON serialization
+        for key, value in args_dict.items():
+            if isinstance(value, Path):
+                args_dict[key] = str(value)
+        json.dump(args_dict, f, indent=2)
+
     run_name = output_dir.name
     
     # Create generation config
@@ -643,6 +693,7 @@ def main():
         device_count=args.device_count,
         debug=args.debug,
         reflection=args.reflection,
+        use_wiki=args.use_wiki,
     )
     
     tester.initialize_operators(args.name)
