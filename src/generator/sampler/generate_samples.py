@@ -96,6 +96,7 @@ class BaseGenerateArgs(BaseModel):
     check_result: Optional[VerifyResult | None] = None
     old_code: Optional[str] = None
     sample_id: int = 0
+    wiki_reference: Optional[Any] = None
 
     @property
     def op_name(self):
