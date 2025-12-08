@@ -48,8 +48,20 @@ class TorchOpsLoader:
         if namespace == "":
             namespace = "aten"
         ns_data = self.load_namespace(namespace)
-        assert op_name in ns_data, f"Operator {op_name} not found in namespace {namespace}"
-        return ns_data[op_name]
+        # assert op_name in ns_data, f"Operator {op_name} not found in namespace {namespace}"
+        if op_name in ns_data:
+            return ns_data[op_name]
+        if hasattr(torch.ops.__getattr__(namespace), op_name):
+            op = getattr(torch.ops.__getattr__(namespace), op_name)
+            info = APIInfo(
+                api=op.__module__ + "." + op.__name__, 
+                schemas=op._schemas, 
+                namespace=namespace, 
+                to_str=self.to_str
+            )
+            self._cache[namespace][op_name] = info
+            return info
+        raise KeyError(f"Operator {op_name} not found in namespace {namespace}")
     
     def list_namespaces(self) -> List[str]:
         return [ns for ns in dir(torch.ops) if isinstance(getattr(torch.ops, ns), _OpNamespace)]
