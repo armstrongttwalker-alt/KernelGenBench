@@ -652,6 +652,21 @@ BENCHMARK_OPERATORS = {
     'torch.zeros_like': torch.zeros_like,
 }
 
+# Non-FlagGems operators: 10 operators from log_9 result.json
+# These operators are not in FlagGems but have test functions generated
+NON_FLAGGEMS_OPERATORS = {
+    'torch.ops.aten.log_normal': torch.ops.aten.log_normal,
+    'torch.bernoulli': torch.bernoulli,
+    'torch.ops.aten.unfold_backward': torch.ops.aten.unfold_backward,
+    'torch.ops.aten.logit_backward': torch.ops.aten.logit_backward,
+    'torch.ops.aten.convolution': torch.ops.aten.convolution,
+    'torch.linalg.cross': torch.linalg.cross,
+    'torch.nn.functional.avg_pool3d': torch.nn.functional.avg_pool3d,
+    'torch.round': torch.round,
+    'torch.baddbmm': torch.baddbmm,
+    'torch.addbmm': torch.addbmm,
+}
+
 if os.environ.get("FLAGBENCH_USE_DYNAMIC_IMPL_INFO", "0") == "1":
     dynamic_impl_info = DynamicImplInfo()
     IMPL_INFO = dynamic_impl_info
