@@ -4,7 +4,8 @@ os.environ["FLAGBENCH_UPCAST"] = "0"
 
 import argparse
 from sandbox.verifier import Verifier, VerifyConfig, VerifyRequest, Source
-from flagbench import PYTORCH_OPERATORS
+# from flagbench import PYTORCH_OPERATORS
+from flagbench.dataset.kernel_list import NON_FLAGGEMS_OPERATORS as PYTORCH_OPERATORS
 
 mock_triton_code = "mock triton code"
 
