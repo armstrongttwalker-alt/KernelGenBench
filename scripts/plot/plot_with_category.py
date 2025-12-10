@@ -558,7 +558,7 @@ def main():
     # Find categories file
     if args.categories:
         categories_path = Path(args.categories).resolve()
-        categories_type = 'custom'
+        categories_type = categories_path.stem
     else:
         # Use categories-type to determine which file to use
         script_dir = Path(__file__).parent
