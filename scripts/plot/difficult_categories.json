@@ -1,0 +1,59 @@
+{
+  "total_categories": 23,
+  "total_ops": 1065,
+  "total_unique_ops": 931,
+  "categories": {
+    "level1": {
+      "count": 29,
+      "count_unique": 29,
+      "ops": [
+        "arange",
+        "bitwise_and",
+        "bitwise_or", 
+        "diag",
+        "div",
+        "eq",
+        "fill",
+        "floor_divide",
+        "ge",
+        "gt",
+        "embedding",
+        "full",
+        "kron",
+        "rand",
+        "bitwise_not",
+        "full_like",
+        "index_add",
+        "isinf",
+        "relu",
+        "resolve_conj",
+        "abs",
+        "mean",
+        "ones",
+        "allclose",
+        "count_nonzero",
+        "vdot",
+        "zeros_like",
+        "any",
+        "isnan"
+      ]
+    }, 
+    "level2": {
+        "count": 11,
+        "count_unique": 11,
+        "ops": [
+            "all",
+            "amax",
+            "argmax",
+            "argmin",
+            "cos",
+            "diag_embed",
+            "gather",
+            "isfinite",
+            "mul",
+            "scaled_dot_product_attention",
+            "tanh"
+        ]
+    }
+  }
+}
