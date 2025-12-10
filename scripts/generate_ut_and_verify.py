@@ -23,6 +23,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from generator import GENERATOR
 from generator.sampler.generate_samples import (
+    TritonKernelGenerateArgs,
     TestFuncGenerateArgs,
     BenchmarkFuncGenerateArgs,
     GenerationConfig,
@@ -95,6 +96,16 @@ class PassAtKTester:
         """Create test generation arguments."""
         kernel_name = api_name.split('.')[-1]
         return TestFuncGenerateArgs(
+            kernel_name=kernel_name,
+            operators=operators.schemas,
+            test_func_name=f"test_accuracy_{namespace}::{kernel_name}",
+            ops_namespace=namespace,
+        )
+    
+    def create_triton_generate_args(self, api_name: str, operators: APIInfo, namespace: str) -> TritonKernelGenerateArgs:
+        """Create test generation arguments."""
+        kernel_name = api_name.split('.')[-1]
+        return TritonKernelGenerateArgs(
             kernel_name=kernel_name,
             operators=operators.schemas,
             test_func_name=f"test_accuracy_{namespace}::{kernel_name}",
@@ -227,7 +238,7 @@ class PassAtKTester:
         
         return round_dir
     
-    def create_verify_args(self, test_path: Path, op_name: str, namespace: str) -> VerifyRequest:
+    def create_acc_test_verify_args(self, test_path: Path, op_name: str, namespace: str) -> VerifyRequest:
         """Create verification request."""
         with open(test_path, "r") as f:
             test_func = f.read()
@@ -257,12 +268,12 @@ class PassAtKTester:
         exist_newly_passed = set()
         for namespace, apis in remaining_operators.items():
             for api_name in apis.keys():
-                test_file = round_dir / f"test_accuracy_{namespace}::{api_name}.py"
+                test_file_path = round_dir / f"test_accuracy_{namespace}::{api_name}.py"
                 
-                if not test_file.exists():
-                    logger.warning(f"Missing test file: {test_file}")
+                if not test_file_path.exists():
+                    logger.warning(f"Missing test file: {test_file_path}")
                     continue
-                verify_result_path = Path(test_file).parent.parent / "verification" / f"log_{round_idx}" / f"test_report_{namespace}::{api_name}.json"
+                verify_result_path = Path(test_file_path).parent.parent / "verification" / f"log_{round_idx}" / f"test_report_{namespace}::{api_name}.json"
                 if verify_result_path.exists():
                     logger.info(f"Skipping already verified test for {namespace}::{api_name}")
                     # check previous result
@@ -274,7 +285,7 @@ class PassAtKTester:
                         self.passed_operators.add(f"{namespace}::{api_name}")
                     continue
 
-                verify_req = self.create_verify_args(test_file, api_name, namespace)
+                verify_req = self.create_acc_test_verify_args(test_file_path, api_name, namespace)
                 verify_requests.append(verify_req)
                 op_names.append(f"{namespace}::{api_name}")
         
