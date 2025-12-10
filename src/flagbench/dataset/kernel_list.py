@@ -664,8 +664,70 @@ NON_FLAGGEMS_OPERATORS = {
     'torch.ops.aten.addbmm': torch.ops.aten.addbmm,
 }
 
+# V2 operators: 50 operators from sampled_from_passed_ops.json
+# These operators have test functions generated and extracted to test_v2_ops.py
+V2_OPERATORS = {
+    # Backward operators
+    'torch.ops.aten.log_sigmoid_backward': torch.ops.aten.log_sigmoid_backward,
+    'torch.ops.aten.mish_backward': torch.ops.aten.mish_backward,
+    'torch.ops.aten.reflection_pad1d_backward': torch.ops.aten.reflection_pad1d_backward,
+    'torch.ops.aten.rrelu_with_noise_backward': torch.ops.aten.rrelu_with_noise_backward,
+    'torch.ops.aten.select_backward': torch.ops.aten.select_backward,
+    'torch.ops.aten.smooth_l1_loss_backward': torch.ops.aten.smooth_l1_loss_backward,
+    'torch.ops.aten.softplus_backward': torch.ops.aten.softplus_backward,
+    'torch.ops.aten.upsample_nearest2d_backward': torch.ops.aten.upsample_nearest2d_backward,
+    # Activation functions
+    'torch.ops.aten.erfc': torch.ops.aten.erfc,
+    'torch.ops.aten.hardsigmoid': torch.ops.aten.hardsigmoid,
+    'torch.ops.aten.heaviside': torch.ops.aten.heaviside,
+    'torch.ops.aten.log10': torch.ops.aten.log10,
+    'torch.ops.aten.logit': torch.ops.aten.logit,
+    'torch.ops.aten.mish': torch.ops.aten.mish,
+    'torch.ops.aten.prelu': torch.ops.aten.prelu,
+    'torch.ops.aten.rrelu_with_noise': torch.ops.aten.rrelu_with_noise,
+    'torch.ops.aten.square': torch.ops.aten.square,
+    # Tensor creation and manipulation
+    'torch.ops.aten.affine_grid_generator': torch.ops.aten.affine_grid_generator,
+    'torch.ops.aten.bernoulli': torch.ops.aten.bernoulli,
+    'torch.ops.aten.empty_strided': torch.ops.aten.empty_strided,
+    'torch.ops.aten.new_empty_strided': torch.ops.aten.new_empty_strided,
+    'torch.ops.aten.new_ones': torch.ops.aten.new_ones,
+    'torch.ops.aten.poisson': torch.ops.aten.poisson,
+    'torch.ops.aten.scalar_tensor': torch.ops.aten.scalar_tensor,
+    # Math operations
+    'torch.ops.aten.acosh': torch.ops.aten.acosh,
+    'torch.ops.aten.asin': torch.ops.aten.asin,
+    'torch.ops.aten.cosh': torch.ops.aten.cosh,
+    'torch.ops.aten.floor': torch.ops.aten.floor,
+    'torch.ops.aten.i0': torch.ops.aten.i0,
+    'torch.ops.aten.polygamma': torch.ops.aten.polygamma,
+    'torch.ops.aten.rsub': torch.ops.aten.rsub,
+    'torch.ops.aten.sgn': torch.ops.aten.sgn,
+    'torch.ops.aten.special_entr': torch.ops.aten.special_entr,
+    # Reduction and comparison operations
+    'torch.ops.aten.amin': torch.ops.aten.amin,
+    'torch.ops.aten.binary_cross_entropy_with_logits': torch.ops.aten.binary_cross_entropy_with_logits,
+    'torch.ops.aten.fmax': torch.ops.aten.fmax,
+    'torch.ops.aten.huber_loss': torch.ops.aten.huber_loss,
+    'torch.ops.aten.logaddexp2': torch.ops.aten.logaddexp2,
+    'torch.ops.aten.margin_ranking_loss': torch.ops.aten.margin_ranking_loss,
+    'torch.ops.aten.pairwise_distance': torch.ops.aten.pairwise_distance,
+    'torch.ops.aten.renorm': torch.ops.aten.renorm,
+    'torch.ops.aten.soft_margin_loss': torch.ops.aten.soft_margin_loss,
+    # Tensor shape operations
+    'torch.ops.aten.as_strided': torch.ops.aten.as_strided,
+    'torch.ops.aten.im2col': torch.ops.aten.im2col,
+    'torch.ops.aten.reshape': torch.ops.aten.reshape,
+    'torch.ops.aten.rot90': torch.ops.aten.rot90,
+    'torch.ops.aten.t': torch.ops.aten.t,
+    'torch.ops.aten.unsafe_split': torch.ops.aten.unsafe_split,
+    'torch.ops.aten.unsafe_split_with_sizes': torch.ops.aten.unsafe_split_with_sizes,
+    'torch.ops.aten.unsqueeze': torch.ops.aten.unsqueeze,
+}
 
-PYTORCH_OPERATORS = BENCHMARK_OPERATORS
+
+# PYTORCH_OPERATORS = BENCHMARK_OPERATORS
+PYTORCH_OPERATORS = V2_OPERATORS
 
 op_name_list = list(PYTORCH_OPERATORS.keys())
 
