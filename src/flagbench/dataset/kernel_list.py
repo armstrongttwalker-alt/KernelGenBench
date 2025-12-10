@@ -602,9 +602,6 @@ BENCHMARK_OPERATORS = {
     'torch.zeros_like': torch.zeros_like,
 }
 
-PYTORCH_OPERATORS = BENCHMARK_OPERATORS
-
-op_name_list = list(PYTORCH_OPERATORS.keys())
 
 # Selected 40 operators for benchmark library
 # These operators are selected based on correctness test results from gpt-5.1 evaluation
@@ -666,6 +663,11 @@ NON_FLAGGEMS_OPERATORS = {
     'torch.ops.aten.baddbmm': torch.ops.aten.baddbmm,
     'torch.ops.aten.addbmm': torch.ops.aten.addbmm,
 }
+
+
+PYTORCH_OPERATORS = BENCHMARK_OPERATORS
+
+op_name_list = list(PYTORCH_OPERATORS.keys())
 
 if os.environ.get("FLAGBENCH_USE_DYNAMIC_IMPL_INFO", "0") == "1":
     dynamic_impl_info = DynamicImplInfo()
