@@ -1,0 +1,73 @@
+{
+  "total_categories": 2,
+  "total_ops": 50,
+  "total_unique_ops": 50,
+  "description": {
+    "level1": "Operators that passed in at least one evaluation round (pass@k success)",
+    "level2": "Operators that failed in all evaluation rounds (pass@k failure)"
+  },
+  "categories": {
+    "level1": {
+      "count": 22,
+      "count_unique": 22,
+      "ops": [
+        "amin",
+        "as_strided",
+        "hardsigmoid",
+        "heaviside",
+        "huber_loss",
+        "i0",
+        "im2col",
+        "logaddexp2",
+        "logit",
+        "margin_ranking_loss",
+        "new_empty_strided",
+        "new_ones",
+        "prelu",
+        "reshape",
+        "rrelu_with_noise_backward",
+        "scalar_tensor",
+        "select_backward",
+        "sgn",
+        "soft_margin_loss",
+        "square",
+        "t",
+        "unsqueeze"
+      ]
+    },
+    "level2": {
+      "count": 28,
+      "count_unique": 28,
+      "ops": [
+        "acosh",
+        "affine_grid_generator",
+        "asin",
+        "bernoulli",
+        "binary_cross_entropy_with_logits",
+        "cosh",
+        "empty_strided",
+        "erfc",
+        "floor",
+        "fmax",
+        "log10",
+        "log_sigmoid_backward",
+        "mish",
+        "mish_backward",
+        "pairwise_distance",
+        "poisson",
+        "polygamma",
+        "reflection_pad1d_backward",
+        "renorm",
+        "rot90",
+        "rrelu_with_noise",
+        "rsub",
+        "smooth_l1_loss_backward",
+        "softplus_backward",
+        "special_entr",
+        "unsafe_split",
+        "unsafe_split_with_sizes",
+        "upsample_nearest2d_backward"
+      ]
+    }
+  }
+}
