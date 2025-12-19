@@ -559,54 +559,7 @@ PYTORCH_OPERATORS = {
 # Selected 40 operators for benchmark library
 # These operators are selected based on correctness test results from gpt-5.1 evaluation
 # and have corresponding performance tests
-BENCHMARK_OPERATORS = {
-    'torch.abs': torch.abs,
-    'torch.all': torch.all,
-    'torch.allclose': torch.allclose,
-    'torch.amax': torch.amax,
-    'torch.any': torch.any,
-    'torch.arange': torch.arange,
-    'torch.argmax': torch.argmax,
-    'torch.argmin': torch.argmin,
-    'torch.bitwise_and': torch.bitwise_and,
-    'torch.bitwise_not': torch.bitwise_not,
-    'torch.bitwise_or': torch.bitwise_or,
-    'torch.cos': torch.cos,
-    'torch.count_nonzero': torch.count_nonzero,
-    'torch.diag': torch.diag,
-    'torch.diag_embed': torch.diag_embed,
-    'torch.div': torch.div,
-    'torch.embedding': torch.embedding,
-    'torch.eq': torch.eq,
-    'torch.fill': torch.fill,
-    'torch.floor_divide': torch.floor_divide,
-    'torch.full': torch.full,
-    'torch.full_like': torch.full_like,
-    'torch.gather': torch.gather,
-    'torch.ge': torch.ge,
-    'torch.gt': torch.gt,
-    'torch.index_add': torch.index_add,
-    'torch.isfinite': torch.isfinite,
-    'torch.isinf': torch.isinf,
-    'torch.isnan': torch.isnan,
-    'torch.kron': torch.kron,
-    'torch.mean': torch.mean,
-    'torch.mul': torch.mul,
-    'torch.nn.functional.scaled_dot_product_attention': torch.nn.functional.scaled_dot_product_attention,
-    'torch.ones': torch.ones,
-    'torch.rand': torch.rand,
-    'torch.relu': torch.relu,
-    'torch.resolve_conj': torch.resolve_conj,
-    'torch.tanh': torch.tanh,
-    'torch.vdot': torch.vdot,
-    'torch.zeros_like': torch.zeros_like,
-}
-
-
-# Selected 40 operators for benchmark library
-# These operators are selected based on correctness test results from gpt-5.1 evaluation
-# and have corresponding performance tests
-BENCHMARK_OPERATORS = {
+V1_OPERATORS = {
     'torch.abs': torch.abs,
     'torch.all': torch.all,
     'torch.allclose': torch.allclose,
@@ -727,15 +680,14 @@ V2_OPERATORS = {
 
 
 # PYTORCH_OPERATORS = BENCHMARK_OPERATORS
-PYTORCH_OPERATORS = V2_OPERATORS
-
-op_name_list = list(PYTORCH_OPERATORS.keys())
+# PYTORCH_OPERATORS = V2_OPERATORS
 
 if os.environ.get("FLAGBENCH_USE_DYNAMIC_IMPL_INFO", "0") == "1":
     dynamic_impl_info = DynamicImplInfo()
     IMPL_INFO = dynamic_impl_info
     
 if __name__ == "__main__":
+    op_name_list = list(PYTORCH_OPERATORS.keys())
     dynamic_impl_info = DynamicImplInfo()
     namespace = "aten"
     for op_name in op_name_list:
