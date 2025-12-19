@@ -54,6 +54,7 @@ class PassAtKTester:
         verify_config: VerifyConfig,
         acc_test_func_path: str = "",
         bench_test_func_path: str = "",
+        dataset: str = "v2",
         device_count: int = 8,
         debug: bool = False,
         reflection: bool = False,
@@ -65,6 +66,7 @@ class PassAtKTester:
         self.verify_config = verify_config
         self.acc_test_func_path = acc_test_func_path
         self.bench_test_func_path = bench_test_func_path
+        self.dataset = dataset
         self.device_count = device_count
         self.operator_loader = TorchOpsLoader()
         self.impl_info = IMPL_INFO
@@ -97,8 +99,18 @@ class PassAtKTester:
         if self.test_type == "triton":
             self.create_verify_args = self.create_triton_kernel_verify_args
             self.create_generate_args = create_triton_generate_args
-            from flagbench.dataset.kernel_list import PYTORCH_OPERATORS
-            self.operator_loader = {"aten": PYTORCH_OPERATORS}
+            match self.dataset:
+                case "gems":
+                    from flagbench.dataset import PYTORCH_OPERATORS
+                    self.operator_loader = {"aten": PYTORCH_OPERATORS}
+                case "v1":
+                    from flagbench.dataset import V1_OPERATORS
+                    self.operator_loader = {"aten": V1_OPERATORS}
+                case "v2":
+                    from flagbench.dataset import V2_OPERATORS
+                    self.operator_loader = {"aten": V2_OPERATORS}
+                case _:
+                    raise ValueError(f"Unsupported dataset: {self.dataset}")
         elif self.test_type == "accuracy":
             self.create_verify_args = self.create_acc_test_verify_args
             self.create_generate_args = self.create_ut_generate_args
@@ -203,8 +215,8 @@ class PassAtKTester:
         gen_args = []
         api_names = []
         for namespace, apis in remaining_operators.items():
-            for api_name, api_info in apis.items():
-                api_name = api_name.split('.')[-1]
+            for total_api_name, api_info in apis.items():
+                api_name = total_api_name.split('.')[-1]
                 if namespace:
                     file_name = f"test_accuracy_{namespace}::{api_name}.py"
                     full_name = f"{namespace}::{api_name}"
@@ -220,8 +232,9 @@ class PassAtKTester:
                     continue
                     
                 gen_arg = self.create_generate_args(
-                    torch_op_name=api_name,
-                    torch_op_func_or_namespace=namespace if namespace else "aten", 
+                    torch_op_name=total_api_name,
+                    # torch_op_func_or_namespace=namespace if namespace else "aten", 
+                    torch_op_func_or_namespace=api_info, 
                     impl_info=self.impl_info.get(api_name.split('.')[-1])
                 )
                 gen_arg.sample_id = round_idx
@@ -605,6 +618,7 @@ def main():
     parser.add_argument("--name", type=str, default="aten", help="Namespace to test (default: aten)")
     parser.add_argument("--acc-test-func-path", type=str, default="", help="Path to the accuracy test function directory")
     parser.add_argument("--benchmark-func-path", type=str, default="", help="Path to the performance test function directory")
+    parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["gems", "v1", "v2"])
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
     parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
     parser.add_argument("--test-type", type=str, default="accuracy", choices=["accuracy", "performance", "triton"])
@@ -688,6 +702,7 @@ def main():
         test_type=args.test_type,
         acc_test_func_path=args.acc_test_func_path,
         bench_test_func_path=args.benchmark_func_path,
+        dataset=args.dataset,
         gen_config=gen_config,
         verify_config=verify_config,
         device_count=args.device_count,
