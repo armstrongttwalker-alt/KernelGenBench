@@ -41,9 +41,9 @@ def get_torch_api_signature(torch_op_name: str, torch_op_func) -> Dict[str, Any]
     func_desc = f"PyTorch operator: {torch_op_name}"
     if hasattr(torch_op_func, '__doc__') and torch_op_func.__doc__:
         # Extract first line of docstring as description
-        doc_lines = torch_op_func.__doc__.strip().split('\n')
+        doc_lines = torch_op_func.__doc__.strip()
         if doc_lines:
-            func_desc = doc_lines[0].strip()
+            func_desc = doc_lines
     
     # For now, we'll use generic input/output args since we don't have
     # detailed parameter information without runtime inspection
@@ -51,9 +51,12 @@ def get_torch_api_signature(torch_op_name: str, torch_op_func) -> Dict[str, Any]
     # parse the docstring to extract parameter information
     
     # TODO : Improve argument extraction logic
-    # input_args, output_args, _ = get_function_signature(torch_op_func)
-    input_args = [InputArg(arg_name="args", arg_type="Any", arg_desc="Input arguments")]
-    output_args = [OutputArg(arg_type="Any", arg_desc="Output result")]
+    result = get_function_signature(torch_op_func)
+    input_args = result["input_args"]
+    output_args = result["output_args"]
+    
+    # input_args = [InputArg(arg_name="args", arg_type="Any", arg_desc="Input arguments")]
+    # output_args = [OutputArg(arg_type="Any", arg_desc="Output result")]
     
     return {
         "input_args": input_args,
@@ -96,8 +99,7 @@ def create_triton_generate_args(torch_op_name: str, torch_op_func_or_namespace: 
 # Reference PyTorch implementation for {torch_op_name}
 import torch
 
-def {kernel_name}(*args, **kwargs):
-    return {torch_op_func_name}(*args, **kwargs)
+{kernel_name} = {torch_op_func_name}
 """.strip()
     
     return TritonKernelGenerateArgs(
