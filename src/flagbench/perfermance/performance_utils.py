@@ -345,6 +345,7 @@ class Benchmark:
             logging.info(attri.to_dict())
             return
         self.init_user_config()
+        avg_results = []
         for dtype in self.to_bench_dtypes:
             metrics = []
             for input in self.get_input_iter(dtype):
@@ -397,7 +398,8 @@ class Benchmark:
             )
             print(result)
             logging.info(result.to_json())
-            return result
+            avg_results.append(result)
+        return avg_results
 
 
 class GenericBenchmark(Benchmark):
