@@ -143,6 +143,7 @@ src/*.egg-info/
 old_bench/
 cache/
 output/
+output_ut/
 runs/
 debug_log/
 successful_operators.txt
