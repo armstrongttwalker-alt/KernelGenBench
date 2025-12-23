@@ -67,9 +67,9 @@ def get_torch_api_signature(torch_op_name: str, torch_op_func) -> Dict[str, Any]
     # parse the docstring to extract parameter information
     
     # TODO : Improve argument extraction logic
-    # input_args, output_args, _ = get_function_signature(torch_op_func)
-    input_args = [InputArg(arg_name="args", arg_type="Any", arg_desc="Input arguments")]
-    output_args = [OutputArg(arg_type="Any", arg_desc="Output result")]
+    input_args, output_args, _ = get_function_signature(torch_op_func)
+    # input_args = [InputArg(arg_name="args", arg_type="Any", arg_desc="Input arguments")]
+    # output_args = [OutputArg(arg_type="Any", arg_desc="Output result")]
     
     return {
         "input_args": input_args,
