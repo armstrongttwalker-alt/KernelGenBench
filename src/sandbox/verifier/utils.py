@@ -270,7 +270,10 @@ def save_benchmark_result(bench_result: "BenchmarkResult", save_path: Optional[s
     """
     save benchmark result to txt file
     """
-    with open(save_path, "w") as f:
+    # add mode to save_path
+    if save_path is None:
+        return
+    with open(save_path, "a") as f:
         f.write(str(bench_result))
     if save_path:
         print(f"Benchmark result saved to {save_path}")

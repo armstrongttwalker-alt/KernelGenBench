@@ -391,18 +391,28 @@ class Verifier:
                 except Exception as e:
                     tb_str = traceback.format_exc()
                     success = False
-                if isinstance(ret, (BenchmarkResult, CustomBenchmarkResult)):
+                if isinstance(ret, list) and len(ret) > 0 and isinstance(ret[0], (BenchmarkResult, CustomBenchmarkResult)):
+                # if isinstance(ret, (BenchmarkResult, CustomBenchmarkResult)):
                     if speedup is None:
                         speedup = []
-                    if isinstance(ret, BenchmarkResult):
-                        speed_save_path = json_path.replace(".json", "_speedup.txt") if json_path else None
-                        save_benchmark_result(ret, speed_save_path)
-                    speed = json.loads(ret.to_json()) if isinstance(ret, BenchmarkResult) else ret.model_dump()
-                    speed["params"] = recorded_params
-                    # speedup.append(
-                    #     speed
-                    # )
-                    speedup = speed['result']
+                    speed_save_path = json_path.replace(".json", "_speedup.txt") if json_path else None
+                    # clear the previous saved speedup file
+                    if speed_save_path and os.path.exists(speed_save_path):
+                        os.remove(speed_save_path)
+                    for r in ret:
+                        if isinstance(r, BenchmarkResult):
+                            save_benchmark_result(r, speed_save_path)
+                        speed = json.loads(r.to_json()) if isinstance(r, BenchmarkResult) else r.model_dump()
+                        speed["params"] = recorded_params
+                        avg_speed = {
+                            "ref_time": np.mean([s["latency_base"] for s in speed['result']]).item(),
+                            "res_time": np.mean([s["latency"] for s in speed['result']]).item(),
+                            "speedup": np.mean([s["speedup"] for s in speed['result']]).item(),
+                            "params": speed['dtype'],
+                        }
+                        # speed['result'].append(avg_speed)
+                        speedup.append(avg_speed)
+                    # speedup = speed['result']
                     results.append({
                         "params": combo,
                         "success": success,
@@ -424,9 +434,9 @@ class Verifier:
             if speedup is not None:
                 if len(speedup) > 0:
                     avg_speed = {
-                        "ref_time": np.mean([s["latency_base"] for s in speedup]).item(),
-                        "res_time": np.mean([s["latency"] for s in speedup]).item(),
-                        "speedup": np.mean([s["speedup"] for s in speedup]).item(),
+                        "ref_time": np.mean([s['ref_time'] for s in speedup]).item(),
+                        "res_time": np.mean([s['res_time'] for s in speedup]).item(),
+                        "speedup": np.mean([s['speedup'] for s in speedup]).item(),
                         "params": "avg",
                     }
                     speedup.append(avg_speed)
