@@ -429,8 +429,8 @@ class PassAtKTester:
 def main():
     parser = argparse.ArgumentParser(description="Test Pass@K for operator generation")
     
-    parser.add_argument("--name", type=str, default="all", help="Namespace to test (default: all)")
-    parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
+    parser.add_argument("--name", type=str, default="aten", help="Namespace to test (default: aten)")
+    parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output_ut" / "pass_at_k", help="Output directory")
     parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
     parser.add_argument("--test-type", type=str, default="accuracy", choices=["accuracy", "performance"])
     parser.add_argument("--max-rounds", type=int, default=10, help="Maximum number of rounds (default: 10)")
