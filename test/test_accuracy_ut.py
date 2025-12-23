@@ -30,41 +30,38 @@ def test_verifier_operator(name, device_count=1, timeout=300, test_file=None):
         print(f"Using custom test file(s): {test_files}")
         verifier.set_modules(modules=test_files, mode="accuracy")
 
+    # Parse operator names: support comma-separated list or "all"
     if name != "all":
-        result = verifier.only_verify(
-            name_source_map=[
-                VerifyRequest(
-                    source=[Source(
-                        source=mock_triton_code,
-                        function_name=name
-                    )]
-                )
-            ], 
-            test_type="accuracy",       # accuracy, performance, both
-        )[-1][0]
-        print("Verification Result:", result)
+        names = [n.strip() for n in name.split(",") if n.strip()]
     else:
         names = list(PYTORCH_OPERATORS.keys())
-        requests = []
-        for name in names:
-            requests.append(
-                VerifyRequest(
-                    source=[Source(
-                        source=mock_triton_code,
-                        function_name=name
-                    )]
-                )
+
+    # Create requests for all operators
+    requests = []
+    for op_name in names:
+        requests.append(
+            VerifyRequest(
+                source=[Source(
+                    source=mock_triton_code,
+                    function_name=op_name
+                )]
             )
-        result = verifier.only_verify(
-            name_source_map=requests, 
-            test_type="accuracy",        # accuracy, performance, both
-            device_count=device_count
-        )[-1][0]
-        # print(f"Verification Result for {name}:", result)
+        )
+
+    result = verifier.only_verify(
+        name_source_map=requests,
+        test_type="accuracy",
+        device_count=device_count
+    )[-1][0]
+
+    # Print result for single operator
+    if len(names) == 1:
+        print("Verification Result:", result)
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--name", type=str, required=True)
+    parser.add_argument("--name", type=str, required=True,
+                       help="Operator name(s) to test. Supports comma-separated multiple operators (e.g., 'abs,mul,div') or 'all' for all operators.")
     parser.add_argument("--device-count", type=int, default=1)
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--test-file", type=str, default=None,
