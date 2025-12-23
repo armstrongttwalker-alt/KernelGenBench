@@ -171,11 +171,19 @@ class TestConverter:
             elif line and not line.startswith('#'):
                 break
 
-        # Find the end of the function (next function or end of file)
+        # Find the end of the function signature (the line with ':')
+        signature_end = start_line
+        for i in range(start_line, len(lines)):
+            if ':' in lines[i]:
+                signature_end = i
+                break
+
+        # Find the end of the function body (next function or end of file)
         end_line = len(lines)
         indent_level = len(lines[start_line]) - len(lines[start_line].lstrip())
 
-        for i in range(start_line + 1, len(lines)):
+        # Start searching from after the signature ends
+        for i in range(signature_end + 1, len(lines)):
             line = lines[i]
             if line.strip():  # Non-empty line
                 current_indent = len(line) - len(line.lstrip())
@@ -257,7 +265,7 @@ class TestConverter:
             imports.append("from sandbox.verifier.test_parametrize import parametrize, label")
 
         # Import from sandbox
-        imports.append("from sandbox.config import DEVICE as device")
+        imports.append("from sandbox.config import DEVICE as device, QUICK_MODE, TO_CPU")
         imports.append("from sandbox.register import REGISTERED_OPS")
 
         # Check what accuracy utils are needed
@@ -272,7 +280,9 @@ class TestConverter:
 
             # Check for dtype/shape constants
             dtype_constants = ['FLOAT_DTYPES', 'INT_DTYPES', 'ALL_FLOAT_DTYPES', 'ALL_INT_DTYPES', 'BOOL_TYPES']
-            shape_constants = ['POINTWISE_SHAPES', 'SPECIAL_SHAPES', 'REDUCTION_SHAPES', 'STACK_SHAPES', 'SCALARS']
+            shape_constants = ['POINTWISE_SHAPES', 'SPECIAL_SHAPES', 'REDUCTION_SHAPES', 'REDUCTION_SMALL_SHAPES',
+                               'STACK_SHAPES', 'SCALARS', 'UT_SHAPES_1D', 'UT_SHAPES_2D', 'KRON_SHAPES',
+                               'DISTRIBUTION_SHAPES']
 
             for const in dtype_constants + shape_constants:
                 if const in original_source:
@@ -280,6 +290,48 @@ class TestConverter:
 
             if utils_imports:
                 imports.append(f"from sandbox.utils.accuracy_utils import {', '.join(sorted(set(utils_imports)))}")
+
+        # Add hardcoded definitions for constants not in accuracy_utils
+        constant_definitions = {
+            'DIMS_LIST': 'DIMS_LIST = [1] if QUICK_MODE else [0, 1, [0, 1], [1, 0]]',
+            'DIM_LIST': 'DIM_LIST = [1] if QUICK_MODE else [0, 1]',
+            'KEEPDIM_DIMS_SHAPE': (
+                'KEEPDIM_DIMS_SHAPE = (\n'
+                '    [(True, DIMS_LIST[0], REDUCTION_SHAPES[0])] if QUICK_MODE\n'
+                '    else list(zip([True, False] * 2, DIMS_LIST, REDUCTION_SHAPES + [(7, 4, 11, 1)]))\n'
+                ')'
+            ),
+            'KIND_KEEPDIM_DIMS_SHAPE': (
+                'KIND_KEEPDIM_DIMS_SHAPE = (\n'
+                '    [("normal", True, DIMS_LIST[0], REDUCTION_SHAPES[0])] if QUICK_MODE\n'
+                '    else list(zip(["normal", "allTrue"] * 2, [True, False] * 2, DIMS_LIST, REDUCTION_SHAPES + [(7, 4, 11, 1)]))\n'
+                ')'
+            ),
+            'KEEPDIM_DIMS': (
+                'KEEPDIM_DIMS = (\n'
+                '    [(True, DIMS_LIST[0])] if QUICK_MODE\n'
+                '    else list(zip([True, False] * 2, DIMS_LIST))\n'
+                ')'
+            ),
+            'KEEPDIM_DIM': (
+                'KEEPDIM_DIM = (\n'
+                '    [(True, DIM_LIST[0])] if QUICK_MODE\n'
+                '    else list(zip([True, False], DIM_LIST))\n'
+                ')'
+            ),
+            'EMPTY_SHAPES': 'EMPTY_SHAPES = [(0, 5), (3, 0, 4), (2, 5, 0), (0,)]',
+        }
+
+        # Check which constants are used but not imported (in dependency order)
+        needed_constants = []
+        for const_name in ['DIMS_LIST', 'DIM_LIST', 'KEEPDIM_DIMS_SHAPE', 'KIND_KEEPDIM_DIMS_SHAPE',
+                           'KEEPDIM_DIMS', 'KEEPDIM_DIM', 'EMPTY_SHAPES']:
+            if const_name in original_source and const_name not in utils_imports:
+                needed_constants.append(constant_definitions[const_name])
+
+        if needed_constants:
+            imports.append('\n# Additional constant definitions from FlagGems')
+            imports.extend(needed_constants)
 
         return '\n'.join(imports)
 
@@ -324,10 +376,9 @@ class TestWriter:
         # Generate file header
         header = self._generate_header(operators)
 
-        # Generate imports (use the first source file as reference)
-        first_source_file = test_functions[0].source_file
-        original_source = original_sources[first_source_file]
-        imports = converter.generate_imports(test_functions, original_source)
+        # Generate imports (check all source files)
+        all_sources = '\n'.join(original_sources.values())
+        imports = converter.generate_imports(test_functions, all_sources)
 
         # Convert all test functions
         converted_functions = []
