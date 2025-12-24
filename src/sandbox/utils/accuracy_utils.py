@@ -27,6 +27,13 @@ class CustomBenchmarkResult(BaseModel):
     res_time: float
     speedup: float
     params: Union[dict, str] = None
+    def to_dict(self):
+        return {
+            "ref_time": self.ref_time,
+            "res_time": self.res_time,
+            "speedup": self.speedup,
+            "params": self.params,
+        }
 
 class VerifyResult(BaseModel):
     op_name: str = None

@@ -6,8 +6,9 @@ from datetime import datetime
 from typing import List, Dict
 from tqdm import tqdm
 from utils import (
-    load_right_test_function_from_test_func_dir, 
+    load_right_test_function_from_test_func_dir,
     load_right_kernel_code_from_acc_verify_dir,
+    convert_accuracy_to_performance_test,
     today
 )
 
@@ -83,18 +84,58 @@ def main():
         default=300,
         help="Timeout for accuracy evaluation in seconds.",
     )
+    parser.add_argument(
+        "--convert-to-perf",
+        action="store_true",
+        help="Convert accuracy test functions to performance test functions.",
+    )
     args = parser.parse_args()
 
     check_args_validity(args)
 
-    # get right test function
-    test_funcs = load_right_test_function_from_test_func_dir(Path(args.test_func_path))
-    print(f"Loaded {len(test_funcs)} test functions for evaluation.")
+    # Load existing performance test functions from test-func-path
+    existing_test_funcs = load_right_test_function_from_test_func_dir(Path(args.test_func_path), get_success=True)
+    print(f"Loaded {len(existing_test_funcs)} existing test functions from {args.test_func_path}")
+
+    # Convert accuracy tests to performance tests if requested
+    if args.convert_to_perf:
+        print("Loading accuracy test functions from --path for conversion...")
+        # Load accuracy test functions from the path directory
+        accuracy_test_funcs = load_right_test_function_from_test_func_dir(Path(args.path), get_success=True)
+        print(f"Loaded {len(accuracy_test_funcs)} accuracy test functions.")
+
+        # Filter out operators that already have performance tests
+        ops_to_convert = {
+            op_name: test_func
+            for op_name, test_func in accuracy_test_funcs.items()
+            if op_name not in existing_test_funcs
+        }
+        print(f"Found {len(ops_to_convert)} operators that need conversion (not in existing tests).")
+
+        # Convert the filtered accuracy tests to performance tests
+        if ops_to_convert:
+            print("Converting accuracy test functions to performance test functions...")
+            converted_test_funcs = convert_accuracy_to_performance_test(ops_to_convert)
+            print(f"Successfully converted {len(converted_test_funcs)} test functions.")
+
+            # Merge existing and converted test functions
+            # test_funcs = {**existing_test_funcs, **converted_test_funcs}
+            test_funcs = converted_test_funcs
+            # print(f"Total {len(test_funcs)} test functions available (existing + converted).")
+            print(f"Total {len(test_funcs)} test functions available (converted only).")
+        else:
+            print("No operators need conversion, using existing test functions only.")
+            test_funcs = existing_test_funcs
+
+        test_type = "performance"
+    else:
+        test_funcs = existing_test_funcs
+        test_type = "performance"
 
     # verify
     config = VerifyConfig(
         run_name="eval_perf_" + Path(args.path).name + "_" + today(),
-        test_type="accuracy",
+        test_type=test_type,
         run_dir="./runs",
         store_type="local",
         strict_check=True,
@@ -119,11 +160,11 @@ def main():
                     source=[Source(
                         source=code,
                         function_name=file_name
-                    )], 
+                    )],
                     test_func=[test_funcs[file_name]] if file_name in test_funcs else []
                 ) for file_name, code in samples.items()
-            ], 
-            test_type="accuracy",
+            ],
+            test_type=test_type,
             device_count=args.device_count
         )
         verifier._running_config.sample_id += 1

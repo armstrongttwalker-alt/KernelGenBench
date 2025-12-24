@@ -180,6 +180,300 @@ def load_right_test_function_from_result_path(path: Path, get_success: bool = Tr
     return test_funcs
 
 
+def convert_accuracy_to_performance_test(test_funcs: Dict[str, str]) -> Dict[str, str]:
+    """Convert accuracy test functions to performance test functions.
+
+    This function transforms accuracy test functions into performance test functions
+    by applying predefined conversion rules.
+
+    Args:
+        test_funcs: Dictionary mapping operator names to accuracy test function code.
+                   Format: {op_name: test_func_code}
+
+    Returns:
+        Dictionary mapping operator names to performance test function code.
+        Format: {op_name: perf_test_func_code}
+    """
+    result = {}
+
+    for op_name, test_func_code in test_funcs.items():
+        try:
+            converted_code = _convert_single_test_func(test_func_code)
+            result[op_name] = converted_code
+        except Exception as e:
+            logger.error(f"Failed to convert test function for {op_name}: {e}")
+            # Keep original code if conversion fails
+            result[op_name] = test_func_code
+
+    return result
+
+
+def _convert_single_test_func(code: str) -> str:
+    """Convert a single accuracy test function to performance test function.
+
+    The code may contain multiple function definitions.
+    """
+    # Step 1: Modify @label decorators
+    # code = re.sub(
+    #     r'@label\(["\']([^"\']+)["\']\)',
+    #     r'@label("\1_benchmark")',
+    #     code
+    # )
+
+    # Step 2: Modify function names (test_xxx -> xxx_benchmark)
+    # Match function definitions and extract the label name for better naming
+    def replace_func_name(match):
+        func_name = match.group(1)
+        # Remove 'test_' prefix if exists
+        if func_name.startswith('test_'):
+            func_name = func_name[5:]  # Remove 'test_'
+        # Remove common suffixes like '_tensor', '_out' temporarily
+        # We'll add '_benchmark' before these suffixes
+        for suffix in ['_tensor', '_out', '_scalar']:
+            if func_name.endswith(suffix):
+                base_name = func_name[:-len(suffix)]
+                return f'def {base_name}_benchmark{suffix}('
+        return f'def {func_name}_benchmark('
+
+    code = re.sub(
+        r'def\s+(test_\w+)\s*\(',
+        replace_func_name,
+        code
+    )
+
+    # Step 3: Add imports and initialization at the beginning of each function
+    # Find all function definitions and add imports after the function signature
+    lines = code.split('\n')
+    new_lines = []
+    in_function = False
+    added_imports = False
+
+    for i, line in enumerate(lines):
+        new_lines.append(line)
+
+        # Detect function definition
+        if re.match(r'def\s+\w+_benchmark', line):
+            in_function = True
+            added_imports = False
+
+        # Add imports after function signature (after the line with ':')
+        if in_function and not added_imports and line.strip().endswith(':'):
+            # Add imports and quantiles
+            imports = '''    import torch.utils.benchmark as benchmark
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+    import triton
+
+    quantiles = [0.5, 0.2, 0.8]
+'''
+            new_lines.append(imports)
+            added_imports = True
+            in_function = False
+
+    code = '\n'.join(new_lines)
+
+    # Step 4: Transform test logic
+    code = _transform_test_logic(code)
+
+    return code
+
+
+def _transform_test_logic(code: str) -> str:
+    """Transform the test logic from accuracy checking to performance measurement."""
+    lines = code.split('\n')
+    new_lines = []
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+
+        # Transform reference implementation calls (with assignment)
+        # Pattern: ref_out = torch.ops.aten.xxx(...) or ref_out = torch.ops.aten.xxx.out(...)
+        ref_call_match = re.search(r'(\s*)(\w+)\s*=\s*(torch\.ops\.\w+\.\w+(?:\.\w+)?)\((.*)\)', line)
+        if ref_call_match and ref_call_match.group(2).startswith('ref_'):
+            indent = ref_call_match.group(1)
+
+            # Collect multi-line arguments if needed
+            full_line = line
+            paren_count = line.count('(') - line.count(')')
+            j = i + 1
+            while paren_count > 0 and j < len(lines):
+                full_line += '\n' + lines[j]
+                paren_count += lines[j].count('(') - lines[j].count(')')
+                j += 1
+
+            # Extract the complete function call
+            call_match = re.search(r'(\w+)\s*=\s*(torch\.ops\.\w+\.\w+(?:\.\w+)?\(.*?\))\s*$', full_line, re.DOTALL)
+            if call_match:
+                complete_call = call_match.group(2)
+
+                # Generate performance test for PyTorch reference
+                new_lines.append(f'{indent}# PyTorch reference implementation')
+                new_lines.append(f'{indent}ms_torch, _, _ = triton.testing.do_bench(')
+                new_lines.append(f'{indent}    lambda: {complete_call},')
+                new_lines.append(f'{indent}    rep=100,')
+                new_lines.append(f'{indent}    quantiles=quantiles')
+                new_lines.append(f'{indent})')
+                i = j
+                continue
+            else:
+                # If extraction failed, keep the line and continue
+                new_lines.append(line)
+                i += 1
+                continue
+
+        # Transform reference implementation calls (without assignment)
+        # Pattern: torch.ops.aten.xxx(...) where arguments contain ref_ variables
+        ref_no_assign_match = re.search(r'(\s*)(torch\.ops\.\w+\.\w+(?:\.\w+)?)\((.*)\)', line)
+        if ref_no_assign_match and 'ref_' in line and '=' not in line.split('torch.ops')[0]:
+            indent = ref_no_assign_match.group(1)
+
+            # Collect multi-line arguments if needed
+            full_line = line
+            paren_count = line.count('(') - line.count(')')
+            j = i + 1
+            while paren_count > 0 and j < len(lines):
+                full_line += '\n' + lines[j]
+                paren_count += lines[j].count('(') - lines[j].count(')')
+                j += 1
+
+            # Extract the complete function call
+            call_match = re.search(r'(torch\.ops\.\w+\.\w+(?:\.\w+)?\(.*?\))', full_line, re.DOTALL)
+            if call_match:
+                complete_call = call_match.group(1)
+
+                # Generate performance test for PyTorch reference
+                new_lines.append(f'{indent}# PyTorch reference implementation')
+                new_lines.append(f'{indent}ms_torch, _, _ = triton.testing.do_bench(')
+                new_lines.append(f'{indent}    lambda: {complete_call},')
+                new_lines.append(f'{indent}    rep=100,')
+                new_lines.append(f'{indent}    quantiles=quantiles')
+                new_lines.append(f'{indent})')
+                i = j
+                continue
+            else:
+                # If extraction failed, keep the line and continue
+                new_lines.append(line)
+                i += 1
+                continue
+
+        # Transform Triton implementation calls with flagbench.use_gems
+        # Pattern: with flagbench.use_gems(REGISTERED_OPS):
+        #              act_out = torch.ops.aten.xxx(...)
+        if 'with flagbench.use_gems' in line:
+            indent = re.match(r'(\s*)', line).group(1)
+            new_lines.append('')
+            new_lines.append(f'{indent}# Triton implementation')
+            new_lines.append(line)  # Keep the 'with' statement
+
+            # Process the block inside 'with'
+            i += 1
+            while i < len(lines):
+                inner_line = lines[i]
+                # Check if we're still inside the with block
+                if inner_line.strip() and not inner_line.startswith(indent + '    '):
+                    break
+
+                # Transform the actual call
+                # Support .out suffix: torch.ops.aten.xxx.out(...)
+                act_call_match = re.search(r'(\s*)(\w+)\s*=\s*(torch\.ops\.\w+\.\w+(?:\.\w+)?)\((.*)\)', inner_line)
+                if act_call_match and act_call_match.group(2).startswith('act_'):
+                    inner_indent = act_call_match.group(1)
+
+                    # Collect multi-line arguments
+                    full_inner_line = inner_line
+                    paren_count = inner_line.count('(') - inner_line.count(')')
+                    j = i + 1
+                    while paren_count > 0 and j < len(lines):
+                        full_inner_line += '\n' + lines[j]
+                        paren_count += lines[j].count('(') - lines[j].count(')')
+                        j += 1
+
+                    # Extract complete call
+                    call_match = re.search(r'\w+\s*=\s*(torch\.ops\.\w+\.\w+(?:\.\w+)?\(.*?\))\s*$', full_inner_line, re.DOTALL)
+                    if call_match:
+                        complete_call = call_match.group(1)
+
+                        new_lines.append(f'{inner_indent}ms_triton, _, _ = triton.testing.do_bench(')
+                        new_lines.append(f'{inner_indent}    lambda: {complete_call},')
+                        new_lines.append(f'{inner_indent}    rep=100,')
+                        new_lines.append(f'{inner_indent}    quantiles=quantiles')
+                        new_lines.append(f'{inner_indent})')
+                        i = j
+                        break
+                    else:
+                        # If extraction failed, keep the line and continue
+                        new_lines.append(inner_line)
+                        i += 1
+                else:
+                    # Check for calls without assignment (e.g., torch.ops.aten.xxx.out(...))
+                    act_no_assign_match = re.search(r'(\s*)(torch\.ops\.\w+\.\w+(?:\.\w+)?)\((.*)\)', inner_line)
+                    if act_no_assign_match and '=' not in inner_line.split('torch.ops')[0]:
+                        inner_indent = act_no_assign_match.group(1)
+
+                        # Collect multi-line arguments
+                        full_inner_line = inner_line
+                        paren_count = inner_line.count('(') - inner_line.count(')')
+                        j = i + 1
+                        while paren_count > 0 and j < len(lines):
+                            full_inner_line += '\n' + lines[j]
+                            paren_count += lines[j].count('(') - lines[j].count(')')
+                            j += 1
+
+                        # Extract complete call
+                        call_match = re.search(r'(torch\.ops\.\w+\.\w+(?:\.\w+)?\(.*?\))', full_inner_line, re.DOTALL)
+                        if call_match:
+                            complete_call = call_match.group(1)
+
+                            new_lines.append(f'{inner_indent}ms_triton, _, _ = triton.testing.do_bench(')
+                            new_lines.append(f'{inner_indent}    lambda: {complete_call},')
+                            new_lines.append(f'{inner_indent}    rep=100,')
+                            new_lines.append(f'{inner_indent}    quantiles=quantiles')
+                            new_lines.append(f'{inner_indent})')
+                            i = j
+                            break
+                        else:
+                            # If extraction failed, keep the line and continue
+                            new_lines.append(inner_line)
+                            i += 1
+                    else:
+                        # Keep all other lines (including clone operations)
+                        new_lines.append(inner_line)
+                        i += 1
+            continue
+
+        # Remove assert_close calls and add return statement
+        # But skip import statements
+        if ('assert_close' in line or 'gems_assert_close' in line) and \
+           not line.strip().startswith('import') and \
+           not line.strip().startswith('from'):
+            # Find the indentation of the assert line
+            indent = re.match(r'(\s*)', line).group(1)
+
+            # Skip this line and check if it spans multiple lines
+            paren_count = line.count('(') - line.count(')')
+            while paren_count > 0 and i + 1 < len(lines):
+                i += 1
+                paren_count += lines[i].count('(') - lines[i].count(')')
+            i += 1
+
+            # After removing assert, add return statement
+            new_lines.append('')
+            new_lines.append(f'{indent}# Calculate speedup and return result')
+            new_lines.append(f'{indent}speedup = ms_torch / ms_triton')
+            new_lines.append(f'{indent}result = CustomBenchmarkResult(')
+            new_lines.append(f'{indent}    ref_time=ms_torch,')
+            new_lines.append(f'{indent}    res_time=ms_triton,')
+            new_lines.append(f'{indent}    speedup=speedup,')
+            new_lines.append(f'{indent})')
+            new_lines.append(f'{indent}return result')
+            continue
+
+        new_lines.append(line)
+        i += 1
+
+    return '\n'.join(new_lines)
+
+
 def load_right_kernel_code_from_acc_verify_dir(path: Path, get_success: bool = True) -> Dict[str, str]:
     # check the path is dir or file
     # breakpoint()

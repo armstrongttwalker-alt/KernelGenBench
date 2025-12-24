@@ -274,6 +274,7 @@ def save_benchmark_result(bench_result: "BenchmarkResult", save_path: Optional[s
     if save_path is None:
         return
     with open(save_path, "a") as f:
+        f.write("\n")
         f.write(str(bench_result))
     if save_path:
         print(f"Benchmark result saved to {save_path}")

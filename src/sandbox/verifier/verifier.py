@@ -391,28 +391,39 @@ class Verifier:
                 except Exception as e:
                     tb_str = traceback.format_exc()
                     success = False
-                if isinstance(ret, list) and len(ret) > 0 and isinstance(ret[0], (BenchmarkResult, CustomBenchmarkResult)):
-                # if isinstance(ret, (BenchmarkResult, CustomBenchmarkResult)):
-                    if speedup is None:
-                        speedup = []
-                    speed_save_path = json_path.replace(".json", "_speedup.txt") if json_path else None
-                    # clear the previous saved speedup file
-                    if speed_save_path and os.path.exists(speed_save_path):
-                        os.remove(speed_save_path)
-                    for r in ret:
-                        if isinstance(r, BenchmarkResult):
-                            save_benchmark_result(r, speed_save_path)
-                        speed = json.loads(r.to_json()) if isinstance(r, BenchmarkResult) else r.model_dump()
+                if ret is not None:
+                    if isinstance(ret, list) and len(ret) > 0 and isinstance(ret[0], BenchmarkResult):
+                        if speedup is None:
+                            speedup = []
+                        speed_save_path = json_path.replace(".json", "_speedup.txt") if json_path else None
+                        # clear the previous saved speedup file
+                        if speed_save_path and os.path.exists(speed_save_path):
+                            os.remove(speed_save_path)
+                        for r in ret:
+                            if isinstance(r, BenchmarkResult):
+                                save_benchmark_result(r, speed_save_path)
+                            speed = json.loads(r.to_json()) if isinstance(r, BenchmarkResult) else r.model_dump()
+                            speed["params"] = recorded_params
+                            avg_speed = {
+                                "ref_time": np.mean([s["latency_base"] for s in speed['result']]).item(),
+                                "res_time": np.mean([s["latency"] for s in speed['result']]).item(),
+                                "speedup": np.mean([s["speedup"] for s in speed['result']]).item(),
+                                "params": speed['dtype'],
+                            }
+                            # speed['result'].append(avg_speed)
+                            speedup.append(avg_speed)
+                        # speedup = speed['result']
+                    if isinstance(ret, CustomBenchmarkResult):
+                        if speedup is None:
+                            speedup = []
+                        # Save CustomBenchmarkResult similar to BenchmarkResult
+                        speed_save_path = json_path.replace(".json", "_speedup.txt") if json_path else None
+
+                        speed = json.loads(ret.json())
                         speed["params"] = recorded_params
-                        avg_speed = {
-                            "ref_time": np.mean([s["latency_base"] for s in speed['result']]).item(),
-                            "res_time": np.mean([s["latency"] for s in speed['result']]).item(),
-                            "speedup": np.mean([s["speedup"] for s in speed['result']]).item(),
-                            "params": speed['dtype'],
-                        }
-                        # speed['result'].append(avg_speed)
-                        speedup.append(avg_speed)
-                    # speedup = speed['result']
+                        if speed_save_path:
+                            save_benchmark_result(speed, speed_save_path)
+                        speedup.append(speed)
                     results.append({
                         "params": combo,
                         "success": success,
