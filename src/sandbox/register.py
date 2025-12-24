@@ -9,6 +9,7 @@ from collections import OrderedDict
 import logging
 
 from flagbench.dataset import IMPL_INFO
+from sandbox.config import DEVICE as device
 
 REGISTERED_OPS = OrderedDict()
 REGISTERED_OPS_TORCH = []
@@ -66,7 +67,10 @@ class Register:
         self.lib = lib
         # reg_key like 'CUDA', reg_bac_key like AutogradCUDA
         # self.reg_key = self.device.name.upper()
-        self.reg_key = "CUDA"
+        if device == 'npu':
+          self.reg_key = "PrivateUse1"
+        else:
+          self.reg_key = device.upper()
         # Cambricon device has a different reg_key.
         # if self.device.vendor_name == "cambricon":
         #     self.reg_key = "PrivateUse1"

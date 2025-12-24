@@ -1,4 +1,4 @@
 QUICK_MODE = False 
 TO_CPU = False
-DEVICE = "cuda"
+DEVICE = "npu"
 RECORD_LOG = "none" 
