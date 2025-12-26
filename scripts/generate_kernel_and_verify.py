@@ -100,6 +100,8 @@ class PassAtKTester:
             self.create_verify_args = self.create_triton_kernel_verify_args
             self.create_generate_args = create_triton_generate_args
             match self.dataset:
+                case "pytorch":
+                    self.operator_loader = TorchOpsLoader()
                 case "gems":
                     from flagbench.dataset import PYTORCH_OPERATORS
                     self.operator_loader = {"aten": PYTORCH_OPERATORS}
@@ -618,7 +620,7 @@ def main():
     parser.add_argument("--name", type=str, default="aten", help="Namespace to test (default: aten)")
     parser.add_argument("--acc-test-func-path", type=str, default="", help="Path to the accuracy test function directory")
     parser.add_argument("--benchmark-func-path", type=str, default="", help="Path to the performance test function directory")
-    parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["gems", "v1", "v2"])
+    parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["pytorch", "gems", "v1", "v2"])
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
     parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
     parser.add_argument("--test-type", type=str, default="accuracy", choices=["accuracy", "performance", "triton"])
