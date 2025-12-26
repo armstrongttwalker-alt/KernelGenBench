@@ -88,6 +88,8 @@ class PassAtKTester:
         self.use_wiki = use_wiki
         self.wiki_cache: Dict[str, Any] = {}  # {operator_name: wiki_info}
 
+        self.qwen_next = False
+
         self.setup()
 
     def setup(self):
@@ -109,6 +111,10 @@ class PassAtKTester:
                 case "v2":
                     from flagbench.dataset import V2_OPERATORS
                     self.operator_loader = {"aten": V2_OPERATORS}
+                case "qwen_next":
+                    from flagbench.dataset import QWEN_NEXT_OPERATORS
+                    self.operator_loader = {"aten": QWEN_NEXT_OPERATORS}
+                    self.qwen_next = True
                 case _:
                     raise ValueError(f"Unsupported dataset: {self.dataset}")
         elif self.test_type == "accuracy":
@@ -407,6 +413,11 @@ class PassAtKTester:
         self.verify_config.sample_id = round_idx
         
         verifier = Verifier(self.verify_config)
+        if self.qwen_next:
+            verifier.set_modules(
+                modules=["src/sandbox/verifier/accuracy_ut_qwen_next.py"],
+                mode="accuracy"
+            )
         
         # Prepare verification requests
         verify_requests = []
