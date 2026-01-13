@@ -133,6 +133,101 @@ python scripts/test_updated_accuracy_ut.py \
 #### 11. `utils.py`
 **功能**: 提供通用工具函数
 
+### 分析和验证工具
+
+#### 12. `verify_existing_kernels.py`
+**功能**: 重新验证已生成的 Triton kernel，无需重新生成
+
+**用法**:
+```bash
+python scripts/verify_existing_kernels.py \
+    --data-dir <pass_at_k_output_dir> \
+    --rounds all \
+    --device-count 8 \
+    --timeout 300
+```
+
+**参数**:
+- `--data-dir`: Pass@K 实验的输出目录（必需）
+- `--rounds`: 要验证的轮次，如 `0,1,2` 或 `all`（默认: `all`）
+- `--verify-output-dir`: 验证结果输出目录名（默认: `verification_rerun`）
+- `--device-count`: 使用的 GPU 数量（默认: 8）
+- `--timeout`: 每个测试的超时时间（秒）（默认: 300）
+- `--skip-verified`: 跳过已验证的轮次（默认: True）
+- `--no-skip-verified`: 不跳过已验证的轮次
+
+**使用场景**:
+- Pass@K 实验完成后重新验证
+- 验证环境变量或配置更改后的影响
+- 补充验证之前跳过的轮次
+
+#### 13. `analyze/analyze_speedup.py`
+**功能**: 从验证结果中分析 speedup 数据，生成统计摘要
+
+**用法**:
+```bash
+python scripts/analyze/analyze_speedup.py <verification_dir>
+```
+
+**示例**:
+```bash
+python scripts/analyze/analyze_speedup.py \
+    output/pass_at_k/pass_at_10_gpt-5_triton_reflection_20251226-184155/verification_rerun
+```
+
+**输出**:
+- `speedup_summary.json`: JSON 格式的统计数据
+- `speedup_summary.md`: Markdown 表格格式的摘要
+- 按平均 speedup 降序排列的算子列表
+
+**功能特点**:
+- 提取所有成功算子的 speedup 数据
+- 计算每个算子的统计信息（mean, median, min, max）
+- 跨轮次汇总数据
+
+#### 14. `analyze/analyze_speedup_detailed.py`
+**功能**: 详细分析 speedup 模式，识别高性能和低性能算子
+
+**用法**:
+```bash
+python scripts/analyze/analyze_speedup_detailed.py
+```
+
+**注意**: 此脚本硬编码了数据路径，需要修改脚本中的 `speedup_file` 变量
+
+**输出分类**:
+- **高 speedup 算子** (>1.3x): 性能提升的算子
+- **正常 speedup 算子** (0.1x-1.3x): 正常性能范围
+- **低 speedup 算子** (<0.1x): 严重性能下降的算子
+
+**功能特点**:
+- 按 speedup 范围分类算子
+- 分析跨轮次的性能一致性
+- 识别需要优化的问题算子
+
+#### 15. `analyze/analyze_speedup_txt.py`
+**功能**: 从单个 txt 文件中分析 speedup 数据
+
+**用法**:
+```bash
+python scripts/analyze/analyze_speedup_txt.py <speedup_txt_file>
+```
+
+**示例**:
+```bash
+python scripts/analyze/analyze_speedup_txt.py \
+    output/fixed_operators/test_results/qwen_next_sort_test/log_0/test_report_aten::sort_speedup.txt
+```
+
+**输出**:
+- 整体统计信息（mean, median, min, max）
+- 按数据类型（dtype）分组的统计信息
+
+**功能特点**:
+- 解析 txt 文件中的 Python 字典格式数据
+- 支持按 dtype 分组分析
+- 适合分析单个算子的详细性能数据
+
 ## Test 目录说明
 
 ### 单元测试
