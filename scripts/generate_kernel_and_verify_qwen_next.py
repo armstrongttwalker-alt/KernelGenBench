@@ -42,7 +42,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-mock_triton_code = "mock triton code"
+mock_triton_code = "import numpy as np\ndef stack(x):\n    return np.stack(x, axis=0)\ndef stack_out(x, out):\n    np.copyto(out, np.stack(x, axis=0))\n"
 
 
 class PassAtKTester:
@@ -59,6 +59,7 @@ class PassAtKTester:
         debug: bool = False,
         reflection: bool = False,
         use_wiki: bool = False,
+        use_mock_code: bool = False,
     ):
         self.output_dir = output_dir
         self.test_type = test_type
@@ -75,7 +76,8 @@ class PassAtKTester:
 
         self.debug = debug
         self.reflection = reflection
-        
+        self.use_mock_code = use_mock_code
+
         # Track results
         self.all_operators: Dict[str, Dict[str, APIInfo]] = {}
         self.passed_operators: Set[str] = set()
@@ -112,6 +114,7 @@ class PassAtKTester:
                     from flagbench.dataset import V2_OPERATORS
                     self.operator_loader = {"aten": V2_OPERATORS}
                 case "qwen_next":
+                    os.environ["FLAGBENCH_SKIP_BOTH_TEST"] = "1"
                     from flagbench.dataset import QWEN_NEXT_OPERATORS
                     self.operator_loader = {"aten": QWEN_NEXT_OPERATORS}
                     self.qwen_next = True
@@ -134,14 +137,14 @@ class PassAtKTester:
                 self.all_operators = self.operator_loader.load_all()
             else:
                 self.all_operators = {namespace: self.operator_loader.load_namespace(namespace=namespace)}
-            # for debug, use a subset of operators
+            # for debug, use a subset of operators (last 8)
             if self.debug:
-                self.all_operators = {ns: dict(list(apis.items())[:8]) for ns, apis in self.all_operators.items()}
+                self.all_operators = {ns: dict(list(apis.items())[-8:]) for ns, apis in self.all_operators.items()}
             total_ops = sum(len(ops) for ops in self.all_operators.values())
             logger.info(f"Initialized {total_ops} operators across {len(self.all_operators)} namespaces")
         else:
             if self.debug:
-                self.all_operators = {ns: dict(list(apis.items())[:8]) for ns, apis in self.operator_loader.items()}
+                self.all_operators = {ns: dict(list(apis.items())[-8:]) for ns, apis in self.operator_loader.items()}
             else:
                 self.all_operators = self.operator_loader
             total_ops = sum(len(ops) for ops in self.all_operators.values())
@@ -282,11 +285,19 @@ class PassAtKTester:
             return round_dir
         
         logger.info(f"Generating {len(gen_args)} tests...")
-        
+
         # Generate tests
-        self.gen_config.sample_id = round_idx
-        generator = GENERATOR[self.test_type](self.gen_config)
-        generated_codes = generator(gen_args)
+        if self.use_mock_code:
+            # Use mock code instead of actual generation
+            logger.info("Using mock triton kernel code (skipping LLM generation)")
+            generated_codes = [
+                (mock_triton_code, api_names[idx], round_idx)
+                for idx in range(len(gen_args))
+            ]
+        else:
+            self.gen_config.sample_id = round_idx
+            generator = GENERATOR[self.test_type](self.gen_config)
+            generated_codes = generator(gen_args)
         
         # Process and save the generated codes
         generation_results = []
@@ -414,8 +425,9 @@ class PassAtKTester:
         
         verifier = Verifier(self.verify_config)
         if self.qwen_next:
+            # breakpoint()
             verifier.set_modules(
-                modules=["src/sandbox/verifier/accuracy_ut_qwen_next.py"],
+                modules=["src/flagbench/accuracy/test_qwen_next_ops.py"],
                 mode="accuracy"
             )
         
@@ -646,6 +658,7 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument("--reflection", action="store_true", help="Enable reflection: use previous round's verify results as feedback for next generation")
     parser.add_argument("--use-wiki", action="store_true", help="Use Wiki references for generation")
+    parser.add_argument("--use-mock-code", action="store_true", help="Use mock triton code instead of actual LLM generation")
 
     args = parser.parse_args()
 
@@ -720,6 +733,7 @@ def main():
         debug=args.debug,
         reflection=args.reflection,
         use_wiki=args.use_wiki,
+        use_mock_code=args.use_mock_code,
     )
     
     tester.initialize_operators(args.name)
