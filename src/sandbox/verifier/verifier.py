@@ -127,12 +127,22 @@ class Verifier:
     def _import_module_or_path(self, module_or_path: str):
         """
         动态导入模块或文件路径
+        - 如果是目录路径，导入目录下所有.py文件
         - 如果是文件路径(.py结尾或路径分隔符),则从文件加载
         - 否则作为模块名导入
         """
         import sys
         import importlib.util
-        
+
+        # 判断是否是目录
+        if os.path.isdir(module_or_path):
+            logger.info(f"Loading all test modules from directory: {module_or_path}")
+            for filename in sorted(os.listdir(module_or_path)):
+                if filename.endswith('.py') and not filename.startswith('_'):
+                    file_path = os.path.join(module_or_path, filename)
+                    self._import_module_or_path(file_path)
+            return
+
         # 判断是否是文件路径
         if os.path.exists(module_or_path) or module_or_path.endswith('.py') or os.path.sep in module_or_path:
             # 作为文件路径处理
