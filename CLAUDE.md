@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Development Rules
+
+**CRITICAL: File Modification Policy**
+- **DO NOT** modify, edit, or write to any files unless the user explicitly says to start development or make changes
+- **WAIT** for clear user confirmation before making any code changes
+- When analyzing bugs or issues, provide analysis and solutions but DO NOT implement them until explicitly instructed
+- User must explicitly say "start development", "begin implementation", "make the changes", or similar clear instructions before any file modifications
+
 ## Project Overview
 
 FlagBench is a benchmark framework for Triton kernel generation and verification. It supports automatic test case generation, accuracy validation, and performance testing for PyTorch operators implemented in Triton.
