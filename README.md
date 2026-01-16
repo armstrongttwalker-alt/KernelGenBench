@@ -125,13 +125,215 @@ python scripts/test_updated_accuracy_ut.py \
 ### 其他工具
 
 #### 9. `generate_kernel_and_verify.py`
-**功能**: 生成 kernel 并进行验证的完整流程
+**功能**: 统一的 kernel/测试生成和验证脚本，支持 Pass@K 迭代测试
+
+**核心特性**:
+- 支持三种测试类型：`triton`（kernel 生成）、`accuracy`（测试生成）、`performance`（性能测试生成）
+- Pass@K 测试流程，可配置迭代轮数
+- 自定义测试模块支持（支持文件路径或目录路径）
+- 反射模式：使用上一轮验证结果作为下一轮生成的反馈
+- Wiki 参考集成，提供算子文档支持
+- 多数据集支持：`gems`、`v1`、`v2`、`qwen_next`
+- 按测试类型自动分离输出目录
+
+**基础用法**:
+
+生成并验证 Triton kernels（默认模式）:
+```bash
+FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 python scripts/generate_kernel_and_verify.py \
+    --name aten \
+    --dataset v2 \
+    --max-rounds 10 \
+    --device-count 8
+```
+
+生成并验证准确性测试:
+```bash
+python scripts/generate_kernel_and_verify.py \
+    --name aten \
+    --test-type accuracy \
+    --max-rounds 5 \
+    --device-count 8
+```
+
+**高级功能**:
+
+使用自定义测试模块（支持目录）:
+```bash
+python scripts/generate_kernel_and_verify.py \
+    --name aten \
+    --test-type accuracy \
+    --custom-test-modules src/flagbench/accuracy/test_qwen_next_ops.py \
+    --max-rounds 10
+```
+
+启用反射模式（使用上一轮失败结果作为反馈）:
+```bash
+python scripts/generate_kernel_and_verify.py \
+    --name aten \
+    --test-type triton \
+    --reflection \
+    --max-rounds 10
+```
+
+使用 Wiki 参考:
+```bash
+python scripts/generate_kernel_and_verify.py \
+    --name aten \
+    --use-wiki \
+    --max-rounds 10
+```
+
+针对 Qwen Next 算子:
+```bash
+FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 python scripts/generate_kernel_and_verify.py \
+    --name aten \
+    --dataset qwen_next \
+    --custom-test-modules src/flagbench/accuracy/test_qwen_next_ops.py \
+    --max-rounds 10 \
+    --device-count 8
+```
+
+**重要参数**:
+- `--test-type`: 测试类型，可选 `triton`（默认）、`accuracy`、`performance`
+- `--dataset`: 数据集版本，可选 `v2`（默认）、`gems`、`v1`、`qwen_next`
+- `--max-rounds`: Pass@K 轮数（默认: 10）
+- `--custom-test-modules`: 自定义测试模块路径或目录（支持多个）
+- `--reflection`: 启用反射模式，用于迭代改进
+- `--use-wiki`: 在生成提示中包含 Wiki 参考
+- `--device-count`: 并行测试的 GPU 数量（默认: 8）
+- `--timeout`: 每个测试的超时时间（秒，默认: 300）
+- `--model-name`: 使用的 LLM 模型（默认: gpt-4o-mini）
+- `--temperature`: 采样温度（默认: 0.8）
+- `--debug`: 启用调试模式（仅测试前 8 个算子）
+
+**输出目录结构**:
+```
+output/pass_at_k/                    # triton 模式输出
+├── pass_at_10_gpt-4o-mini_triton_2024-01-15/
+│   ├── round_0/                     # 第一轮生成
+│   │   ├── aten::add.py            # 生成的 kernel
+│   │   ├── aten::mul.py
+│   │   └── generation_summary.json
+│   ├── round_1/                     # 第二轮（失败算子重试）
+│   ├── verification/
+│   │   ├── log_0/
+│   │   │   └── result.json         # 验证结果
+│   │   └── log_1/
+│   └── pass_at_k_results.json      # Pass@K 总体统计
+
+output/pass_at_k_accuracy/           # accuracy 模式输出
+└── pass_at_5_gpt-4o-mini_accuracy_2024-01-15/
+    └── (结构同上)
+```
+
+**与其他脚本的区别**:
+- 相比 `generate_ut_and_verify.py`：支持 Triton kernel 生成和准确性测试生成（统一）
+- 支持自定义测试模块，可加载目录路径
+- 支持多种数据集，包括 Qwen Next 算子
+- 按测试类型自动分离输出目录
+- 更灵活的配置选项（反射、Wiki 等）
 
 #### 10. `generate_test_from_gems.py`
 **功能**: 从 FlagGems 生成测试用例
 
 #### 11. `utils.py`
 **功能**: 提供通用工具函数
+
+### 分析和验证工具
+
+#### 12. `verify_existing_kernels.py`
+**功能**: 重新验证已生成的 Triton kernel，无需重新生成
+
+**用法**:
+```bash
+python scripts/verify_existing_kernels.py \
+    --data-dir <pass_at_k_output_dir> \
+    --rounds all \
+    --device-count 8 \
+    --timeout 300
+```
+
+**参数**:
+- `--data-dir`: Pass@K 实验的输出目录（必需）
+- `--rounds`: 要验证的轮次，如 `0,1,2` 或 `all`（默认: `all`）
+- `--verify-output-dir`: 验证结果输出目录名（默认: `verification_rerun`）
+- `--device-count`: 使用的 GPU 数量（默认: 8）
+- `--timeout`: 每个测试的超时时间（秒）（默认: 300）
+- `--skip-verified`: 跳过已验证的轮次（默认: True）
+- `--no-skip-verified`: 不跳过已验证的轮次
+
+**使用场景**:
+- Pass@K 实验完成后重新验证
+- 验证环境变量或配置更改后的影响
+- 补充验证之前跳过的轮次
+
+#### 13. `analyze/analyze_speedup.py`
+**功能**: 从验证结果中分析 speedup 数据，生成统计摘要
+
+**用法**:
+```bash
+python scripts/analyze/analyze_speedup.py <verification_dir>
+```
+
+**示例**:
+```bash
+python scripts/analyze/analyze_speedup.py \
+    output/pass_at_k/pass_at_10_gpt-5_triton_reflection_20251226-184155/verification_rerun
+```
+
+**输出**:
+- `speedup_summary.json`: JSON 格式的统计数据
+- `speedup_summary.md`: Markdown 表格格式的摘要
+- 按平均 speedup 降序排列的算子列表
+
+**功能特点**:
+- 提取所有成功算子的 speedup 数据
+- 计算每个算子的统计信息（mean, median, min, max）
+- 跨轮次汇总数据
+
+#### 14. `analyze/analyze_speedup_detailed.py`
+**功能**: 详细分析 speedup 模式，识别高性能和低性能算子
+
+**用法**:
+```bash
+python scripts/analyze/analyze_speedup_detailed.py
+```
+
+**注意**: 此脚本硬编码了数据路径，需要修改脚本中的 `speedup_file` 变量
+
+**输出分类**:
+- **高 speedup 算子** (>1.3x): 性能提升的算子
+- **正常 speedup 算子** (0.1x-1.3x): 正常性能范围
+- **低 speedup 算子** (<0.1x): 严重性能下降的算子
+
+**功能特点**:
+- 按 speedup 范围分类算子
+- 分析跨轮次的性能一致性
+- 识别需要优化的问题算子
+
+#### 15. `analyze/analyze_speedup_txt.py`
+**功能**: 从单个 txt 文件中分析 speedup 数据
+
+**用法**:
+```bash
+python scripts/analyze/analyze_speedup_txt.py <speedup_txt_file>
+```
+
+**示例**:
+```bash
+python scripts/analyze/analyze_speedup_txt.py \
+    output/fixed_operators/test_results/qwen_next_sort_test/log_0/test_report_aten::sort_speedup.txt
+```
+
+**输出**:
+- 整体统计信息（mean, median, min, max）
+- 按数据类型（dtype）分组的统计信息
+
+**功能特点**:
+- 解析 txt 文件中的 Python 字典格式数据
+- 支持按 dtype 分组分析
+- 适合分析单个算子的详细性能数据
 
 ## Test 目录说明
 

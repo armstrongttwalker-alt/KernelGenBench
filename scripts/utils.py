@@ -53,14 +53,14 @@ def get_torch_api_signature(torch_op_name: str, torch_op_func) -> Dict[str, Any]
     # TODO : Improve argument extraction logic
     result = get_function_signature(torch_op_func)
     input_args = result["input_args"]
-    output_args = result["output_args"]
+    # output_args = result["output_args"]
     
     # input_args = [InputArg(arg_name="args", arg_type="Any", arg_desc="Input arguments")]
     # output_args = [OutputArg(arg_type="Any", arg_desc="Output result")]
     
     return {
         "input_args": input_args,
-        "output_args": output_args,
+        "output_args": None,
         "func_desc": func_desc,
     }
 
@@ -107,7 +107,7 @@ import torch
         func_desc=sig_info["func_desc"],
         torch_kernel_code=torch_kernel_code,
         input_args=sig_info["input_args"],
-        output_args=sig_info["output_args"],
+        # output_args=sig_info["output_args"],
         impl_info=impl_info,
         # func_type="other",  # Could be refined based on operator analysis
         from_mcp=False,
@@ -531,83 +531,85 @@ def get_function_signature(func: Callable) -> Dict[str, Any]:
         schema = func._schemas
         result["signature"] = str(schema)
         
-        # 解析 schema
-        # 格式示例: "aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor"
-        schema_str = str(schema)
+        input_output_info = {k: str(v) for k, v in schema.items()}
+        return {"input_args": input_output_info}
+        # # 解析 schema
+        # # 格式示例: "aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor"
+        # schema_str = str(schema)
         
-        # 提取输入参数部分
-        input_match = re.search(r'\((.*?)\)', schema_str)
-        if input_match:
-            params_str = input_match.group(1)
+        # # 提取输入参数部分
+        # input_match = re.search(r'\((.*?)\)', schema_str)
+        # if input_match:
+        #     params_str = input_match.group(1)
             
-            # 分割参数（处理 * 分隔符）
-            params_parts = params_str.split('*')
-            all_params = []
+        #     # 分割参数（处理 * 分隔符）
+        #     params_parts = params_str.split('*')
+        #     all_params = []
             
-            for part in params_parts:
-                for param in part.split(','):
-                    param = param.strip()
-                    if param and param != '*':
-                        all_params.append(param)
+        #     for part in params_parts:
+        #         for param in part.split(','):
+        #             param = param.strip()
+        #             if param and param != '*':
+        #                 all_params.append(param)
             
-            # 解析每个参数
-            for param in all_params:
-                param = param.strip()
-                if not param:
-                    continue
+        #     # 解析每个参数
+        #     for param in all_params:
+        #         param = param.strip()
+        #         if not param:
+        #             continue
                 
-                # 解析参数：格式 "Type name" 或 "Type name=default"
-                has_default = '=' in param
-                if has_default:
-                    param_no_default, default_value = param.split('=', 1)
-                else:
-                    param_no_default = param
-                    default_value = None
+        #         # 解析参数：格式 "Type name" 或 "Type name=default"
+        #         has_default = '=' in param
+        #         if has_default:
+        #             param_no_default, default_value = param.split('=', 1)
+        #         else:
+        #             param_no_default = param
+        #             default_value = None
                 
-                parts = param_no_default.strip().split()
-                if len(parts) >= 2:
-                    param_type = parts[0]
-                    param_name = parts[1]
+        #         parts = param_no_default.strip().split()
+        #         if len(parts) >= 2:
+        #             param_type = parts[0]
+        #             param_name = parts[1]
                     
-                    # 处理类型中的修饰符 (如 Tensor(a!))
-                    param_type = re.sub(r'\(.*?\)', '', param_type)
+        #             # 处理类型中的修饰符 (如 Tensor(a!))
+        #             param_type = re.sub(r'\(.*?\)', '', param_type)
                     
-                    # 创建 InputArg 对象
-                    input_arg = InputArg(
-                        arg_name=param_name,
-                        arg_type=param_type,
-                        arg_value=None,
-                        arg_default=default_value.strip() if default_value else None,
-                        arg_desc=""
-                    )
-                    result["input_args"].append(input_arg)
+        #             # 创建 InputArg 对象
+        #             input_arg = InputArg(
+        #                 arg_name=param_name,
+        #                 arg_type=param_type,
+        #                 arg_value=None,
+        #                 arg_default=default_value.strip() if default_value else None,
+        #                 arg_desc=""
+        #             )
+        #             result["input_args"].append(input_arg)
         
-        # 提取输出参数
-        output_match = re.search(r'->\s*(.+)$', schema_str)
-        if output_match:
-            output_type = output_match.group(1).strip()
+        # # 提取输出参数
+        # output_match = re.search(r'->\s*(.+)$', schema_str)
+        # if output_match:
+        #     output_type = output_match.group(1).strip()
             
-            # 处理多个返回值 (如 "(Tensor, Tensor)")
-            if output_type.startswith('(') and output_type.endswith(')'):
-                output_types = [t.strip() for t in output_type[1:-1].split(',')]
-                for out_type in output_types:
-                    # 清理类型修饰符
-                    out_type = re.sub(r'\(.*?\)', '', out_type)
-                    output_arg = OutputArg(
-                        arg_type=out_type,
-                        arg_value=None,
-                        arg_desc=""
-                    )
-                    result["output_args"].append(output_arg)
-            else:
-                # 单个返回值
-                output_type = re.sub(r'\(.*?\)', '', output_type)
-                output_arg = OutputArg(
-                    arg_type=output_type,
-                    arg_value=None,
-                    arg_desc=""
-                )
-                result["output_args"].append(output_arg)
+        #     # 处理多个返回值 (如 "(Tensor, Tensor)")
+        #     if output_type.startswith('(') and output_type.endswith(')'):
+        #         output_types = [t.strip() for t in output_type[1:-1].split(',')]
+        #         for out_type in output_types:
+        #             # 清理类型修饰符
+        #             out_type = re.sub(r'\(.*?\)', '', out_type)
+        #             output_arg = OutputArg(
+        #                 arg_type=out_type,
+        #                 arg_value=None,
+        #                 arg_desc=""
+        #             )
+        #             result["output_args"].append(output_arg)
+        #     else:
+        #         # 单个返回值
+        #         output_type = re.sub(r'\(.*?\)', '', output_type)
+        #         output_arg = OutputArg(
+        #             arg_type=output_type,
+        #             arg_value=None,
+        #             arg_desc=""
+        #         )
+        #         result["output_args"].append(output_arg)
     
     # 情况2: 普通 Python 函数，使用 inspect
     else:
