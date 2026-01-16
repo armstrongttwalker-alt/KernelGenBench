@@ -125,7 +125,114 @@ python scripts/test_updated_accuracy_ut.py \
 ### 其他工具
 
 #### 9. `generate_kernel_and_verify.py`
-**功能**: 生成 kernel 并进行验证的完整流程
+**功能**: 统一的 kernel/测试生成和验证脚本，支持 Pass@K 迭代测试
+
+**核心特性**:
+- 支持三种测试类型：`triton`（kernel 生成）、`accuracy`（测试生成）、`performance`（性能测试生成）
+- Pass@K 测试流程，可配置迭代轮数
+- 自定义测试模块支持（支持文件路径或目录路径）
+- 反射模式：使用上一轮验证结果作为下一轮生成的反馈
+- Wiki 参考集成，提供算子文档支持
+- 多数据集支持：`gems`、`v1`、`v2`、`qwen_next`
+- 按测试类型自动分离输出目录
+
+**基础用法**:
+
+生成并验证 Triton kernels（默认模式）:
+```bash
+FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 python scripts/generate_kernel_and_verify.py \
+    --name aten \
+    --dataset v2 \
+    --max-rounds 10 \
+    --device-count 8
+```
+
+生成并验证准确性测试:
+```bash
+python scripts/generate_kernel_and_verify.py \
+    --name aten \
+    --test-type accuracy \
+    --max-rounds 5 \
+    --device-count 8
+```
+
+**高级功能**:
+
+使用自定义测试模块（支持目录）:
+```bash
+python scripts/generate_kernel_and_verify.py \
+    --name aten \
+    --test-type accuracy \
+    --custom-test-modules src/flagbench/accuracy/test_qwen_next_ops.py \
+    --max-rounds 10
+```
+
+启用反射模式（使用上一轮失败结果作为反馈）:
+```bash
+python scripts/generate_kernel_and_verify.py \
+    --name aten \
+    --test-type triton \
+    --reflection \
+    --max-rounds 10
+```
+
+使用 Wiki 参考:
+```bash
+python scripts/generate_kernel_and_verify.py \
+    --name aten \
+    --use-wiki \
+    --max-rounds 10
+```
+
+针对 Qwen Next 算子:
+```bash
+FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 python scripts/generate_kernel_and_verify.py \
+    --name aten \
+    --dataset qwen_next \
+    --custom-test-modules src/flagbench/accuracy/test_qwen_next_ops.py \
+    --max-rounds 10 \
+    --device-count 8
+```
+
+**重要参数**:
+- `--test-type`: 测试类型，可选 `triton`（默认）、`accuracy`、`performance`
+- `--dataset`: 数据集版本，可选 `v2`（默认）、`gems`、`v1`、`qwen_next`
+- `--max-rounds`: Pass@K 轮数（默认: 10）
+- `--custom-test-modules`: 自定义测试模块路径或目录（支持多个）
+- `--reflection`: 启用反射模式，用于迭代改进
+- `--use-wiki`: 在生成提示中包含 Wiki 参考
+- `--device-count`: 并行测试的 GPU 数量（默认: 8）
+- `--timeout`: 每个测试的超时时间（秒，默认: 300）
+- `--model-name`: 使用的 LLM 模型（默认: gpt-4o-mini）
+- `--temperature`: 采样温度（默认: 0.8）
+- `--debug`: 启用调试模式（仅测试前 8 个算子）
+
+**输出目录结构**:
+```
+output/pass_at_k/                    # triton 模式输出
+├── pass_at_10_gpt-4o-mini_triton_2024-01-15/
+│   ├── round_0/                     # 第一轮生成
+│   │   ├── aten::add.py            # 生成的 kernel
+│   │   ├── aten::mul.py
+│   │   └── generation_summary.json
+│   ├── round_1/                     # 第二轮（失败算子重试）
+│   ├── verification/
+│   │   ├── log_0/
+│   │   │   └── result.json         # 验证结果
+│   │   └── log_1/
+│   └── pass_at_k_results.json      # Pass@K 总体统计
+
+output/pass_at_k_accuracy/           # accuracy 模式输出
+└── pass_at_5_gpt-4o-mini_accuracy_2024-01-15/
+    └── (结构同上)
+```
+
+**与其他脚本的区别**:
+- 相比 `generate_ut_and_verify.py`：支持 Triton kernel 生成和准确性测试生成（统一）
+- 支持自定义测试模块，可加载目录路径
+- 支持多种数据集，包括 Qwen Next 算子
+- 按测试类型自动分离输出目录
+- 更灵活的配置选项（反射、Wiki 等）
 
 #### 10. `generate_test_from_gems.py`
 **功能**: 从 FlagGems 生成测试用例
