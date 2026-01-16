@@ -55,6 +55,7 @@ class PassAtKTester:
         acc_test_func_path: str = "",
         bench_test_func_path: str = "",
         dataset: str = "v2",
+        custom_test_modules: Optional[List[str]] = None,
         device_count: int = 8,
         debug: bool = False,
         reflection: bool = False,
@@ -67,6 +68,7 @@ class PassAtKTester:
         self.acc_test_func_path = acc_test_func_path
         self.bench_test_func_path = bench_test_func_path
         self.dataset = dataset
+        self.custom_test_modules = custom_test_modules
         self.device_count = device_count
         self.operator_loader = TorchOpsLoader()
         self.impl_info = IMPL_INFO
@@ -236,12 +238,18 @@ class PassAtKTester:
                         code = f.read()
                     self.store_generated_code(full_name, round_idx, code)
                     continue
-                    
+
+                # Choose impl_info based on test_type
+                if self.test_type == "triton":
+                    impl_info_arg = self.impl_info.get(api_name.split('.')[-1])
+                else:  # accuracy or performance
+                    impl_info_arg = api_info
+
                 gen_arg = self.create_generate_args(
                     torch_op_name=total_api_name,
-                    torch_op_func_or_namespace=namespace if namespace else "aten", 
-                    # torch_op_func_or_namespace=api_info, 
-                    impl_info=self.impl_info.get(api_name.split('.')[-1])
+                    torch_op_func_or_namespace=namespace if namespace else "aten",
+                    # torch_op_func_or_namespace=api_info,
+                    impl_info=impl_info_arg
                 )
                 gen_arg.sample_id = round_idx
                 
@@ -413,10 +421,11 @@ class PassAtKTester:
         self.verify_config.sample_id = round_idx
         
         verifier = Verifier(self.verify_config)
-        if self.qwen_next:
+        if self.custom_test_modules:
+            mode = "accuracy" if self.test_type == "accuracy" else "performance"
             verifier.set_modules(
-                modules=["src/sandbox/verifier/accuracy_ut_qwen_next.py"],
-                mode="accuracy"
+                modules=self.custom_test_modules,
+                mode=mode
             )
         
         # Prepare verification requests
@@ -632,7 +641,7 @@ def main():
     parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["gems", "v1", "v2", "qwen_next"])
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
     parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
-    parser.add_argument("--test-type", type=str, default="accuracy", choices=["accuracy", "performance", "triton"])
+    parser.add_argument("--test-type", type=str, default="triton", choices=["accuracy", "performance", "triton"])
     parser.add_argument("--max-rounds", type=int, default=10, help="Maximum number of rounds (default: 10)")
     parser.add_argument("--device-count", type=int, default=8, help="Number of devices for testing")
     parser.add_argument("--timeout", type=int, default=300, help="Timeout for each test")
@@ -646,6 +655,7 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument("--reflection", action="store_true", help="Enable reflection: use previous round's verify results as feedback for next generation")
     parser.add_argument("--use-wiki", action="store_true", help="Use Wiki references for generation")
+    parser.add_argument("--custom-test-modules", type=str, nargs="+", default=None, help="Custom test module paths or directories (e.g., src/flagbench/accuracy/test_custom.py or src/flagbench/accuracy/)")
 
     args = parser.parse_args()
 
@@ -664,7 +674,14 @@ def main():
         if args.use_wiki:
             postfix += "_wiki"
         run_name = f"pass_at_{args.max_rounds}_{args.model_name}_{args.test_type}{postfix}_{today()}"
-        output_dir = args.output_dir / run_name
+
+        # Adjust base directory based on test_type
+        if args.test_type == "accuracy":
+            base_dir = args.output_dir.parent / f"{args.output_dir.name}_accuracy"
+        else:
+            base_dir = args.output_dir
+
+        output_dir = base_dir / run_name
         output_dir.mkdir(parents=True, exist_ok=True)
     
     # save args to output dir
@@ -714,6 +731,7 @@ def main():
         acc_test_func_path=args.acc_test_func_path,
         bench_test_func_path=args.benchmark_func_path,
         dataset=args.dataset,
+        custom_test_modules=args.custom_test_modules,
         gen_config=gen_config,
         verify_config=verify_config,
         device_count=args.device_count,
