@@ -76,6 +76,14 @@ using triple backticks. Do not include any testing code, comments, explanations,
 or any other text. Output only valid, executable code. You can customize the name \
 of your kernel function, but the final function name must be consistent with the \
 corresponding PyTorch function. Do not implement any registration functionality, only implement the core functionality.
+
+IMPORTANT REQUIREMENTS:
+1. For pointwise operators, you MUST handle broadcasting correctly. Ensure your kernel \
+supports inputs with different shapes that can be broadcast together according to PyTorch's \
+broadcasting semantics.
+2. You MUST handle non-contiguous tensors correctly. Do not assume input tensors are \
+contiguous in memory. Use proper stride calculations to access elements correctly for \
+tensors with arbitrary memory layouts.
 """
 
 

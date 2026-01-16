@@ -42,7 +42,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-mock_triton_code = "mock triton code"
+mock_triton_code = "import numpy as np\ndef stack(x):\n    return np.stack(x, axis=0)\ndef stack_out(x, out):\n    np.copyto(out, np.stack(x, axis=0))\n"
 
 
 class PassAtKTester:
@@ -55,11 +55,11 @@ class PassAtKTester:
         acc_test_func_path: str = "",
         bench_test_func_path: str = "",
         dataset: str = "v2",
-        custom_test_modules: Optional[List[str]] = None,
         device_count: int = 8,
         debug: bool = False,
         reflection: bool = False,
         use_wiki: bool = False,
+        use_mock_code: bool = False,
     ):
         self.output_dir = output_dir
         self.test_type = test_type
@@ -68,7 +68,6 @@ class PassAtKTester:
         self.acc_test_func_path = acc_test_func_path
         self.bench_test_func_path = bench_test_func_path
         self.dataset = dataset
-        self.custom_test_modules = custom_test_modules
         self.device_count = device_count
         self.operator_loader = TorchOpsLoader()
         self.impl_info = IMPL_INFO
@@ -77,7 +76,8 @@ class PassAtKTester:
 
         self.debug = debug
         self.reflection = reflection
-        
+        self.use_mock_code = use_mock_code
+
         # Track results
         self.all_operators: Dict[str, Dict[str, APIInfo]] = {}
         self.passed_operators: Set[str] = set()
@@ -114,6 +114,7 @@ class PassAtKTester:
                     from flagbench.dataset import V2_OPERATORS
                     self.operator_loader = {"aten": V2_OPERATORS}
                 case "qwen_next":
+                    os.environ["FLAGBENCH_SKIP_BOTH_TEST"] = "1"
                     from flagbench.dataset import QWEN_NEXT_OPERATORS
                     self.operator_loader = {"aten": QWEN_NEXT_OPERATORS}
                     self.qwen_next = True
@@ -136,14 +137,14 @@ class PassAtKTester:
                 self.all_operators = self.operator_loader.load_all()
             else:
                 self.all_operators = {namespace: self.operator_loader.load_namespace(namespace=namespace)}
-            # for debug, use a subset of operators
+            # for debug, use a subset of operators (last 8)
             if self.debug:
-                self.all_operators = {ns: dict(list(apis.items())[:8]) for ns, apis in self.all_operators.items()}
+                self.all_operators = {ns: dict(list(apis.items())[-8:]) for ns, apis in self.all_operators.items()}
             total_ops = sum(len(ops) for ops in self.all_operators.values())
             logger.info(f"Initialized {total_ops} operators across {len(self.all_operators)} namespaces")
         else:
             if self.debug:
-                self.all_operators = {ns: dict(list(apis.items())[:8]) for ns, apis in self.operator_loader.items()}
+                self.all_operators = {ns: dict(list(apis.items())[-8:]) for ns, apis in self.operator_loader.items()}
             else:
                 self.all_operators = self.operator_loader
             total_ops = sum(len(ops) for ops in self.all_operators.values())
@@ -238,18 +239,12 @@ class PassAtKTester:
                         code = f.read()
                     self.store_generated_code(full_name, round_idx, code)
                     continue
-
-                # Choose impl_info based on test_type
-                if self.test_type == "triton":
-                    impl_info_arg = self.impl_info.get(api_name.split('.')[-1])
-                else:  # accuracy or performance
-                    impl_info_arg = api_info
-
+                    
                 gen_arg = self.create_generate_args(
                     torch_op_name=total_api_name,
-                    torch_op_func_or_namespace=namespace if namespace else "aten",
-                    # torch_op_func_or_namespace=api_info,
-                    impl_info=impl_info_arg
+                    torch_op_func_or_namespace=namespace if namespace else "aten", 
+                    # torch_op_func_or_namespace=api_info, 
+                    impl_info=self.impl_info.get(api_name.split('.')[-1])
                 )
                 gen_arg.sample_id = round_idx
                 
@@ -290,11 +285,19 @@ class PassAtKTester:
             return round_dir
         
         logger.info(f"Generating {len(gen_args)} tests...")
-        
+
         # Generate tests
-        self.gen_config.sample_id = round_idx
-        generator = GENERATOR[self.test_type](self.gen_config)
-        generated_codes = generator(gen_args)
+        if self.use_mock_code:
+            # Use mock code instead of actual generation
+            logger.info("Using mock triton kernel code (skipping LLM generation)")
+            generated_codes = [
+                (mock_triton_code, api_names[idx], round_idx)
+                for idx in range(len(gen_args))
+            ]
+        else:
+            self.gen_config.sample_id = round_idx
+            generator = GENERATOR[self.test_type](self.gen_config)
+            generated_codes = generator(gen_args)
         
         # Process and save the generated codes
         generation_results = []
@@ -421,11 +424,11 @@ class PassAtKTester:
         self.verify_config.sample_id = round_idx
         
         verifier = Verifier(self.verify_config)
-        if self.custom_test_modules:
-            mode = "accuracy" if self.test_type == "accuracy" else "performance"
+        if self.qwen_next:
+            # breakpoint()
             verifier.set_modules(
-                modules=self.custom_test_modules,
-                mode=mode
+                modules=["src/flagbench/accuracy/test_qwen_next_ops.py"],
+                mode="accuracy"
             )
         
         # Prepare verification requests
@@ -641,7 +644,7 @@ def main():
     parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["gems", "v1", "v2", "qwen_next"])
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
     parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
-    parser.add_argument("--test-type", type=str, default="triton", choices=["accuracy", "performance", "triton"])
+    parser.add_argument("--test-type", type=str, default="accuracy", choices=["accuracy", "performance", "triton"])
     parser.add_argument("--max-rounds", type=int, default=10, help="Maximum number of rounds (default: 10)")
     parser.add_argument("--device-count", type=int, default=8, help="Number of devices for testing")
     parser.add_argument("--timeout", type=int, default=300, help="Timeout for each test")
@@ -655,7 +658,7 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument("--reflection", action="store_true", help="Enable reflection: use previous round's verify results as feedback for next generation")
     parser.add_argument("--use-wiki", action="store_true", help="Use Wiki references for generation")
-    parser.add_argument("--custom-test-modules", type=str, nargs="+", default=None, help="Custom test module paths or directories (e.g., src/flagbench/accuracy/test_custom.py or src/flagbench/accuracy/)")
+    parser.add_argument("--use-mock-code", action="store_true", help="Use mock triton code instead of actual LLM generation")
 
     args = parser.parse_args()
 
@@ -674,14 +677,7 @@ def main():
         if args.use_wiki:
             postfix += "_wiki"
         run_name = f"pass_at_{args.max_rounds}_{args.model_name}_{args.test_type}{postfix}_{today()}"
-
-        # Adjust base directory based on test_type
-        if args.test_type == "accuracy":
-            base_dir = args.output_dir.parent / f"{args.output_dir.name}_accuracy"
-        else:
-            base_dir = args.output_dir
-
-        output_dir = base_dir / run_name
+        output_dir = args.output_dir / run_name
         output_dir.mkdir(parents=True, exist_ok=True)
     
     # save args to output dir
@@ -731,13 +727,13 @@ def main():
         acc_test_func_path=args.acc_test_func_path,
         bench_test_func_path=args.benchmark_func_path,
         dataset=args.dataset,
-        custom_test_modules=args.custom_test_modules,
         gen_config=gen_config,
         verify_config=verify_config,
         device_count=args.device_count,
         debug=args.debug,
         reflection=args.reflection,
         use_wiki=args.use_wiki,
+        use_mock_code=args.use_mock_code,
     )
     
     tester.initialize_operators(args.name)

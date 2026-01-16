@@ -147,3 +147,10 @@ output_ut/
 runs/
 debug_log/
 successful_operators.txt
+
+# Backup files
+*.bak
+*copy.py
+
+# Temporary result files
+result.json

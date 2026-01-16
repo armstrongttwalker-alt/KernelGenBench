@@ -1,7 +1,7 @@
 from .utils import expand_params, save_benchmark_result, add_register_decorator
 from sandbox.utils.accuracy_utils import VerifyResult
 from sandbox.register_scanner import auto_register_module
-from .test_parametrize import get_funcs_by_label, _label_registry, get_params
+from sandbox.verifier.test_parametrize import get_funcs_by_label, _label_registry, get_params
 from fastapi.encoders import jsonable_encoder
 import os
 DISPATCH_TORCH_LIB = os.environ.get("DISPATCH_TORCH_LIB", "1") == "1"
@@ -113,6 +113,7 @@ class Verifier:
         self._running_config = deepcopy(config)
         self.accuracy_modules = []
         self.perf_modules = []
+        self.external_modules_set = False
 
     def set_modules(self, modules: list, mode: str = "accuracy"):
         assert mode in ["accuracy", "performance"], f"mode must be accuracy or performance, got {mode}"
@@ -120,17 +121,28 @@ class Verifier:
             self.accuracy_modules = modules
         if mode == "performance":
             self.perf_modules = modules
+        self.external_modules_set = True
 
 
     def _import_module_or_path(self, module_or_path: str):
         """
         动态导入模块或文件路径
+        - 如果是目录路径，导入目录下所有.py文件
         - 如果是文件路径(.py结尾或路径分隔符),则从文件加载
         - 否则作为模块名导入
         """
         import sys
         import importlib.util
-        
+
+        # 判断是否是目录
+        if os.path.isdir(module_or_path):
+            logger.info(f"Loading all test modules from directory: {module_or_path}")
+            for filename in sorted(os.listdir(module_or_path)):
+                if filename.endswith('.py') and not filename.startswith('_'):
+                    file_path = os.path.join(module_or_path, filename)
+                    self._import_module_or_path(file_path)
+            return
+
         # 判断是否是文件路径
         if os.path.exists(module_or_path) or module_or_path.endswith('.py') or os.path.sep in module_or_path:
             # 作为文件路径处理
@@ -157,7 +169,7 @@ class Verifier:
 
     def import_tests(self, mode: str = "accuracy"):
         import os
-        if os.environ.get("FLAGBENCH_SKIP_BOTH_TEST", "0") == "1":
+        if os.environ.get("FLAGBENCH_SKIP_BOTH_TEST", "0") == "1" and self.external_modules_set is False:
             logger.info("Skipping both accuracy and performance test imports due to FLAGBENCH_SKIP_BOTH_TEST=1")
             return
         if not self.accuracy_modules:
@@ -519,7 +531,7 @@ class Verifier:
         verifyresult = self.run_tests(
             name=op_mark, 
             json_path=json_path, 
-            max_failures=config.strict_check and 1 or "all",
+            max_failures="all",
             seed=config.seed, 
             strict_check=config.strict_check,
         )
