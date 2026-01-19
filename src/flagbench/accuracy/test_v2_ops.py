@@ -19,8 +19,8 @@ from sandbox.register import REGISTERED_OPS
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_log_sigmoid_backward_tensor(shape, dtype):
-    self = torch.randn(shape, dtype=dtype, device="cuda")
-    grad_output = torch.randn(shape, dtype=dtype, device="cuda")
+    self = torch.randn(shape, dtype=dtype, device=device)
+    grad_output = torch.randn(shape, dtype=dtype, device=device)
     buffer = torch.sigmoid(self)
 
     ref_self = self.clone()
@@ -41,8 +41,8 @@ def test_log_sigmoid_backward_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_log_sigmoid_backward_grad_input(shape, dtype):
-    self = torch.randn(shape, dtype=dtype, device="cuda")
-    grad_output = torch.randn(shape, dtype=dtype, device="cuda")
+    self = torch.randn(shape, dtype=dtype, device=device)
+    grad_output = torch.randn(shape, dtype=dtype, device=device)
     buffer = torch.sigmoid(self)
 
     ref_self = self.clone()
@@ -69,8 +69,8 @@ def test_log_sigmoid_backward_grad_input(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_mish_backward_tensor(shape, dtype):
-    grad_output = torch.randn(shape, dtype=dtype, device='cuda')
-    self_tensor = torch.randn(shape, dtype=dtype, device='cuda')
+    grad_output = torch.randn(shape, dtype=dtype, device=device)
+    self_tensor = torch.randn(shape, dtype=dtype, device=device)
 
     ref_grad = grad_output.clone()
     ref_self = self_tensor.clone()
@@ -91,8 +91,8 @@ def test_reflection_pad1d_backward_tensor(shape, dtype, padding):
     pad_l, pad_r = padding
     W_out = W + pad_l + pad_r
 
-    self = torch.randn((N, C, W), dtype=dtype, device="cuda")
-    grad_output = torch.randn((N, C, W_out), dtype=dtype, device="cuda")
+    self = torch.randn((N, C, W), dtype=dtype, device=device)
+    grad_output = torch.randn((N, C, W_out), dtype=dtype, device=device)
 
     ref_self = self.clone()
     ref_grad_output = grad_output.clone()
@@ -114,8 +114,8 @@ def test_reflection_pad1d_backward_grad_input(shape, dtype, padding):
     pad_l, pad_r = padding
     W_out = W + pad_l + pad_r
 
-    self = torch.randn((N, C, W), dtype=dtype, device="cuda")
-    grad_output = torch.randn((N, C, W_out), dtype=dtype, device="cuda")
+    self = torch.randn((N, C, W), dtype=dtype, device=device)
+    grad_output = torch.randn((N, C, W_out), dtype=dtype, device=device)
 
     ref_self = self.clone()
     ref_grad_output = grad_output.clone()
@@ -138,9 +138,9 @@ def test_reflection_pad1d_backward_grad_input(shape, dtype, padding):
 def test_rrelu_with_noise_backward_tensor(shape, dtype, training):
     lower = 0.1
     upper = 0.3
-    self = torch.randn(shape, dtype=dtype, device="cuda")
-    grad_output = torch.randn(shape, dtype=dtype, device="cuda")
-    noise = (lower + (upper - lower) * torch.rand(shape, dtype=dtype, device="cuda"))
+    self = torch.randn(shape, dtype=dtype, device=device)
+    grad_output = torch.randn(shape, dtype=dtype, device=device)
+    noise = (lower + (upper - lower) * torch.rand(shape, dtype=dtype, device=device))
     self_is_result = False
 
     ref_self = self.clone()
@@ -166,9 +166,9 @@ def test_rrelu_with_noise_backward_tensor(shape, dtype, training):
 def test_rrelu_with_noise_backward_out(shape, dtype, training):
     lower = 0.1
     upper = 0.3
-    self = torch.randn(shape, dtype=dtype, device="cuda")
-    grad_output = torch.randn(shape, dtype=dtype, device="cuda")
-    noise = (lower + (upper - lower) * torch.rand(shape, dtype=dtype, device="cuda"))
+    self = torch.randn(shape, dtype=dtype, device=device)
+    grad_output = torch.randn(shape, dtype=dtype, device=device)
+    noise = (lower + (upper - lower) * torch.rand(shape, dtype=dtype, device=device))
     self_is_result = True
 
     ref_self = self.clone()
@@ -207,7 +207,7 @@ def test_select_backward_default(input_sizes, dim, index_mode, dtype):
     out_shape = list(input_sizes)
     del out_shape[dim_c]
     out_shape = tuple(out_shape) if len(out_shape) > 0 else ()
-    grad_ref = torch.randn(out_shape, dtype=dtype, device="cuda")
+    grad_ref = torch.randn(out_shape, dtype=dtype, device=device)
     grad_act = grad_ref.clone()
 
     ref_out = torch.ops.aten.select_backward(grad_ref, list(input_sizes), dim, index)
@@ -236,14 +236,14 @@ def test_select_backward_out(input_sizes, dim, index_mode, dtype):
     out_shape = list(input_sizes)
     del out_shape[dim_c]
     out_shape = tuple(out_shape) if len(out_shape) > 0 else ()
-    grad_ref = torch.randn(out_shape, dtype=dtype, device="cuda")
+    grad_ref = torch.randn(out_shape, dtype=dtype, device=device)
     grad_act = grad_ref.clone()
 
-    ref_out_buf = torch.empty(input_sizes, dtype=dtype, device="cuda")
+    ref_out_buf = torch.empty(input_sizes, dtype=dtype, device=device)
     ref_out = torch.ops.aten.select_backward.out(grad_ref, list(input_sizes), dim, index, out=ref_out_buf)
 
     with flagbench.use_gems(REGISTERED_OPS):
-        act_out_buf = torch.empty(input_sizes, dtype=dtype, device="cuda")
+        act_out_buf = torch.empty(input_sizes, dtype=dtype, device=device)
         act_out = torch.ops.aten.select_backward.out(grad_act, list(input_sizes), dim, index, out=act_out_buf)
 
     assert_close(act_out, ref_out, dtype=dtype)
@@ -255,12 +255,12 @@ def test_select_backward_out(input_sizes, dim, index_mode, dtype):
 @parametrize("reduction", [0, 1, 2])
 @parametrize("beta", [0.5, 1.0, 2.0])
 def test_smooth_l1_loss_backward_tensor(shape, dtype, reduction, beta):
-    self = torch.randn(shape, dtype=dtype, device="cuda")
-    target = torch.randn(shape, dtype=dtype, device="cuda")
+    self = torch.randn(shape, dtype=dtype, device=device)
+    target = torch.randn(shape, dtype=dtype, device=device)
     if reduction == 0:
-        grad_output = torch.randn(shape, dtype=dtype, device="cuda")
+        grad_output = torch.randn(shape, dtype=dtype, device=device)
     else:
-        grad_output = torch.randn((), dtype=dtype, device="cuda")
+        grad_output = torch.randn((), dtype=dtype, device=device)
 
     ref_grad_output = grad_output.clone()
     ref_self = self.clone()
@@ -280,12 +280,12 @@ def test_smooth_l1_loss_backward_tensor(shape, dtype, reduction, beta):
 @parametrize("reduction", [0, 1, 2])
 @parametrize("beta", [0.5, 1.0, 2.0])
 def test_smooth_l1_loss_backward_grad_input(shape, dtype, reduction, beta):
-    self = torch.randn(shape, dtype=dtype, device="cuda")
-    target = torch.randn(shape, dtype=dtype, device="cuda")
+    self = torch.randn(shape, dtype=dtype, device=device)
+    target = torch.randn(shape, dtype=dtype, device=device)
     if reduction == 0:
-        grad_output = torch.randn(shape, dtype=dtype, device="cuda")
+        grad_output = torch.randn(shape, dtype=dtype, device=device)
     else:
-        grad_output = torch.randn((), dtype=dtype, device="cuda")
+        grad_output = torch.randn((), dtype=dtype, device=device)
 
     ref_grad_output = grad_output.clone()
     ref_self = self.clone()
@@ -311,8 +311,8 @@ def test_smooth_l1_loss_backward_grad_input(shape, dtype, reduction, beta):
 @parametrize("beta", [0.5, 1.0, 2.0])
 @parametrize("threshold", [10.0, 20.0])
 def test_softplus_backward_tensor(shape, dtype, beta, threshold):
-    x = torch.randn(shape, dtype=dtype, device="cuda")
-    grad = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
+    grad = torch.randn(shape, dtype=dtype, device=device)
 
     ref_x = x.clone()
     ref_grad = grad.clone()
@@ -331,8 +331,8 @@ def test_softplus_backward_tensor(shape, dtype, beta, threshold):
 @parametrize("beta", [0.5, 1.0, 2.0])
 @parametrize("threshold", [10.0, 20.0])
 def test_softplus_backward_grad_input_out(shape, dtype, beta, threshold):
-    x = torch.randn(shape, dtype=dtype, device="cuda")
-    grad = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
+    grad = torch.randn(shape, dtype=dtype, device=device)
 
     ref_x = x.clone()
     ref_grad = grad.clone()
@@ -362,7 +362,7 @@ def test_softplus_backward_grad_input_out(shape, dtype, beta, threshold):
 @parametrize("use_scales", [False, True])
 def test_upsample_nearest2d_backward_tensor(case, dtype, use_scales):
     N, C, in_h, in_w, out_h, out_w = case
-    grad_output = torch.randn((N, C, out_h, out_w), dtype=dtype, device="cuda")
+    grad_output = torch.randn((N, C, out_h, out_w), dtype=dtype, device=device)
     scales_h = float(out_h) / float(in_h) if use_scales else None
     scales_w = float(out_w) / float(in_w) if use_scales else None
 
@@ -389,8 +389,8 @@ def test_upsample_nearest2d_backward_tensor(case, dtype, use_scales):
 @parametrize("use_scales", [False, True])
 def test_upsample_nearest2d_backward_grad_input(case, dtype, use_scales):
     N, C, in_h, in_w, out_h, out_w = case
-    grad_output = torch.randn((N, C, out_h, out_w), dtype=dtype, device="cuda")
-    ref_grad_input = torch.empty((N, C, in_h, in_w), dtype=dtype, device="cuda")
+    grad_output = torch.randn((N, C, out_h, out_w), dtype=dtype, device=device)
+    ref_grad_input = torch.empty((N, C, in_h, in_w), dtype=dtype, device=device)
     act_grad_input = torch.empty_like(ref_grad_input)
 
     scales_h = float(out_h) / float(in_h) if use_scales else None
@@ -413,7 +413,7 @@ def test_upsample_nearest2d_backward_grad_input(case, dtype, use_scales):
 @parametrize("shape", [(2, 3), (128, 256), (1024, 1024)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_erfc_tensor(shape, dtype):
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     ref_out = torch.ops.aten.erfc(ref_x)
@@ -428,7 +428,7 @@ def test_erfc_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (1024, 1024)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_erfc_out_tensor(shape, dtype):
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     ref_out = torch.empty_like(ref_x)
@@ -472,7 +472,7 @@ def test_erfc_scalar(a):
 @parametrize("shape", [(2, 3), (128, 256), (1024, 1024)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_hardsigmoid_tensor(shape, dtype):
-    x = torch.randn(shape, device="cuda", dtype=dtype)
+    x = torch.randn(shape, device=device, dtype=dtype)
     ref_x = x.clone()
 
     ref_out = torch.ops.aten.hardsigmoid(ref_x)
@@ -487,7 +487,7 @@ def test_hardsigmoid_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (1024, 1024)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_hardsigmoid_out(shape, dtype):
-    x = torch.randn(shape, device="cuda", dtype=dtype)
+    x = torch.randn(shape, device=device, dtype=dtype)
     ref_x = x.clone()
 
     ref_out_buf = torch.empty_like(ref_x)
@@ -505,9 +505,9 @@ def test_hardsigmoid_out(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_heaviside_tensor(shape, dtype):
-    self_tensor = torch.randn(shape, dtype=dtype, device="cuda")
-    values_tensor = torch.randn(shape, dtype=dtype, device="cuda")
-    mask = torch.rand(shape, device="cuda") < 0.1
+    self_tensor = torch.randn(shape, dtype=dtype, device=device)
+    values_tensor = torch.randn(shape, dtype=dtype, device=device)
+    mask = torch.rand(shape, device=device) < 0.1
     self_tensor[mask] = 0.0
 
     ref_self = self_tensor.clone()
@@ -525,9 +525,9 @@ def test_heaviside_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_heaviside_out(shape, dtype):
-    self_tensor = torch.randn(shape, dtype=dtype, device="cuda")
-    values_tensor = torch.randn(shape, dtype=dtype, device="cuda")
-    mask = torch.rand(shape, device="cuda") < 0.1
+    self_tensor = torch.randn(shape, dtype=dtype, device=device)
+    values_tensor = torch.randn(shape, dtype=dtype, device=device)
+    mask = torch.rand(shape, device=device) < 0.1
     self_tensor[mask] = 0.0
 
     ref_self = self_tensor.clone()
@@ -547,7 +547,7 @@ def test_heaviside_out(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (1024, 1024)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_log10_tensor(shape, dtype):
-    x = torch.rand(shape, dtype=dtype, device="cuda") + 0.01
+    x = torch.rand(shape, dtype=dtype, device=device) + 0.01
     ref_x = x.clone()
 
     ref_out = torch.ops.aten.log10(ref_x)
@@ -562,7 +562,7 @@ def test_log10_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (1024, 1024)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_log10_out(shape, dtype):
-    x = torch.rand(shape, dtype=dtype, device="cuda") + 0.01
+    x = torch.rand(shape, dtype=dtype, device=device) + 0.01
     ref_x = x.clone()
 
     ref_out_buf = torch.empty_like(ref_x)
@@ -618,9 +618,9 @@ def test_log10_scalar(a):
 @parametrize("eps", [None, 1e-6, 1e-3])
 def test_logit_tensor(shape, dtype, eps):
     if eps is None:
-        base = torch.rand(shape, dtype=torch.float32, device="cuda") * 0.998 + 0.001
+        base = torch.rand(shape, dtype=torch.float32, device=device) * 0.998 + 0.001
     else:
-        base = torch.rand(shape, dtype=torch.float32, device="cuda")
+        base = torch.rand(shape, dtype=torch.float32, device=device)
         flat = base.view(-1)
         if flat.numel() >= 2:
             flat[0] = 0.0
@@ -642,9 +642,9 @@ def test_logit_tensor(shape, dtype, eps):
 @parametrize("eps", [None, 1e-6, 1e-3])
 def test_logit_out(shape, dtype, eps):
     if eps is None:
-        base = torch.rand(shape, dtype=torch.float32, device="cuda") * 0.998 + 0.001
+        base = torch.rand(shape, dtype=torch.float32, device=device) * 0.998 + 0.001
     else:
-        base = torch.rand(shape, dtype=torch.float32, device="cuda")
+        base = torch.rand(shape, dtype=torch.float32, device=device)
         flat = base.view(-1)
         if flat.numel() >= 2:
             flat[0] = 0.0
@@ -652,11 +652,11 @@ def test_logit_out(shape, dtype, eps):
     input_tensor = base.to(dtype)
 
     ref_input = input_tensor.clone()
-    ref_out_buf = torch.empty(shape, dtype=dtype, device="cuda")
+    ref_out_buf = torch.empty(shape, dtype=dtype, device=device)
     ref_out = torch.ops.aten.logit.out(ref_input, eps, out=ref_out_buf)
 
     with flagbench.use_gems(REGISTERED_OPS):
-        act_out_buf = torch.empty(shape, dtype=dtype, device="cuda")
+        act_out_buf = torch.empty(shape, dtype=dtype, device=device)
         act_out = torch.ops.aten.logit.out(input_tensor, eps, out=act_out_buf)
 
     assert_close(act_out_buf, ref_out_buf, dtype=dtype)
@@ -666,7 +666,7 @@ def test_logit_out(shape, dtype, eps):
 @parametrize("shape", [(2, 3), (128, 256), (512, 1024)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_mish_tensor(shape, dtype):
-    x_ref = torch.randn(shape, device="cuda", dtype=dtype)
+    x_ref = torch.randn(shape, device=device, dtype=dtype)
     x_act = x_ref.clone()
 
     ref_out = torch.ops.aten.mish(x_ref)
@@ -681,7 +681,7 @@ def test_mish_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 1024)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_mish_out(shape, dtype):
-    x_ref = torch.randn(shape, device="cuda", dtype=dtype)
+    x_ref = torch.randn(shape, device=device, dtype=dtype)
     x_act = x_ref.clone()
 
     ref_out = torch.empty_like(x_ref)
@@ -701,12 +701,12 @@ def test_mish_out(shape, dtype):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("weight_kind", ["scalar", "per_channel"])
 def test_prelu_tensor(shape, dtype, weight_kind):
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     if weight_kind == "scalar":
-        w = torch.randn((), dtype=dtype, device="cuda")
+        w = torch.randn((), dtype=dtype, device=device)
     else:
         c = shape[1]
-        w = torch.randn((c,), dtype=dtype, device="cuda")
+        w = torch.randn((c,), dtype=dtype, device=device)
 
     ref_x = x.clone()
     ref_w = w.clone()
@@ -726,16 +726,16 @@ def test_prelu_tensor(shape, dtype, weight_kind):
 @parametrize("bounds", [(0.125, 1.0 / 3.0), (0.1, 0.4)])
 def test_rrelu_with_noise_tensor(shape, dtype, training, bounds):
     lower, upper = bounds
-    x = torch.randn(shape, device="cuda", dtype=dtype)
+    x = torch.randn(shape, device=device, dtype=dtype)
     ref_input = x.clone()
     act_input = x.clone()
     ref_noise = torch.empty_like(ref_input)
     act_noise = torch.empty_like(act_input)
 
     if training:
-        ref_gen = torch.Generator(device="cuda")
+        ref_gen = torch.Generator(device=device)
         ref_gen.manual_seed(123)
-        act_gen = torch.Generator(device="cuda")
+        act_gen = torch.Generator(device=device)
         act_gen.manual_seed(123)
     else:
         ref_gen = None
@@ -756,7 +756,7 @@ def test_rrelu_with_noise_tensor(shape, dtype, training, bounds):
 @parametrize("bounds", [(0.125, 1.0 / 3.0), (0.1, 0.4)])
 def test_rrelu_with_noise_out(shape, dtype, training, bounds):
     lower, upper = bounds
-    x = torch.randn(shape, device="cuda", dtype=dtype)
+    x = torch.randn(shape, device=device, dtype=dtype)
     ref_input = x.clone()
     act_input = x.clone()
     ref_noise = torch.empty_like(ref_input)
@@ -765,9 +765,9 @@ def test_rrelu_with_noise_out(shape, dtype, training, bounds):
     act_out_buf = torch.empty_like(act_input)
 
     if training:
-        ref_gen = torch.Generator(device="cuda")
+        ref_gen = torch.Generator(device=device)
         ref_gen.manual_seed(123)
-        act_gen = torch.Generator(device="cuda")
+        act_gen = torch.Generator(device=device)
         act_gen.manual_seed(123)
     else:
         ref_gen = None
@@ -785,7 +785,7 @@ def test_rrelu_with_noise_out(shape, dtype, training, bounds):
 @parametrize("shape", [(2, 3), (128, 256), (1024, 1024)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_square_tensor(shape, dtype):
-    x = torch.randn(shape, dtype=dtype, device='cuda')
+    x = torch.randn(shape, dtype=dtype, device=device)
 
     ref_x = x.clone()
     ref_out = torch.ops.aten.square(ref_x)
@@ -801,14 +801,14 @@ def test_square_tensor(shape, dtype):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("out_layout", ["contiguous", "noncontiguous"])
 def test_square_out(shape, dtype, out_layout):
-    x = torch.randn(shape, dtype=dtype, device='cuda')
+    x = torch.randn(shape, dtype=dtype, device=device)
 
     if out_layout == "contiguous":
         ref_out_buf = torch.empty_like(x)
         act_out_buf = torch.empty_like(x)
     else:
-        ref_base = torch.empty((shape[0], shape[1] * 2), dtype=dtype, device='cuda')
-        act_base = torch.empty((shape[0], shape[1] * 2), dtype=dtype, device='cuda')
+        ref_base = torch.empty((shape[0], shape[1] * 2), dtype=dtype, device=device)
+        act_base = torch.empty((shape[0], shape[1] * 2), dtype=dtype, device=device)
         ref_out_buf = ref_base[:, ::2]
         act_out_buf = act_base[:, ::2]
 
@@ -832,7 +832,6 @@ def test_square_out(shape, dtype, out_layout):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("align_corners", [True, False])
 def test_affine_grid_generator_tensor(size, dtype, align_corners):
-    device = "cuda"
     k = len(size) - 2
     N = size[0]
     theta_shape = (N, k, k + 1)
@@ -861,7 +860,7 @@ def test_affine_grid_generator_tensor(size, dtype, align_corners):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("align_corners", [True, False])
 def test_affine_grid_generator_out(size, dtype, align_corners):
-    device = "cuda"
+    device = device
     k = len(size) - 2
     N = size[0]
     theta_shape = (N, k, k + 1)
@@ -885,15 +884,15 @@ def test_affine_grid_generator_out(size, dtype, align_corners):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_bernoulli_self(shape, dtype):
-    probs = torch.rand(shape, dtype=dtype, device="cuda")
+    probs = torch.rand(shape, dtype=dtype, device=device)
     ref_input = probs.clone()
     act_input = probs.clone()
 
-    gen_ref = torch.Generator(device="cuda")
+    gen_ref = torch.Generator(device=device)
     gen_ref.manual_seed(1234)
     ref_out = torch.ops.aten.bernoulli(ref_input, generator=gen_ref)
 
-    gen_act = torch.Generator(device="cuda")
+    gen_act = torch.Generator(device=device)
     gen_act.manual_seed(1234)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.bernoulli(act_input, generator=gen_act)
@@ -905,18 +904,18 @@ def test_bernoulli_self(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_bernoulli_out(shape, dtype):
-    probs = torch.rand(shape, dtype=dtype, device="cuda")
+    probs = torch.rand(shape, dtype=dtype, device=device)
     ref_input = probs.clone()
     act_input = probs.clone()
 
-    out_ref = torch.empty(shape, dtype=dtype, device="cuda")
-    out_act = torch.empty(shape, dtype=dtype, device="cuda")
+    out_ref = torch.empty(shape, dtype=dtype, device=device)
+    out_act = torch.empty(shape, dtype=dtype, device=device)
 
-    gen_ref = torch.Generator(device="cuda")
+    gen_ref = torch.Generator(device=device)
     gen_ref.manual_seed(4321)
     ref_out = torch.ops.aten.bernoulli.out(ref_input, generator=gen_ref, out=out_ref)
 
-    gen_act = torch.Generator(device="cuda")
+    gen_act = torch.Generator(device=device)
     gen_act.manual_seed(4321)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.bernoulli.out(act_input, generator=gen_act, out=out_act)
@@ -929,15 +928,15 @@ def test_bernoulli_out(shape, dtype):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("p", [0.1, 0.5, 0.9])
 def test_bernoulli_p_scalar(shape, dtype, p):
-    tmpl = torch.empty(shape, dtype=dtype, device="cuda")
+    tmpl = torch.empty(shape, dtype=dtype, device=device)
     ref_tmpl = tmpl.clone()
     act_tmpl = tmpl.clone()
 
-    gen_ref = torch.Generator(device="cuda")
+    gen_ref = torch.Generator(device=device)
     gen_ref.manual_seed(1111)
     ref_out = torch.ops.aten.bernoulli.p(ref_tmpl, float(p), generator=gen_ref)
 
-    gen_act = torch.Generator(device="cuda")
+    gen_act = torch.Generator(device=device)
     gen_act.manual_seed(1111)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.bernoulli.p(act_tmpl, float(p), generator=gen_act)
@@ -949,18 +948,18 @@ def test_bernoulli_p_scalar(shape, dtype, p):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_bernoulli_tensor_p(shape, dtype):
-    tmpl = torch.empty(shape, dtype=dtype, device="cuda")
-    p_tensor = torch.rand(shape, dtype=torch.float32, device="cuda")
+    tmpl = torch.empty(shape, dtype=dtype, device=device)
+    p_tensor = torch.rand(shape, dtype=torch.float32, device=device)
     ref_tmpl = tmpl.clone()
     act_tmpl = tmpl.clone()
     ref_p = p_tensor.clone()
     act_p = p_tensor.clone()
 
-    gen_ref = torch.Generator(device="cuda")
+    gen_ref = torch.Generator(device=device)
     gen_ref.manual_seed(2222)
     ref_out = torch.ops.aten.bernoulli.Tensor(ref_tmpl, ref_p, generator=gen_ref)
 
-    gen_act = torch.Generator(device="cuda")
+    gen_act = torch.Generator(device=device)
     gen_act.manual_seed(2222)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.bernoulli.Tensor(act_tmpl, act_p, generator=gen_act)
@@ -972,21 +971,21 @@ def test_bernoulli_tensor_p(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_bernoulli_tensor_out(shape, dtype):
-    tmpl = torch.empty(shape, dtype=dtype, device="cuda")
-    p_tensor = torch.rand(shape, dtype=torch.float32, device="cuda")
+    tmpl = torch.empty(shape, dtype=dtype, device=device)
+    p_tensor = torch.rand(shape, dtype=torch.float32, device=device)
     ref_tmpl = tmpl.clone()
     act_tmpl = tmpl.clone()
     ref_p = p_tensor.clone()
     act_p = p_tensor.clone()
 
-    out_ref = torch.empty(shape, dtype=dtype, device="cuda")
-    out_act = torch.empty(shape, dtype=dtype, device="cuda")
+    out_ref = torch.empty(shape, dtype=dtype, device=device)
+    out_act = torch.empty(shape, dtype=dtype, device=device)
 
-    gen_ref = torch.Generator(device="cuda")
+    gen_ref = torch.Generator(device=device)
     gen_ref.manual_seed(3333)
     ref_out = torch.ops.aten.bernoulli.Tensor_out(ref_tmpl, ref_p, generator=gen_ref, out=out_ref)
 
-    gen_act = torch.Generator(device="cuda")
+    gen_act = torch.Generator(device=device)
     gen_act.manual_seed(3333)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.bernoulli.Tensor_out(act_tmpl, act_p, generator=gen_act, out=out_act)
@@ -999,21 +998,21 @@ def test_bernoulli_tensor_out(shape, dtype):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("p", [None, 0.3, 0.8])
 def test_bernoulli_float_out(shape, dtype, p):
-    tmpl = torch.empty(shape, dtype=dtype, device="cuda")
+    tmpl = torch.empty(shape, dtype=dtype, device=device)
     ref_tmpl = tmpl.clone()
     act_tmpl = tmpl.clone()
 
-    out_ref = torch.empty(shape, dtype=dtype, device="cuda")
-    out_act = torch.empty(shape, dtype=dtype, device="cuda")
+    out_ref = torch.empty(shape, dtype=dtype, device=device)
+    out_act = torch.empty(shape, dtype=dtype, device=device)
 
-    gen_ref = torch.Generator(device="cuda")
+    gen_ref = torch.Generator(device=device)
     gen_ref.manual_seed(4444)
     if p is None:
         ref_out = torch.ops.aten.bernoulli.float_out(ref_tmpl, generator=gen_ref, out=out_ref)
     else:
         ref_out = torch.ops.aten.bernoulli.float_out(ref_tmpl, float(p), generator=gen_ref, out=out_ref)
 
-    gen_act = torch.Generator(device="cuda")
+    gen_act = torch.Generator(device=device)
     gen_act.manual_seed(4444)
     with flagbench.use_gems(REGISTERED_OPS):
         if p is None:
@@ -1054,16 +1053,16 @@ def test_empty_strided(size, stride_kind, dtype):
 
     stride = compute_stride(size, stride_kind)
 
-    ref_out = torch.ops.aten.empty_strided(size, stride, dtype=dtype, device="cuda")
+    ref_out = torch.ops.aten.empty_strided(size, stride, dtype=dtype, device=device)
     with flagbench.use_gems(REGISTERED_OPS):
-        act_out = torch.ops.aten.empty_strided(size, stride, dtype=dtype, device="cuda")
+        act_out = torch.ops.aten.empty_strided(size, stride, dtype=dtype, device=device)
 
     assert ref_out.size() == act_out.size()
     assert ref_out.stride() == act_out.stride()
     assert ref_out.dtype == act_out.dtype
     assert ref_out.device == act_out.device
 
-    base = torch.randn(size, dtype=dtype, device="cuda")
+    base = torch.randn(size, dtype=dtype, device=device)
     ref_out.copy_(base)
     act_out.copy_(base)
 
@@ -1099,8 +1098,8 @@ def test_empty_strided_out(size, stride_kind, dtype):
 
     stride = compute_stride(size, stride_kind)
 
-    ref_out_tensor = torch.empty(0, device="cuda", dtype=dtype)
-    act_out_tensor = torch.empty(0, device="cuda", dtype=dtype)
+    ref_out_tensor = torch.empty(0, device=device, dtype=dtype)
+    act_out_tensor = torch.empty(0, device=device, dtype=dtype)
 
     ref_out = torch.ops.aten.empty_strided.out(size, stride, out=ref_out_tensor)
     with flagbench.use_gems(REGISTERED_OPS):
@@ -1111,7 +1110,7 @@ def test_empty_strided_out(size, stride_kind, dtype):
     assert ref_out.dtype == act_out.dtype
     assert ref_out.device == act_out.device
 
-    base = torch.randn(size, dtype=dtype, device="cuda")
+    base = torch.randn(size, dtype=dtype, device=device)
     ref_out.copy_(base)
     act_out.copy_(base)
 
@@ -1125,7 +1124,7 @@ def test_empty_strided_out(size, stride_kind, dtype):
 @parametrize("pass_dtype", [True, False])
 def test_new_empty_strided_tensor(shape, dtype, stride_kind, pass_dtype):
     # prepare self tensor
-    self_ref = torch.randn((1,), dtype=dtype, device="cuda")
+    self_ref = torch.randn((1,), dtype=dtype, device=device)
     self_act = self_ref.clone()
 
     # compute stride based on kind
@@ -1159,7 +1158,7 @@ def test_new_empty_strided_tensor(shape, dtype, stride_kind, pass_dtype):
     numel = 1
     for s in size:
         numel *= s
-    pattern = torch.arange(numel, dtype=dtype, device="cuda").reshape(size)
+    pattern = torch.arange(numel, dtype=dtype, device=device).reshape(size)
     ref_out.copy_(pattern)
     act_out.copy_(pattern)
 
@@ -1172,7 +1171,7 @@ def test_new_empty_strided_tensor(shape, dtype, stride_kind, pass_dtype):
 @parametrize("stride_kind", ["contig", "revcontig", "expanded"])
 def test_new_empty_strided_out(shape, dtype, stride_kind):
     # prepare self tensor
-    self_ref = torch.randn((1,), dtype=dtype, device="cuda")
+    self_ref = torch.randn((1,), dtype=dtype, device=device)
     self_act = self_ref.clone()
 
     # compute stride based on kind
@@ -1194,8 +1193,8 @@ def test_new_empty_strided_out(shape, dtype, stride_kind):
     else:
         stride = [s * 2 for s in contig]
 
-    ref_out_buf = torch.empty((1,), dtype=dtype, device="cuda")
-    act_out_buf = torch.empty((1,), dtype=dtype, device="cuda")
+    ref_out_buf = torch.empty((1,), dtype=dtype, device=device)
+    act_out_buf = torch.empty((1,), dtype=dtype, device=device)
 
     ref_out = torch.ops.aten.new_empty_strided.out(self_ref, size, stride, out=ref_out_buf)
     with flagbench.use_gems(REGISTERED_OPS):
@@ -1205,7 +1204,7 @@ def test_new_empty_strided_out(shape, dtype, stride_kind):
     numel = 1
     for s in size:
         numel *= s
-    pattern = torch.arange(numel, dtype=dtype, device="cuda").reshape(size)
+    pattern = torch.arange(numel, dtype=dtype, device=device).reshape(size)
     ref_out.copy_(pattern)
     act_out.copy_(pattern)
 
@@ -1217,7 +1216,7 @@ def test_new_empty_strided_out(shape, dtype, stride_kind):
 @parametrize("size", [(2, 3), (128, 256), (32, 16, 8), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_new_ones_default(self_shape, size, dtype):
-    self_tensor = torch.randn(self_shape, dtype=torch.float32, device="cuda")
+    self_tensor = torch.randn(self_shape, dtype=torch.float32, device=device)
 
     ref_self = self_tensor.clone()
     ref_out = torch.ops.aten.new_ones(ref_self, size, dtype=dtype)
@@ -1233,14 +1232,14 @@ def test_new_ones_default(self_shape, size, dtype):
 @parametrize("size", [(2, 3), (128, 256), (16, 8, 4), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_new_ones_out(self_shape, size, dtype):
-    self_tensor = torch.randn(self_shape, dtype=torch.float32, device="cuda")
+    self_tensor = torch.randn(self_shape, dtype=torch.float32, device=device)
 
     ref_self = self_tensor.clone()
-    ref_out_buf = torch.empty(size, device="cuda", dtype=dtype)
+    ref_out_buf = torch.empty(size, device=device, dtype=dtype)
     ref_out = torch.ops.aten.new_ones.out(ref_self, size, out=ref_out_buf)
 
     with flagbench.use_gems(REGISTERED_OPS):
-        act_out_buf = torch.empty(size, device="cuda", dtype=dtype)
+        act_out_buf = torch.empty(size, device=device, dtype=dtype)
         act_out = torch.ops.aten.new_ones.out(self_tensor, size, out=act_out_buf)
 
     assert_close(act_out, ref_out, dtype=dtype)
@@ -1251,18 +1250,18 @@ def test_new_ones_out(self_shape, size, dtype):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("use_gen", [True, False])
 def test_poisson_tensor(shape, dtype, use_gen):
-    rates = torch.rand(shape, device="cuda", dtype=torch.float32) * 10.0
+    rates = torch.rand(shape, device=device, dtype=torch.float32) * 10.0
     rates = rates.to(dtype)
 
     ref_input = rates.clone()
     act_input = rates.clone()
 
     if use_gen:
-        base_gen = torch.Generator(device="cuda")
+        base_gen = torch.Generator(device=device)
         base_gen.manual_seed(1234)
-        ref_gen = torch.Generator(device="cuda")
+        ref_gen = torch.Generator(device=device)
         ref_gen.set_state(base_gen.get_state())
-        act_gen = torch.Generator(device="cuda")
+        act_gen = torch.Generator(device=device)
         act_gen.set_state(base_gen.get_state())
 
         ref_out = torch.ops.aten.poisson(ref_input, ref_gen)
@@ -1283,7 +1282,7 @@ def test_poisson_tensor(shape, dtype, use_gen):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("use_gen", [True, False])
 def test_poisson_out(shape, dtype, use_gen):
-    rates = torch.rand(shape, device="cuda", dtype=torch.float32) * 10.0
+    rates = torch.rand(shape, device=device, dtype=torch.float32) * 10.0
     rates = rates.to(dtype)
 
     ref_input = rates.clone()
@@ -1293,11 +1292,11 @@ def test_poisson_out(shape, dtype, use_gen):
     out_act = torch.empty_like(act_input)
 
     if use_gen:
-        base_gen = torch.Generator(device="cuda")
+        base_gen = torch.Generator(device=device)
         base_gen.manual_seed(5678)
-        ref_gen = torch.Generator(device="cuda")
+        ref_gen = torch.Generator(device=device)
         ref_gen.set_state(base_gen.get_state())
-        act_gen = torch.Generator(device="cuda")
+        act_gen = torch.Generator(device=device)
         act_gen.set_state(base_gen.get_state())
 
         torch.ops.aten.poisson.out(ref_input, ref_gen, out=out_ref)
@@ -1317,9 +1316,9 @@ def test_poisson_out(shape, dtype, use_gen):
 @parametrize("val", [-7, -1, 0, 3, 12345, -1.5, 2.75, 3.14159])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_scalar_tensor_default(val, dtype):
-    ref_out = torch.ops.aten.scalar_tensor(val, dtype=dtype, device='cuda', layout=None, pin_memory=None)
+    ref_out = torch.ops.aten.scalar_tensor(val, dtype=dtype, device=device, layout=None, pin_memory=None)
     with flagbench.use_gems(REGISTERED_OPS):
-        act_out = torch.ops.aten.scalar_tensor(val, dtype=dtype, device='cuda', layout=None, pin_memory=None)
+        act_out = torch.ops.aten.scalar_tensor(val, dtype=dtype, device=device, layout=None, pin_memory=None)
     assert_close(act_out, ref_out, dtype=dtype)
 
 
@@ -1327,8 +1326,8 @@ def test_scalar_tensor_default(val, dtype):
 @parametrize("val", [-7, -1, 0, 3, 12345, -1.5, 2.75, 3.14159])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_scalar_tensor_out(val, dtype):
-    ref_out_buf = torch.empty((), dtype=dtype, device='cuda')
-    act_out_buf = torch.empty((), dtype=dtype, device='cuda')
+    ref_out_buf = torch.empty((), dtype=dtype, device=device)
+    act_out_buf = torch.empty((), dtype=dtype, device=device)
 
     ref_out = torch.ops.aten.scalar_tensor.out(val, out=ref_out_buf)
     with flagbench.use_gems(REGISTERED_OPS):
@@ -1341,7 +1340,7 @@ def test_scalar_tensor_out(val, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_acosh_tensor(shape, dtype):
-    base = torch.rand(shape, device="cuda", dtype=torch.float32)
+    base = torch.rand(shape, device=device, dtype=torch.float32)
     input_tensor = (base * 9.0 + 1.0).to(dtype)
 
     ref_input = input_tensor.clone()
@@ -1357,7 +1356,7 @@ def test_acosh_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_acosh_out_tensor(shape, dtype):
-    base = torch.rand(shape, device="cuda", dtype=torch.float32)
+    base = torch.rand(shape, device=device, dtype=torch.float32)
     input_tensor = (base * 9.0 + 1.0).to(dtype)
 
     ref_input = input_tensor.clone()
@@ -1414,7 +1413,7 @@ def test_acosh_scalar(a, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_asin_tensor(shape, dtype):
-    x = (torch.rand(shape, device="cuda", dtype=dtype) * 2) - 1
+    x = (torch.rand(shape, device=device, dtype=dtype) * 2) - 1
     ref_x = x.clone()
 
     ref_out = torch.ops.aten.asin(ref_x)
@@ -1429,7 +1428,7 @@ def test_asin_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_asin_out(shape, dtype):
-    x = (torch.rand(shape, device="cuda", dtype=dtype) * 2) - 1
+    x = (torch.rand(shape, device=device, dtype=dtype) * 2) - 1
     ref_x = x.clone()
 
     ref_out = torch.empty_like(ref_x)
@@ -1483,7 +1482,7 @@ def test_asin_scalar(a):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_cosh_tensor(shape, dtype):
-    x = torch.empty(shape, dtype=dtype, device='cuda').uniform_(-3, 3)
+    x = torch.empty(shape, dtype=dtype, device=device).uniform_(-3, 3)
     ref_x = x.clone()
 
     ref_out = torch.ops.aten.cosh(ref_x)
@@ -1498,7 +1497,7 @@ def test_cosh_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_cosh_out_tensor(shape, dtype):
-    x = torch.empty(shape, dtype=dtype, device='cuda').uniform_(-3, 3)
+    x = torch.empty(shape, dtype=dtype, device=device).uniform_(-3, 3)
     ref_x = x.clone()
 
     ref_out_buf = torch.empty_like(ref_x)
@@ -1559,7 +1558,7 @@ def test_cosh_Scalar_bool(a):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_floor_tensor(shape, dtype):
-    input_tensor = torch.randn(shape, dtype=dtype, device='cuda')
+    input_tensor = torch.randn(shape, dtype=dtype, device=device)
     ref_input = input_tensor.clone()
 
     ref_out = torch.ops.aten.floor(ref_input)
@@ -1574,7 +1573,7 @@ def test_floor_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_floor_out(shape, dtype):
-    input_tensor = torch.randn(shape, dtype=dtype, device='cuda')
+    input_tensor = torch.randn(shape, dtype=dtype, device=device)
     ref_input = input_tensor.clone()
 
     ref_out = torch.empty_like(ref_input)
@@ -1625,7 +1624,7 @@ def test_floor_scalar(value, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_i0_tensor(shape, dtype):
-    inp = torch.randn(shape, dtype=torch.float32, device='cuda').to(dtype) * 3.0
+    inp = torch.randn(shape, dtype=torch.float32, device=device).to(dtype) * 3.0
     ref_inp = inp.clone()
 
     ref_out = torch.ops.aten.i0(ref_inp)
@@ -1640,15 +1639,15 @@ def test_i0_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_i0_out(shape, dtype):
-    inp = torch.randn(shape, dtype=torch.float32, device='cuda').to(dtype) * 3.0
+    inp = torch.randn(shape, dtype=torch.float32, device=device).to(dtype) * 3.0
 
     ref_inp = inp.clone()
-    ref_out = torch.empty(shape, dtype=dtype, device='cuda')
+    ref_out = torch.empty(shape, dtype=dtype, device=device)
     torch.ops.aten.i0.out(ref_inp, out=ref_out)
 
     with flagbench.use_gems(REGISTERED_OPS):
         act_inp = inp
-        act_out = torch.empty(shape, dtype=dtype, device='cuda')
+        act_out = torch.empty(shape, dtype=dtype, device=device)
         torch.ops.aten.i0.out(act_inp, out=act_out)
 
     assert_close(act_out, ref_out, dtype=dtype)
@@ -1659,7 +1658,7 @@ def test_i0_out(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_polygamma_tensor(shape, dtype, n):
-    x = torch.rand(shape, device="cuda", dtype=dtype) * 4.0 + 0.5
+    x = torch.rand(shape, device=device, dtype=dtype) * 4.0 + 0.5
     ref_x = x.clone()
     ref_out = torch.ops.aten.polygamma(n, ref_x)
     act_x = x.clone()
@@ -1673,7 +1672,7 @@ def test_polygamma_tensor(shape, dtype, n):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_polygamma_out(shape, dtype, n):
-    x = torch.rand(shape, device="cuda", dtype=dtype) * 4.0 + 0.5
+    x = torch.rand(shape, device=device, dtype=dtype) * 4.0 + 0.5
     ref_x = x.clone()
     out_ref = torch.empty_like(ref_x)
     torch.ops.aten.polygamma.out(n, ref_x, out=out_ref)
@@ -1689,8 +1688,8 @@ def test_polygamma_out(shape, dtype, n):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("alpha", [1.0, 0.5])
 def test_rsub_tensor(shape, dtype, alpha):
-    self = torch.randn(shape, dtype=dtype, device='cuda')
-    other = torch.randn(shape, dtype=dtype, device='cuda')
+    self = torch.randn(shape, dtype=dtype, device=device)
+    other = torch.randn(shape, dtype=dtype, device=device)
 
     ref_self = self.clone()
     ref_other = other.clone()
@@ -1709,7 +1708,7 @@ def test_rsub_tensor(shape, dtype, alpha):
 @parametrize("other", [-2.0, 0.0, 3.25])
 @parametrize("alpha", [1.0, 0.5])
 def test_rsub_scalar(shape, dtype, other, alpha):
-    self = torch.randn(shape, dtype=dtype, device='cuda')
+    self = torch.randn(shape, dtype=dtype, device=device)
 
     ref_self = self.clone()
 
@@ -1726,16 +1725,16 @@ def test_rsub_scalar(shape, dtype, other, alpha):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("alpha", [1.0, 0.5])
 def test_rsub_tensor_out(shape, dtype, alpha):
-    self = torch.randn(shape, dtype=dtype, device='cuda')
-    other = torch.randn(shape, dtype=dtype, device='cuda')
+    self = torch.randn(shape, dtype=dtype, device=device)
+    other = torch.randn(shape, dtype=dtype, device=device)
 
     ref_self = self.clone()
     ref_other = other.clone()
 
-    ref_out_buf = torch.empty(shape, dtype=dtype, device='cuda')
+    ref_out_buf = torch.empty(shape, dtype=dtype, device=device)
     ref_out = torch.ops.aten.rsub(ref_self, ref_other, alpha=alpha, out=ref_out_buf)
 
-    act_out_buf = torch.empty(shape, dtype=dtype, device='cuda')
+    act_out_buf = torch.empty(shape, dtype=dtype, device=device)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.rsub(self, other, alpha=alpha, out=act_out_buf)
 
@@ -1748,14 +1747,14 @@ def test_rsub_tensor_out(shape, dtype, alpha):
 @parametrize("other", [-2.0, 0.0, 3.25])
 @parametrize("alpha", [1.0, 0.5])
 def test_rsub_scalar_out(shape, dtype, other, alpha):
-    self = torch.randn(shape, dtype=dtype, device='cuda')
+    self = torch.randn(shape, dtype=dtype, device=device)
 
     ref_self = self.clone()
 
-    ref_out_buf = torch.empty(shape, dtype=dtype, device='cuda')
+    ref_out_buf = torch.empty(shape, dtype=dtype, device=device)
     ref_out = torch.ops.aten.rsub(ref_self, other, alpha=alpha, out=ref_out_buf)
 
-    act_out_buf = torch.empty(shape, dtype=dtype, device='cuda')
+    act_out_buf = torch.empty(shape, dtype=dtype, device=device)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.rsub(self, other, alpha=alpha, out=act_out_buf)
 
@@ -1766,7 +1765,7 @@ def test_rsub_scalar_out(shape, dtype, other, alpha):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_sgn_tensor(shape, dtype):
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     ref_out = torch.ops.aten.sgn(ref_x)
@@ -1781,7 +1780,7 @@ def test_sgn_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_sgn_out(shape, dtype):
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     ref_out = torch.empty_like(ref_x)
@@ -1799,7 +1798,7 @@ def test_sgn_out(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_special_entr_tensor(shape, dtype):
-    x = torch.rand(shape, dtype=dtype, device='cuda') - 0.2
+    x = torch.rand(shape, dtype=dtype, device=device) - 0.2
     flat = x.view(-1)
     if flat.numel() > 0:
         flat[0] = 0
@@ -1814,7 +1813,7 @@ def test_special_entr_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_special_entr_out(shape, dtype):
-    x = torch.rand(shape, dtype=dtype, device='cuda') - 0.2
+    x = torch.rand(shape, dtype=dtype, device=device) - 0.2
     flat = x.view(-1)
     if flat.numel() > 0:
         flat[0] = 0
@@ -1833,7 +1832,7 @@ def test_special_entr_out(shape, dtype):
 @parametrize("dim", [None, 0, 1, -1, [0, 1]])
 @parametrize("keepdim", [False, True])
 def test_amin_tensor_reduce_2d(shape, dtype, dim, keepdim):
-    x = torch.randn(shape, dtype=dtype, device='cuda')
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     if dim is None and not keepdim:
@@ -1855,7 +1854,7 @@ def test_amin_tensor_reduce_2d(shape, dtype, dim, keepdim):
 @parametrize("dim", [None, 0, 1, 2, -1, [0, 2], [1, 2], [0, 1, 2]])
 @parametrize("keepdim", [False, True])
 def test_amin_tensor_reduce_3d(shape, dtype, dim, keepdim):
-    x = torch.randn(shape, dtype=dtype, device='cuda')
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     if dim is None and not keepdim:
@@ -1893,13 +1892,13 @@ def test_amin_out_reduce_2d(shape, dtype, dim, keepdim):
             remaining = [i for i in range(len(shape)) if i not in set(dims)]
             return tuple(shape[i] for i in remaining)
 
-    x = torch.randn(shape, dtype=dtype, device='cuda')
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     if dim is None and not keepdim:
         out_shape = compute_out_shape(shape, None, keepdim)
-        ref_out_t = torch.empty(out_shape, dtype=dtype, device='cuda')
-        act_out_t = torch.empty(out_shape, dtype=dtype, device='cuda')
+        ref_out_t = torch.empty(out_shape, dtype=dtype, device=device)
+        act_out_t = torch.empty(out_shape, dtype=dtype, device=device)
 
         ref_out = torch.ops.aten.amin.out(ref_x, out=ref_out_t)
         with flagbench.use_gems(REGISTERED_OPS):
@@ -1907,8 +1906,8 @@ def test_amin_out_reduce_2d(shape, dtype, dim, keepdim):
     else:
         use_dim = list(range(len(shape))) if dim is None else dim
         out_shape = compute_out_shape(shape, use_dim, keepdim)
-        ref_out_t = torch.empty(out_shape, dtype=dtype, device='cuda')
-        act_out_t = torch.empty(out_shape, dtype=dtype, device='cuda')
+        ref_out_t = torch.empty(out_shape, dtype=dtype, device=device)
+        act_out_t = torch.empty(out_shape, dtype=dtype, device=device)
 
         ref_out = torch.ops.aten.amin.out(ref_x, use_dim, keepdim, out=ref_out_t)
         with flagbench.use_gems(REGISTERED_OPS):
@@ -1938,13 +1937,13 @@ def test_amin_out_reduce_3d(shape, dtype, dim, keepdim):
             remaining = [i for i in range(len(shape)) if i not in set(dims)]
             return tuple(shape[i] for i in remaining)
 
-    x = torch.randn(shape, dtype=dtype, device='cuda')
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     if dim is None and not keepdim:
         out_shape = compute_out_shape(shape, None, keepdim)
-        ref_out_t = torch.empty(out_shape, dtype=dtype, device='cuda')
-        act_out_t = torch.empty(out_shape, dtype=dtype, device='cuda')
+        ref_out_t = torch.empty(out_shape, dtype=dtype, device=device)
+        act_out_t = torch.empty(out_shape, dtype=dtype, device=device)
 
         ref_out = torch.ops.aten.amin.out(ref_x, out=ref_out_t)
         with flagbench.use_gems(REGISTERED_OPS):
@@ -1952,8 +1951,8 @@ def test_amin_out_reduce_3d(shape, dtype, dim, keepdim):
     else:
         use_dim = list(range(len(shape))) if dim is None else dim
         out_shape = compute_out_shape(shape, use_dim, keepdim)
-        ref_out_t = torch.empty(out_shape, dtype=dtype, device='cuda')
-        act_out_t = torch.empty(out_shape, dtype=dtype, device='cuda')
+        ref_out_t = torch.empty(out_shape, dtype=dtype, device=device)
+        act_out_t = torch.empty(out_shape, dtype=dtype, device=device)
 
         ref_out = torch.ops.aten.amin.out(ref_x, use_dim, keepdim, out=ref_out_t)
         with flagbench.use_gems(REGISTERED_OPS):
@@ -1969,10 +1968,10 @@ def test_amin_out_reduce_3d(shape, dtype, dim, keepdim):
 @parametrize("use_weight", [False, True])
 @parametrize("use_pos_weight", [False, True])
 def test_binary_cross_entropy_with_logits_tensor(shape, dtype, reduction, use_weight, use_pos_weight):
-    self = torch.randn(shape, dtype=dtype, device="cuda")
-    target = torch.rand(shape, dtype=dtype, device="cuda")
-    weight = (torch.rand(shape, dtype=dtype, device="cuda") + 0.5) if use_weight else None
-    pos_weight = (torch.rand(shape, dtype=dtype, device="cuda") + 0.5) if use_pos_weight else None
+    self = torch.randn(shape, dtype=dtype, device=device)
+    target = torch.rand(shape, dtype=dtype, device=device)
+    weight = (torch.rand(shape, dtype=dtype, device=device) + 0.5) if use_weight else None
+    pos_weight = (torch.rand(shape, dtype=dtype, device=device) + 0.5) if use_pos_weight else None
 
     ref_self = self.clone()
     ref_target = target.clone()
@@ -1994,13 +1993,13 @@ def test_binary_cross_entropy_with_logits_tensor(shape, dtype, reduction, use_we
 @parametrize("use_weight", [False, True])
 @parametrize("use_pos_weight", [False, True])
 def test_binary_cross_entropy_with_logits_out(shape, dtype, reduction, use_weight, use_pos_weight):
-    self = torch.randn(shape, dtype=dtype, device="cuda")
-    target = torch.rand(shape, dtype=dtype, device="cuda")
-    weight = (torch.rand(shape, dtype=dtype, device="cuda") + 0.5) if use_weight else None
-    pos_weight = (torch.rand(shape, dtype=dtype, device="cuda") + 0.5) if use_pos_weight else None
+    self = torch.randn(shape, dtype=dtype, device=device)
+    target = torch.rand(shape, dtype=dtype, device=device)
+    weight = (torch.rand(shape, dtype=dtype, device=device) + 0.5) if use_weight else None
+    pos_weight = (torch.rand(shape, dtype=dtype, device=device) + 0.5) if use_pos_weight else None
 
     out_shape = shape if reduction == 0 else ()
-    ref_out_buf = torch.empty(out_shape, dtype=dtype, device="cuda")
+    ref_out_buf = torch.empty(out_shape, dtype=dtype, device=device)
 
     ref_self = self.clone()
     ref_target = target.clone()
@@ -2011,7 +2010,7 @@ def test_binary_cross_entropy_with_logits_out(shape, dtype, reduction, use_weigh
         ref_self, ref_target, ref_weight, ref_pos_weight, reduction, out=ref_out_buf
     )
 
-    act_out_buf = torch.empty(out_shape, dtype=dtype, device="cuda")
+    act_out_buf = torch.empty(out_shape, dtype=dtype, device=device)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.binary_cross_entropy_with_logits.out(
             self, target, weight, pos_weight, reduction, out=act_out_buf
@@ -2024,8 +2023,8 @@ def test_binary_cross_entropy_with_logits_out(shape, dtype, reduction, use_weigh
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_fmax_tensor(shape, dtype):
-    self_base = torch.randn(shape, dtype=dtype, device="cuda")
-    other_base = torch.randn(shape, dtype=dtype, device="cuda")
+    self_base = torch.randn(shape, dtype=dtype, device=device)
+    other_base = torch.randn(shape, dtype=dtype, device=device)
 
     if self_base.numel() >= 1:
         self_base.view(-1)[0] = float("nan")
@@ -2049,8 +2048,8 @@ def test_fmax_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_fmax_out(shape, dtype):
-    self_base = torch.randn(shape, dtype=dtype, device="cuda")
-    other_base = torch.randn(shape, dtype=dtype, device="cuda")
+    self_base = torch.randn(shape, dtype=dtype, device=device)
+    other_base = torch.randn(shape, dtype=dtype, device=device)
 
     if self_base.numel() >= 1:
         self_base.view(-1)[0] = float("nan")
@@ -2079,8 +2078,8 @@ def test_fmax_out(shape, dtype):
 @parametrize("reduction", [0, 1, 2])
 @parametrize("delta", [0.5, 1.0, 2.0])
 def test_huber_loss_tensor(shape, dtype, reduction, delta):
-    self_tensor = torch.randn(shape, dtype=dtype, device="cuda")
-    target_tensor = torch.randn(shape, dtype=dtype, device="cuda")
+    self_tensor = torch.randn(shape, dtype=dtype, device=device)
+    target_tensor = torch.randn(shape, dtype=dtype, device=device)
 
     ref_self = self_tensor.clone()
     ref_target = target_tensor.clone()
@@ -2100,8 +2099,8 @@ def test_huber_loss_tensor(shape, dtype, reduction, delta):
 @parametrize("reduction", [0, 1, 2])
 @parametrize("delta", [0.5, 1.0, 2.0])
 def test_huber_loss_out(shape, dtype, reduction, delta):
-    self_tensor = torch.randn(shape, dtype=dtype, device="cuda")
-    target_tensor = torch.randn(shape, dtype=dtype, device="cuda")
+    self_tensor = torch.randn(shape, dtype=dtype, device=device)
+    target_tensor = torch.randn(shape, dtype=dtype, device=device)
 
     if reduction == 0:
         out_shape = shape
@@ -2110,13 +2109,13 @@ def test_huber_loss_out(shape, dtype, reduction, delta):
 
     ref_self = self_tensor.clone()
     ref_target = target_tensor.clone()
-    ref_out = torch.empty(out_shape, dtype=dtype, device="cuda")
+    ref_out = torch.empty(out_shape, dtype=dtype, device=device)
     torch.ops.aten.huber_loss.out(ref_self, ref_target, reduction, float(delta), out=ref_out)
 
     with flagbench.use_gems(REGISTERED_OPS):
         act_self = self_tensor.clone()
         act_target = target_tensor.clone()
-        act_out = torch.empty(out_shape, dtype=dtype, device="cuda")
+        act_out = torch.empty(out_shape, dtype=dtype, device=device)
         torch.ops.aten.huber_loss.out(act_self, act_target, reduction, float(delta), out=act_out)
 
     assert_close(act_out, ref_out, dtype=dtype)
@@ -2126,8 +2125,8 @@ def test_huber_loss_out(shape, dtype, reduction, delta):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_logaddexp2_tensor(shape, dtype):
-    self = torch.randn(shape, dtype=dtype, device='cuda')
-    other = torch.randn(shape, dtype=dtype, device='cuda')
+    self = torch.randn(shape, dtype=dtype, device=device)
+    other = torch.randn(shape, dtype=dtype, device=device)
 
     ref_self = self.clone()
     ref_other = other.clone()
@@ -2144,16 +2143,16 @@ def test_logaddexp2_tensor(shape, dtype):
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_logaddexp2_out(shape, dtype):
-    self = torch.randn(shape, dtype=dtype, device='cuda')
-    other = torch.randn(shape, dtype=dtype, device='cuda')
+    self = torch.randn(shape, dtype=dtype, device=device)
+    other = torch.randn(shape, dtype=dtype, device=device)
 
     ref_self = self.clone()
     ref_other = other.clone()
 
-    ref_out = torch.empty(shape, dtype=dtype, device='cuda')
+    ref_out = torch.empty(shape, dtype=dtype, device=device)
     torch.ops.aten.logaddexp2.out(ref_self, ref_other, out=ref_out)
 
-    act_out = torch.empty(shape, dtype=dtype, device='cuda')
+    act_out = torch.empty(shape, dtype=dtype, device=device)
     with flagbench.use_gems(REGISTERED_OPS):
         torch.ops.aten.logaddexp2.out(self, other, out=act_out)
 
@@ -2166,9 +2165,9 @@ def test_logaddexp2_out(shape, dtype):
 @parametrize("margin", [0.0, 0.5, 1.0])
 @parametrize("reduction", [0, 1, 2])
 def test_margin_ranking_loss_tensor(shape, dtype, margin, reduction):
-    input1 = torch.randn(shape, dtype=dtype, device="cuda")
-    input2 = torch.randn(shape, dtype=dtype, device="cuda")
-    target = (torch.randint(0, 2, shape, device="cuda", dtype=torch.int8) * 2 - 1).to(dtype)
+    input1 = torch.randn(shape, dtype=dtype, device=device)
+    input2 = torch.randn(shape, dtype=dtype, device=device)
+    target = (torch.randint(0, 2, shape, device=device, dtype=torch.int8) * 2 - 1).to(dtype)
 
     ref_input1 = input1.clone()
     ref_input2 = input2.clone()
@@ -2186,8 +2185,8 @@ def test_margin_ranking_loss_tensor(shape, dtype, margin, reduction):
 @parametrize("shape", [(2, 3), (128, 256), (512, 256)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_pairwise_distance_defaults(shape, dtype):
-    x1 = torch.randn(shape, dtype=dtype, device="cuda")
-    x2 = torch.randn(shape, dtype=dtype, device="cuda")
+    x1 = torch.randn(shape, dtype=dtype, device=device)
+    x2 = torch.randn(shape, dtype=dtype, device=device)
 
     ref_x1 = x1.clone()
     ref_x2 = x2.clone()
@@ -2207,8 +2206,8 @@ def test_pairwise_distance_defaults(shape, dtype):
 @parametrize("eps", [1e-6, 1e-4])
 @parametrize("keepdim", [False, True])
 def test_pairwise_distance_explicit_args(shape, dtype, p, eps, keepdim):
-    x1 = torch.randn(shape, dtype=dtype, device="cuda")
-    x2 = torch.randn(shape, dtype=dtype, device="cuda")
+    x1 = torch.randn(shape, dtype=dtype, device=device)
+    x2 = torch.randn(shape, dtype=dtype, device=device)
 
     ref_x1 = x1.clone()
     ref_x2 = x2.clone()
@@ -2228,7 +2227,7 @@ def test_pairwise_distance_explicit_args(shape, dtype, p, eps, keepdim):
 @parametrize("dim", [0, 1])
 @parametrize("maxnorm", [0.5, 1.0])
 def test_renorm_tensor(shape, dtype, p, dim, maxnorm):
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
     ref_out = torch.ops.aten.renorm(ref_x, p, dim, maxnorm)
     with flagbench.use_gems(REGISTERED_OPS):
@@ -2243,7 +2242,7 @@ def test_renorm_tensor(shape, dtype, p, dim, maxnorm):
 @parametrize("dim", [0, 1])
 @parametrize("maxnorm", [0.5, 1.0])
 def test_renorm_out_tensor(shape, dtype, p, dim, maxnorm):
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
     ref_out_buf = torch.empty_like(ref_x)
     act_out_buf = torch.empty_like(x)
@@ -2258,8 +2257,8 @@ def test_renorm_out_tensor(shape, dtype, p, dim, maxnorm):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("reduction", [0, 1, 2])
 def test_soft_margin_loss_tensor(shape, dtype, reduction):
-    self = torch.randn(shape, dtype=dtype, device="cuda")
-    target = (torch.randint(0, 2, shape, device="cuda").to(dtype) * 2) - 1
+    self = torch.randn(shape, dtype=dtype, device=device)
+    target = (torch.randint(0, 2, shape, device=device).to(dtype) * 2) - 1
 
     ref_self = self.clone()
     ref_target = target.clone()
@@ -2276,15 +2275,15 @@ def test_soft_margin_loss_tensor(shape, dtype, reduction):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("reduction", [0, 1, 2])
 def test_soft_margin_loss_out(shape, dtype, reduction):
-    self = torch.randn(shape, dtype=dtype, device="cuda")
-    target = (torch.randint(0, 2, shape, device="cuda").to(dtype) * 2) - 1
+    self = torch.randn(shape, dtype=dtype, device=device)
+    target = (torch.randint(0, 2, shape, device=device).to(dtype) * 2) - 1
 
     if reduction == 0:
-        out_ref = torch.empty(shape, dtype=dtype, device="cuda")
-        out_act = torch.empty(shape, dtype=dtype, device="cuda")
+        out_ref = torch.empty(shape, dtype=dtype, device=device)
+        out_act = torch.empty(shape, dtype=dtype, device=device)
     else:
-        out_ref = torch.empty((), dtype=dtype, device="cuda")
-        out_act = torch.empty((), dtype=dtype, device="cuda")
+        out_ref = torch.empty((), dtype=dtype, device=device)
+        out_act = torch.empty((), dtype=dtype, device=device)
 
     ref_self = self.clone()
     ref_target = target.clone()
@@ -2301,7 +2300,7 @@ def test_soft_margin_loss_out(shape, dtype, reduction):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("case", ["contig", "transpose", "subsample", "offset_cropped", "reshape_like"])
 def test_as_strided_2d(base_shape, dtype, case):
-    x = torch.randn(base_shape, dtype=dtype, device="cuda")
+    x = torch.randn(base_shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     s0, s1 = ref_x.stride()
@@ -2353,7 +2352,7 @@ def test_as_strided_2d(base_shape, dtype, case):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("case", ["contig", "skip_step", "offset_start", "reshape2d"])
 def test_as_strided_1d(base_shape, dtype, case):
-    x = torch.randn(base_shape, dtype=dtype, device="cuda")
+    x = torch.randn(base_shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     (N,) = base_shape
@@ -2400,7 +2399,7 @@ def test_as_strided_1d(base_shape, dtype, case):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("case", ["contig", "swap_last_two", "subsample", "offset_plane"])
 def test_as_strided_3d(base_shape, dtype, case):
-    x = torch.randn(base_shape, dtype=dtype, device="cuda")
+    x = torch.randn(base_shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     d0, d1, d2 = base_shape
@@ -2450,7 +2449,7 @@ def test_as_strided_3d(base_shape, dtype, case):
     ],
 )
 def test_im2col_tensor(shape, dtype, kernel_size, dilation, padding, stride):
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     ref_out = torch.ops.aten.im2col(ref_x, kernel_size, dilation, padding, stride)
@@ -2483,14 +2482,14 @@ def test_im2col_out(shape, dtype, kernel_size, dilation, padding, stride):
         out_w = (w + 2 * pW - dW * (kW - 1) - 1) // sW + 1
         return (c * kH * kW, out_h * out_w)
 
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     C, H, W = shape
     out_shape = compute_out_shape(C, H, W, kernel_size, dilation, padding, stride)
 
-    out_ref = torch.empty(out_shape, dtype=dtype, device="cuda")
-    out_act = torch.empty(out_shape, dtype=dtype, device="cuda")
+    out_ref = torch.empty(out_shape, dtype=dtype, device=device)
+    out_act = torch.empty(out_shape, dtype=dtype, device=device)
 
     ref_out = torch.ops.aten.im2col.out(ref_x, kernel_size, dilation, padding, stride, out=out_ref)
 
@@ -2518,7 +2517,7 @@ def test_im2col_out(shape, dtype, kernel_size, dilation, padding, stride):
 )
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_reshape_tensor_contiguous(in_shape, out_shape, dtype):
-    input_tensor = torch.randn(in_shape, dtype=dtype, device="cuda")
+    input_tensor = torch.randn(in_shape, dtype=dtype, device=device)
     ref_input = input_tensor.clone()
 
     ref_out = torch.ops.aten.reshape(ref_input, out_shape)
@@ -2541,7 +2540,7 @@ def test_reshape_tensor_contiguous(in_shape, out_shape, dtype):
 )
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_reshape_tensor_noncontiguous(base_shape, out_shape, transform, dtype):
-    base = torch.randn(base_shape, dtype=dtype, device="cuda")
+    base = torch.randn(base_shape, dtype=dtype, device=device)
     ref_input = base.clone()
     act_input = base.clone()
 
@@ -2569,7 +2568,7 @@ def test_reshape_tensor_noncontiguous(base_shape, out_shape, transform, dtype):
 @parametrize("k", [0, 1, 2, 3, -1])
 @parametrize("dims", [[0, 1]])
 def test_rot90_tensor_2d(shape, dtype, k, dims):
-    inp = torch.randn(shape, dtype=dtype, device="cuda")
+    inp = torch.randn(shape, dtype=dtype, device=device)
     ref_inp = inp.clone()
     ref_out = torch.ops.aten.rot90(ref_inp, k=k, dims=dims)
     with flagbench.use_gems(REGISTERED_OPS):
@@ -2582,7 +2581,7 @@ def test_rot90_tensor_2d(shape, dtype, k, dims):
 @parametrize("k", [0, 1, 2, 3])
 @parametrize("dims", [[0, 1], [0, 2], [1, 2]])
 def test_rot90_tensor_nd(shape, dtype, k, dims):
-    inp = torch.randn(shape, dtype=dtype, device="cuda")
+    inp = torch.randn(shape, dtype=dtype, device=device)
     ref_inp = inp.clone()
     ref_out = torch.ops.aten.rot90(ref_inp, k=k, dims=dims)
     with flagbench.use_gems(REGISTERED_OPS):
@@ -2595,11 +2594,11 @@ def test_rot90_tensor_nd(shape, dtype, k, dims):
 @parametrize("k", [0, 1, 2, 3, -1])
 @parametrize("dims", [[0, 1]])
 def test_rot90_out_2d(shape, dtype, k, dims):
-    inp = torch.randn(shape, dtype=dtype, device="cuda")
+    inp = torch.randn(shape, dtype=dtype, device=device)
     ref_inp = inp.clone()
-    out_ref = torch.empty(0, device="cuda", dtype=dtype)
+    out_ref = torch.empty(0, device=device, dtype=dtype)
     ref_out = torch.ops.aten.rot90.out(ref_inp, k=k, dims=dims, out=out_ref)
-    out_act = torch.empty(0, device="cuda", dtype=dtype)
+    out_act = torch.empty(0, device=device, dtype=dtype)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.rot90.out(inp, k=k, dims=dims, out=out_act)
     assert_close(act_out, ref_out, dtype=dtype)
@@ -2610,11 +2609,11 @@ def test_rot90_out_2d(shape, dtype, k, dims):
 @parametrize("k", [0, 1, 2, 3])
 @parametrize("dims", [[0, 1], [0, 2], [1, 2]])
 def test_rot90_out_nd(shape, dtype, k, dims):
-    inp = torch.randn(shape, dtype=dtype, device="cuda")
+    inp = torch.randn(shape, dtype=dtype, device=device)
     ref_inp = inp.clone()
-    out_ref = torch.empty(0, device="cuda", dtype=dtype)
+    out_ref = torch.empty(0, device=device, dtype=dtype)
     ref_out = torch.ops.aten.rot90.out(ref_inp, k=k, dims=dims, out=out_ref)
-    out_act = torch.empty(0, device="cuda", dtype=dtype)
+    out_act = torch.empty(0, device=device, dtype=dtype)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.rot90.out(inp, k=k, dims=dims, out=out_act)
     assert_close(act_out, ref_out, dtype=dtype)
@@ -2626,9 +2625,9 @@ def test_rot90_out_nd(shape, dtype, k, dims):
 @parametrize("contig", [True, False])
 def test_t_tensor(shape, dtype, contig):
     if contig:
-        input_tensor = torch.randn(shape, dtype=dtype, device='cuda')
+        input_tensor = torch.randn(shape, dtype=dtype, device=device)
     else:
-        base = torch.randn((shape[1], shape[0]), dtype=dtype, device='cuda')
+        base = torch.randn((shape[1], shape[0]), dtype=dtype, device=device)
         input_tensor = base.t()
     ref_input = input_tensor.clone()
     ref_out = torch.ops.aten.t(ref_input)
@@ -2643,7 +2642,7 @@ def test_t_tensor(shape, dtype, contig):
 @parametrize("dim", [0, 1, -1])
 @parametrize("split_size", [2, 64, 1000])
 def test_unsafe_split_tensor(shape, dtype, dim, split_size):
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     ref_out = torch.ops.aten.unsafe_split(ref_x, split_size, dim)
@@ -2662,7 +2661,7 @@ def test_unsafe_split_tensor(shape, dtype, dim, split_size):
 @parametrize("dim", [0, 1, -1])
 @parametrize("split_size", [2, 64, 1000])
 def test_unsafe_split_tensor_out(shape, dtype, dim, split_size):
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     d = dim % len(shape)
@@ -2675,8 +2674,8 @@ def test_unsafe_split_tensor_out(shape, dtype, dim, split_size):
         s[d] = chunk
         out_shapes.append(tuple(s))
 
-    ref_out_list = [torch.empty(s, dtype=dtype, device="cuda") for s in out_shapes]
-    act_out_list = [torch.empty(s, dtype=dtype, device="cuda") for s in out_shapes]
+    ref_out_list = [torch.empty(s, dtype=dtype, device=device) for s in out_shapes]
+    act_out_list = [torch.empty(s, dtype=dtype, device=device) for s in out_shapes]
 
     torch.ops.aten.unsafe_split(ref_x, split_size, dim, out=ref_out_list)
 
@@ -2706,7 +2705,7 @@ def test_unsafe_split_tensor_out(shape, dtype, dim, split_size):
 )
 def test_unsafe_split_with_sizes_tensor(shape_split_dim, dtype):
     shape, split_sizes, dim = shape_split_dim
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     ref_out = torch.ops.aten.unsafe_split_with_sizes(ref_x, split_sizes, dim)
@@ -2736,15 +2735,15 @@ def test_unsafe_split_with_sizes_tensor(shape_split_dim, dtype):
 )
 def test_unsafe_split_with_sizes_out(shape_split_dim, dtype):
     shape, split_sizes, dim = shape_split_dim
-    x = torch.randn(shape, dtype=dtype, device="cuda")
+    x = torch.randn(shape, dtype=dtype, device=device)
     ref_x = x.clone()
 
     ndim = len(shape)
     dim_eff = dim if dim >= 0 else dim + ndim
     piece_shapes = [tuple(shape[:dim_eff] + (s,) + shape[dim_eff + 1 :]) for s in split_sizes]
 
-    ref_out_bufs = [torch.empty(ps, dtype=dtype, device="cuda") for ps in piece_shapes]
-    act_out_bufs = [torch.empty(ps, dtype=dtype, device="cuda") for ps in piece_shapes]
+    ref_out_bufs = [torch.empty(ps, dtype=dtype, device=device) for ps in piece_shapes]
+    act_out_bufs = [torch.empty(ps, dtype=dtype, device=device) for ps in piece_shapes]
 
     torch.ops.aten.unsafe_split_with_sizes.out(ref_x, split_sizes, dim, out=ref_out_bufs)
     with flagbench.use_gems(REGISTERED_OPS):
@@ -2787,7 +2786,7 @@ def test_unsafe_split_with_sizes_out(shape_split_dim, dtype):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 def test_unsqueeze_tensor(shape_dim, dtype):
     shape, dim = shape_dim
-    input_tensor = torch.randn(shape, dtype=dtype, device="cuda")
+    input_tensor = torch.randn(shape, dtype=dtype, device=device)
 
     ref_input = input_tensor.clone()
     ref_out = torch.ops.aten.unsqueeze(ref_input, dim)
