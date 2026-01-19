@@ -9,6 +9,32 @@ import os
 logger = getLogger(__name__)
 
 
+def flatten_operator_dict(ops_dict: Dict[str, any], namespace: str = "aten") -> Dict[str, any]:
+    """将算子字典转换为扁平结构，key格式为 namespace::op_name
+
+    用于将预定义算子字典（如 V2_OPERATORS）从原始格式转换为统一的扁平格式。
+
+    Args:
+        ops_dict: 原始算子字典，key格式为 'torch.ops.aten.add'
+        namespace: 命名空间，默认为 'aten'
+
+    Returns:
+        扁平化字典，key格式为 'aten::add'
+
+    Example:
+        >>> V2_OPERATORS = {'torch.ops.aten.add': torch.ops.aten.add, ...}
+        >>> flat_ops = flatten_operator_dict(V2_OPERATORS, "aten")
+        >>> # flat_ops = {'aten::add': torch.ops.aten.add, ...}
+    """
+    flat_dict = {}
+    for key, value in ops_dict.items():
+        # key 格式: 'torch.ops.aten.add' -> 提取 'add'
+        op_name = key.split('.')[-1]
+        full_name = f"{namespace}::{op_name}"
+        flat_dict[full_name] = value
+    return flat_dict
+
+
 class Autograd(Enum):
     enable = True
     disable = False
