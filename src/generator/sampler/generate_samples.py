@@ -106,7 +106,7 @@ class TritonKernelGenerateArgs(BaseGenerateArgs):
     triton_kernel_name: str
     func_desc: str
     torch_kernel_code: str
-    input_args: List[InputArg] | None = None
+    input_args: List[InputArg] | None | dict = None
     output_args: List[OutputArg] | None = None
     func_type: Optional[str] = None  # "unary", "binary", "reduction", "other"
     impl_info: Optional[dict|list] = None

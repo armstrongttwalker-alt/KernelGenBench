@@ -124,7 +124,12 @@ class TritonKernelGenerator(BaseGenerator):
         prompt += f"Input Args: {info.input_args}\n"
         prompt += f"Output Args: {info.output_args}\n"
         prompt += f"The generated code should include both the Triton kernel definition (with @triton.jit) and the Python wrapper function(s) that launch the kernel.\n"
-        
+
+        # Add critical requirements for broadcast and non-contiguous tensors
+        prompt += f"\nCRITICAL REQUIREMENTS:\n"
+        prompt += f"1. For pointwise operators, you MUST handle broadcasting correctly. Ensure your kernel supports inputs with different shapes that can be broadcast together according to PyTorch's broadcasting semantics.\n"
+        prompt += f"2. You MUST handle non-contiguous tensors correctly. Do not assume input tensors are contiguous in memory. Use proper stride calculations to access elements correctly for tensors with arbitrary memory layouts.\n"
+
         # Modify this part based on whether multiple operators are involved
         if info.impl_info is not None and len(info.impl_info) > 1:
             prompt += f"You must provide wrapper functions for all the ATen operators mentioned above.\n"
@@ -223,21 +228,32 @@ class TritonKernelGenerator(BaseGenerator):
             prompt += f"\nThe Python wrapper functions should have signatures like:\n"
             for op, _ in info.impl_info:
                 py_op_name = op.replace(".", "_")
-                prompt += f"  - def {py_op_name}(...): # This wrapper calls the shared kernel(s)\n"
+                prompt += f"  - def {py_op_name}(...): # This wrapper calls the kernel(s)\n"
             prompt += f"\nThese wrapper functions can internally call the same Triton kernel(s) with appropriate parameters.\n"
         else:
-            prompt += f"The Triton kernel function name should be {info.op_name}.\n"
+            prompt += f"The Python interface function name should be {info.op_name.split('::')[-1]}.\n"
         
         prompt += f"\nThe input and output args of the function are as follows:\n"
-        prompt += f"Input Args: {info.input_args}\n"
-        prompt += f"Output Args: {info.output_args}\n"
+        prompt += f"Input and output Args: \n"
+        for overload, args in info.input_args.items():
+            if overload:
+                prompt += f"  - {info.op_name.split('::')[-1]}_{overload}\n"
+            else:
+                prompt += f"  - {info.op_name.split('::')[-1]}\n"
+            prompt += f"    Input and Output Args: {args}\n"
+        # prompt += f"Output Args: {info.output_args}\n"
         prompt += f"The generated code should include both the Triton kernel definition (with @triton.jit) and the Python wrapper function(s) that launch the kernel.\n"
-        
+
+        # Add critical requirements for broadcast and non-contiguous tensors
+        prompt += f"\nCRITICAL REQUIREMENTS:\n"
+        prompt += f"1. For pointwise operators, you MUST handle broadcasting correctly. Ensure your kernel supports inputs with different shapes that can be broadcast together according to PyTorch's broadcasting semantics.\n"
+        prompt += f"2. You MUST handle non-contiguous tensors correctly. Do not assume input tensors are contiguous in memory. Use proper stride calculations to access elements correctly for tensors with arbitrary memory layouts.\n"
+
         # Modify this part based on whether multiple operators are involved
         if info.impl_info is not None and len(info.impl_info) > 1:
             prompt += f"You must provide wrapper functions for all the ATen operators mentioned above.\n"
         else:
-            prompt += f"The wrapper function name must be exactly the same as the provided function name: {info.op_name}\n"
+            prompt += f"The wrapper function name must be exactly the same as the provided function name: {info.op_name.split('::')[-1]}\n"
         
         # Add Wiki reference implementations if available
         if info.wiki_reference:
