@@ -225,3 +225,6 @@ FLAGBENCH_EXTRA_MODULES="flagbench.accuracy.test_converted_ops" \
 - 优先级可能根据实际需求调整
 - 完成的任务请标记为 ~~删除线~~
 - 新的待办事项请添加到相应的分类下
+
+
+## 更新文档增加 flaggems 的安装
