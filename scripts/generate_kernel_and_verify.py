@@ -103,19 +103,24 @@ class PassAtKTester:
         if self.test_type == "triton":
             self.create_verify_args = self.create_triton_kernel_verify_args
             self.create_generate_args = create_triton_generate_args
+            # 导入转换函数
+            from flagbench.dataset.kernel_list import flatten_operator_dict
+
             match self.dataset:
+                case "pytorch":
+                    self.operator_loader = TorchOpsLoader()
                 case "gems":
                     from flagbench.dataset import PYTORCH_OPERATORS
-                    self.operator_loader = {"aten": PYTORCH_OPERATORS}
+                    self.operator_loader = flatten_operator_dict(PYTORCH_OPERATORS, "aten")
                 case "v1":
                     from flagbench.dataset import V1_OPERATORS
-                    self.operator_loader = {"aten": V1_OPERATORS}
+                    self.operator_loader = flatten_operator_dict(V1_OPERATORS, "aten")
                 case "v2":
                     from flagbench.dataset import V2_OPERATORS
-                    self.operator_loader = {"aten": V2_OPERATORS}
+                    self.operator_loader = flatten_operator_dict(V2_OPERATORS, "aten")
                 case "qwen_next":
                     from flagbench.dataset import QWEN_NEXT_OPERATORS
-                    self.operator_loader = {"aten": QWEN_NEXT_OPERATORS}
+                    self.operator_loader = flatten_operator_dict(QWEN_NEXT_OPERATORS, "aten")
                     self.qwen_next = True
                 case _:
                     raise ValueError(f"Unsupported dataset: {self.dataset}")
@@ -128,38 +133,30 @@ class PassAtKTester:
             raise ValueError(f"Unsupported test type: {self.test_type}")
 
     def initialize_operators(self, namespace: str = "all") -> None:
-        """Initialize the list of operators to test."""
+        """初始化算子列表，返回扁平结构 {op_name: value}"""
         if not isinstance(self.operator_loader, dict):
-            if self.debug:
-                namespace = "aten"
+            # 动态加载 - TorchOpsLoader（已返回扁平结构）
             if namespace.lower() == "all":
                 self.all_operators = self.operator_loader.load_all()
             else:
-                self.all_operators = {namespace: self.operator_loader.load_namespace(namespace=namespace)}
-            # for debug, use a subset of operators
-            if self.debug:
-                self.all_operators = {ns: dict(list(apis.items())[:8]) for ns, apis in self.all_operators.items()}
-            total_ops = sum(len(ops) for ops in self.all_operators.values())
-            logger.info(f"Initialized {total_ops} operators across {len(self.all_operators)} namespaces")
+                self.all_operators = self.operator_loader.load_namespace(namespace)
         else:
-            if self.debug:
-                self.all_operators = {ns: dict(list(apis.items())[:8]) for ns, apis in self.operator_loader.items()}
-            else:
-                self.all_operators = self.operator_loader
-            total_ops = sum(len(ops) for ops in self.all_operators.values())
-            logger.info(f"Initialized {total_ops} operators from predefined list")
+            # 静态加载 - 预定义字典（已经是扁平的）
+            self.all_operators = self.operator_loader
+
+        # Debug模式：限制为前8个算子
+        if self.debug:
+            self.all_operators = dict(list(self.all_operators.items())[:8])
+
+        total_ops = len(self.all_operators)
+        logger.info(f"Initialized {total_ops} operators")
     
-    def get_remaining_operators(self) -> Dict[str, Dict[str, APIInfo]]:
-        """Get operators that haven't passed yet."""
+    def get_remaining_operators(self) -> Dict[str, APIInfo]:
+        """获取尚未通过的算子"""
         remaining = {}
-        for namespace, apis in self.all_operators.items():
-            remaining_apis = {}
-            for api_name, api_info in apis.items():
-                full_name = f"{namespace}::{api_name.split('.')[-1]}" if namespace else api_name
-                if api_name.split('.')[-1] not in self.passed_operators:
-                    remaining_apis[api_name] = api_info
-            if remaining_apis:
-                remaining[namespace] = remaining_apis
+        for op_name, api_info in self.all_operators.items():
+            if op_name not in self.passed_operators:
+                remaining[op_name] = api_info
         return remaining
     
     def create_ut_generate_args(self, torch_op_name: str, torch_op_func_or_namespace: str, impl_info: APIInfo) -> TestFuncGenerateArgs:
@@ -222,68 +219,60 @@ class PassAtKTester:
         # Prepare generation arguments
         gen_args = []
         api_names = []
-        for namespace, apis in remaining_operators.items():
-            for total_api_name, api_info in apis.items():
-                api_name = total_api_name.split('.')[-1]
-                if namespace:
-                    file_name = f"test_accuracy_{namespace}::{api_name}.py"
-                    full_name = f"{namespace}::{api_name}"
-                else:
-                    file_name = f"test_accuracy_{api_name.split('.')[-1]}.py"
-                    full_name = api_name
-                    
-                if Path(round_dir / file_name).exists():
-                    logger.info(f"Skipping already existing test for {full_name}")
-                    with open(round_dir / file_name, "r") as f:
-                        code = f.read()
-                    self.store_generated_code(full_name, round_idx, code)
-                    continue
+        for op_name, api_info in remaining_operators.items():
+            # op_name 格式: "aten::add"
+            namespace, kernel_name = op_name.split("::", 1)
+            file_name = f"test_accuracy_{op_name}.py"
 
-                # Choose impl_info based on test_type
-                if self.test_type == "triton":
-                    impl_info_arg = self.impl_info.get(api_name.split('.')[-1])
-                else:  # accuracy or performance
-                    impl_info_arg = api_info
+            if Path(round_dir / file_name).exists():
+                logger.info(f"Skipping already existing test for {op_name}")
+                with open(round_dir / file_name, "r") as f:
+                    code = f.read()
+                self.store_generated_code(op_name, round_idx, code)
+                continue
 
-                gen_arg = self.create_generate_args(
-                    torch_op_name=total_api_name,
-                    torch_op_func_or_namespace=namespace if namespace else "aten",
-                    # torch_op_func_or_namespace=api_info,
-                    impl_info=impl_info_arg
-                )
-                gen_arg.sample_id = round_idx
-                
-                # Query Wiki for reference implementations
-                kernel_name = api_name.split('.')[-1]
-                
-                if self.use_wiki:
-                    wiki_info = self.query_wiki_with_cache(kernel_name)
-                    gen_arg.wiki_reference = wiki_info
-                
-                # Add reflection: use previous round's verify results as feedback
-                if self.reflection and round_idx > 0:
-                    prev_verify_result = self.get_previous_verify_result(full_name, round_idx - 1)
-                    if prev_verify_result:
-                        from sandbox.utils.accuracy_utils import VerifyResult
-                        # Extract failed test cases
-                        failed_cases = prev_verify_result
-                        if failed_cases:
-                            # Take first few failures to avoid context overflow
-                            sample_failures = failed_cases
-                            verify_result_obj = VerifyResult(
-                                **sample_failures
-                            )
-                            gen_arg.check_result = verify_result_obj
-                            gen_arg.old_code = self.generated_codes[full_name][round_idx - 1]
-                            assert gen_arg.check_result.code == gen_arg.old_code, "Mismatch between stored code and verify result code"
-                            logger.info(f"Added reflection for {full_name}: {len(failed_cases)} failures from round {round_idx - 1}")
-                
-                        # Load previous generated code if available
-                        if full_name in self.generated_codes and (round_idx - 1) in self.generated_codes[full_name]:
-                            gen_arg.old_code = self.generated_codes[full_name][round_idx - 1]
-                
-                gen_args.append(gen_arg)
-                api_names.append(full_name)
+            # Choose impl_info based on test_type
+            if self.test_type == "triton":
+                impl_info_arg = self.impl_info.get(kernel_name)
+            else:  # accuracy or performance
+                impl_info_arg = api_info
+
+            gen_arg = self.create_generate_args(
+                torch_op_name=kernel_name,
+                torch_op_func_or_namespace=namespace,
+                impl_info=impl_info_arg
+            )
+            gen_arg.sample_id = round_idx
+
+            # Query Wiki for reference implementations
+            if self.use_wiki:
+                wiki_info = self.query_wiki_with_cache(kernel_name)
+                gen_arg.wiki_reference = wiki_info
+
+            # Add reflection: use previous round's verify results as feedback
+            if self.reflection and round_idx > 0:
+                prev_verify_result = self.get_previous_verify_result(op_name, round_idx - 1)
+                if prev_verify_result:
+                    from sandbox.utils.accuracy_utils import VerifyResult
+                    # Extract failed test cases
+                    failed_cases = prev_verify_result
+                    if failed_cases:
+                        # Take first few failures to avoid context overflow
+                        sample_failures = failed_cases
+                        verify_result_obj = VerifyResult(
+                            **sample_failures
+                        )
+                        gen_arg.check_result = verify_result_obj
+                        gen_arg.old_code = self.generated_codes[op_name][round_idx - 1]
+                        assert gen_arg.check_result.code == gen_arg.old_code, "Mismatch between stored code and verify result code"
+                        logger.info(f"Added reflection for {op_name}: {len(failed_cases)} failures from round {round_idx - 1}")
+
+                    # Load previous generated code if available
+                    if op_name in self.generated_codes and (round_idx - 1) in self.generated_codes[op_name]:
+                        gen_arg.old_code = self.generated_codes[op_name][round_idx - 1]
+
+            gen_args.append(gen_arg)
+            api_names.append(op_name)
         
         if not gen_args:
             logger.info("No operators to generate")
@@ -381,8 +370,8 @@ class PassAtKTester:
         
         return round_dir
     
-    def create_triton_kernel_verify_args(self, kernel_path: Path, test_path: Path, op_name: str, namespace: str) -> VerifyRequest:
-        """Create verification request."""
+    def create_triton_kernel_verify_args(self, kernel_path: Path, test_path: Path, op_name: str) -> VerifyRequest:
+        """Create verification request. op_name 格式: aten::add"""
         test_func = None
         if test_path.is_file() and test_path.exists():
             with open(test_path, "r") as f:
@@ -393,24 +382,24 @@ class PassAtKTester:
         return VerifyRequest(
             source=[Source(
                 source=kernel_code,
-                function_name=f"{namespace}::{op_name}" if namespace else op_name.split('.')[-1]
+                function_name=op_name
             )],
             test_func=[test_func] if test_func else None,
         )
     
-    def create_acc_test_verify_args(self, test_path: Path, op_name: str, namespace: str) -> VerifyRequest:
-        """Create verification request."""
+    def create_acc_test_verify_args(self, test_path: Path, op_name: str) -> VerifyRequest:
+        """Create verification request. op_name 格式: aten::add"""
         with open(test_path, "r") as f:
             test_func = f.read()
         return VerifyRequest(
             source=[Source(
                 source=mock_triton_code,
-                function_name=f"{namespace}::{op_name}"
+                function_name=op_name
             )],
             test_func=[test_func],
         )
     
-    def verify_round(self, round_idx: int, round_dir: Path, remaining_operators: Dict[str, Dict[str, APIInfo]]) -> Set[str]:
+    def verify_round(self, round_idx: int, round_dir: Path, remaining_operators: Dict[str, APIInfo]) -> Set[str]:
         """Verify tests for this round and return newly passed operators."""
         logger.info(f"\n{'='*60}")
         logger.info(f"Round {round_idx}: Verifying tests")
@@ -432,51 +421,48 @@ class PassAtKTester:
         verify_requests = []
         op_names = []
         exist_newly_passed = set()
-        for namespace, apis in remaining_operators.items():
-            for api_name in apis.keys():
-                full_name = f"{namespace}::{api_name.split('.')[-1]}" if namespace else api_name
-                kernel_file_name = f"{full_name}.py"
-                kernel_path = round_dir / kernel_file_name
+        for op_name, api_info in remaining_operators.items():
+            namespace, kernel_name = op_name.split("::", 1)
+            kernel_file_name = f"{op_name}.py"
+            kernel_path = round_dir / kernel_file_name
 
-                if not kernel_path.exists():
-                    logger.warning(f"Missing kernel file: {kernel_path}")
-                    continue
+            if not kernel_path.exists():
+                logger.warning(f"Missing kernel file: {kernel_path}")
+                continue
 
-                if self.test_type == "triton":
-                    test_file_path = Path("")
-                else:
-                    test_file_path = round_dir / f"test_accuracy_{full_name.split('.')[-1]}.py"
-                
-                if not test_file_path.exists() and self.test_type != "triton":
-                    logger.warning(f"Missing test file: {test_file_path}")
-                    continue
-                # verify_result_path = Path(test_file_path).parent.parent / "verification" / f"log_{round_idx}" / f"test_report_{full_name.split('.')[-1]}.json"
-                verify_result_path = Path(test_file_path).parent.parent / "verification" / f"log_{round_idx}" / "result.json"
-                if verify_result_path.exists():
-                    logger.info(f"Skipping already verified test for {full_name}")
-                    # check previous result
-                    with open(verify_result_path, "r") as f:
-                        reports = json.load(f)
-                    # Store verify result to memory
-                    current_report = {}
-                    for report in reports:
-                        if report["op_name"] == full_name.split("::")[-1]:
-                            current_report = report
-                            self.store_verify_result(full_name, round_idx, current_report)
-                    if current_report.get("success", False):
-                        logger.info(f"Test already passed for {full_name}")
-                        exist_newly_passed.add(f"{full_name}")
-                        self.passed_operators.add(f"{full_name}")
-                    continue
+            if self.test_type == "triton":
+                test_file_path = Path("")
+            else:
+                test_file_path = round_dir / f"test_accuracy_{op_name}.py"
 
-                verify_req = self.create_triton_kernel_verify_args(
-                    kernel_path, 
-                    test_file_path, 
-                    api_name, 
-                    namespace
-                )
-                verify_requests.append(verify_req)
-                op_names.append(f"{full_name}")
+            if not test_file_path.exists() and self.test_type != "triton":
+                logger.warning(f"Missing test file: {test_file_path}")
+                continue
+            verify_result_path = Path(test_file_path).parent.parent / "verification" / f"log_{round_idx}" / "result.json"
+            if verify_result_path.exists():
+                logger.info(f"Skipping already verified test for {op_name}")
+                # check previous result
+                with open(verify_result_path, "r") as f:
+                    reports = json.load(f)
+                # Store verify result to memory
+                current_report = {}
+                for report in reports:
+                    if report["op_name"] == op_name:
+                        current_report = report
+                        self.store_verify_result(op_name, round_idx, current_report)
+                if current_report.get("success", False):
+                    logger.info(f"Test already passed for {op_name}")
+                    exist_newly_passed.add(op_name)
+                    self.passed_operators.add(op_name)
+                continue
+
+            verify_req = self.create_triton_kernel_verify_args(
+                kernel_path,
+                test_file_path,
+                op_name
+            )
+            verify_requests.append(verify_req)
+            op_names.append(op_name)
         
         if not verify_requests:
             logger.info("No tests to verify this time.")
@@ -503,7 +489,7 @@ class PassAtKTester:
                         test_reports = json.load(f)
                     current_report = {}
                     for report in test_reports:
-                        if report["op_name"] == op_name.split("::")[-1]:
+                        if report["op_name"] == op_name:
                             current_report = report
                     self.store_verify_result(op_name, round_idx, current_report)
                     logger.debug(f"Stored verify result for {op_name} round {round_idx}")
@@ -523,16 +509,16 @@ class PassAtKTester:
         logger.info(f"\n{'='*60}")
         logger.info(f"Starting Pass@{max_rounds} Testing")
         logger.info(f"{'='*60}\n")
-        
-        total_operators = sum(len(ops) for ops in self.all_operators.values())
-        
+
+        total_operators = len(self.all_operators)
+
         # Track when each operator first passed
         self.first_pass_round: Dict[str, int] = {}
-        
+
         for round_idx in range(max_rounds):
             # Get remaining operators
             remaining = self.get_remaining_operators()
-            remaining_count = sum(len(ops) for ops in remaining.values())
+            remaining_count = len(remaining)
             
             if remaining_count == 0:
                 logger.info(f"\n{'='*60}")
@@ -595,9 +581,9 @@ class PassAtKTester:
             }
         
         results = {
-            "total_operators": sum(len(ops) for ops in self.all_operators.values()),
+            "total_operators": len(self.all_operators),
             "total_passed": len(self.passed_operators),
-            "final_pass_rate": len(self.passed_operators) / sum(len(ops) for ops in self.all_operators.values()) if sum(len(ops) for ops in self.all_operators.values()) > 0 else 0,
+            "final_pass_rate": len(self.passed_operators) / len(self.all_operators) if len(self.all_operators) > 0 else 0,
             "rounds_summary": self.results_by_round,
             "generation_summaries": self.generation_summaries,
             "passed_operators": sorted(list(self.passed_operators)),
@@ -638,7 +624,7 @@ def main():
     parser.add_argument("--name", type=str, default="aten", help="Namespace to test (default: aten)")
     parser.add_argument("--acc-test-func-path", type=str, default="", help="Path to the accuracy test function directory")
     parser.add_argument("--benchmark-func-path", type=str, default="", help="Path to the performance test function directory")
-    parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["gems", "v1", "v2", "qwen_next"])
+    parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["pytorch", "gems", "v1", "v2", "qwen_next"])
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
     parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
     parser.add_argument("--test-type", type=str, default="triton", choices=["accuracy", "performance", "triton"])
