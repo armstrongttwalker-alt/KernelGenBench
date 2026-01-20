@@ -73,6 +73,7 @@ def prelu_kernel(
 
 def non_torch_prelu(self: torch.Tensor, weight: torch.Tensor):
     # Validate device and dtypes
+    print("Using Triton PReLU implementation")
     assert self.is_cuda and weight.is_cuda, "Inputs must be CUDA tensors"
     assert self.device == weight.device, "Inputs must be on the same device"
     # Match PyTorch semantics: weight must be scalar or 1D of size C (self.size(1))
