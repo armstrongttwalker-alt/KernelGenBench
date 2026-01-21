@@ -39,92 +39,7 @@ flag-bench/
 
 ### 核心脚本
 
-#### 1. `generate_ut_and_verify.py`
-**功能**: Pass@K 测试的完整流程，包括生成单元测试和验证
-
-**用法**:
-```bash
-python scripts/generate_ut_and_verify.py \
-    --name <operator_name> \
-    --output-dir <output_directory> \
-    --test-type accuracy \
-    --max-rounds 10
-```
-
-**参数**:
-- `--name`: 算子命名空间（默认: `aten`）
-- `--output-dir`: 输出目录（默认: `output_ut/pass_at_k`）
-- `--test-type`: 测试类型（`accuracy` 或 `performance`）
-- `--max-rounds`: 最大轮数（默认: 10）
-
-#### 2. `convert_flaggems_tests.py`
-**功能**: 将 FlagGems 测试函数转换为 flagbench 格式
-
-**用法**:
-```bash
-python scripts/convert_flaggems_tests.py \
-    --operator <operator_name> \
-    --output-dir <output_directory>
-```
-
-**特性**:
-- 自动处理装饰器转换
-- 智能导入语句管理
-- 支持多行函数签名
-- 自动添加必要的常量定义
-
-#### 3. `generate_sample.py`
-**功能**: 为已验证的准确性测试函数生成 Triton kernel 代码
-
-**用法**:
-```bash
-FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 python scripts/generate_sample.py \
-    --test-func-result-path <result_path>
-```
-
-#### 4. `generate_ut_sample.py`
-**功能**: 生成准确性测试函数
-
-**用法**:
-```bash
-python scripts/generate_ut_sample.py
-```
-
-### 评估脚本
-
-#### 5. `eval_from_path_with_test_func.py`
-**功能**: 使用测试函数验证生成的 Triton 代码
-
-**用法**:
-```bash
-FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 FLAGBENCH_SKIP_BOTH_TEST=1 \
-python scripts/eval_from_path_with_test_func.py \
-    --path <triton_code_dir> \
-    --num-samples <k> \
-    --device-count 8 \
-    --timeout 300 \
-    --test-func-path <test_func_path>
-```
-
-#### 6. `eval_from_path_with_perf_test_func.py`
-**功能**: 使用性能测试函数评估生成的代码
-
-#### 7. `eval_performance_from_acc_results.py`
-**功能**: 从准确性结果评估性能
-
-#### 8. `test_updated_accuracy_ut.py`
-**功能**: 测试更新的准确性单元测试
-
-**用法**:
-```bash
-python scripts/test_updated_accuracy_ut.py \
-    --path <path_from_generation> \
-    --device-count <gpu_counts>
-```
-
-### 其他工具
-
-#### 9. `generate_kernel_and_verify.py`
+#### 1. `generate_kernel_and_verify.py`
 **功能**: 统一的 kernel/测试生成和验证脚本，支持 Pass@K 迭代测试
 
 **核心特性**:
@@ -233,6 +148,91 @@ output/pass_at_k_accuracy/           # accuracy 模式输出
 - 支持多种数据集，包括 Qwen Next 算子
 - 按测试类型自动分离输出目录
 - 更灵活的配置选项（反射、Wiki 等）
+
+#### 2. `generate_ut_and_verify.py`
+**功能**: Pass@K 测试的完整流程，包括生成单元测试和验证
+
+**用法**:
+```bash
+python scripts/generate_ut_and_verify.py \
+    --name <operator_name> \
+    --output-dir <output_directory> \
+    --test-type accuracy \
+    --max-rounds 10
+```
+
+**参数**:
+- `--name`: 算子命名空间（默认: `aten`）
+- `--output-dir`: 输出目录（默认: `output_ut/pass_at_k`）
+- `--test-type`: 测试类型（`accuracy` 或 `performance`）
+- `--max-rounds`: 最大轮数（默认: 10）
+
+#### 3. `convert_flaggems_tests.py`
+**功能**: 将 FlagGems 测试函数转换为 flagbench 格式
+
+**用法**:
+```bash
+python scripts/convert_flaggems_tests.py \
+    --operator <operator_name> \
+    --output-dir <output_directory>
+```
+
+**特性**:
+- 自动处理装饰器转换
+- 智能导入语句管理
+- 支持多行函数签名
+- 自动添加必要的常量定义
+
+#### 4. `generate_sample.py`
+**功能**: 为已验证的准确性测试函数生成 Triton kernel 代码
+
+**用法**:
+```bash
+FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 python scripts/generate_sample.py \
+    --test-func-result-path <result_path>
+```
+
+#### 5. `generate_ut_sample.py`
+**功能**: 生成准确性测试函数
+
+**用法**:
+```bash
+python scripts/generate_ut_sample.py
+```
+
+### 评估脚本
+
+#### 6. `eval_from_path_with_test_func.py`
+**功能**: 使用测试函数验证生成的 Triton 代码
+
+**用法**:
+```bash
+FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 FLAGBENCH_SKIP_BOTH_TEST=1 \
+python scripts/eval_from_path_with_test_func.py \
+    --path <triton_code_dir> \
+    --num-samples <k> \
+    --device-count 8 \
+    --timeout 300 \
+    --test-func-path <test_func_path>
+```
+
+#### 7. `eval_from_path_with_perf_test_func.py`
+**功能**: 使用性能测试函数评估生成的代码
+
+#### 8. `eval_performance_from_acc_results.py`
+**功能**: 从准确性结果评估性能
+
+#### 9. `test_updated_accuracy_ut.py`
+**功能**: 测试更新的准确性单元测试
+
+**用法**:
+```bash
+python scripts/test_updated_accuracy_ut.py \
+    --path <path_from_generation> \
+    --device-count <gpu_counts>
+```
+
+### 其他工具
 
 #### 10. `generate_test_from_gems.py`
 **功能**: 从 FlagGems 生成测试用例
