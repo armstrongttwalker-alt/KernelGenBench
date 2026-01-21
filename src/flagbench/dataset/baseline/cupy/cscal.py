@@ -1,11 +1,9 @@
-from sandbox.register import register
 from flagbench.dataset import Autograd
 import torch
 import cupy as cp
 from cupy import cublas
 from torch.utils.dlpack import to_dlpack, from_dlpack
 
-@register("CUDA", "cscal", has_backward=Autograd.disable, namespace="baseline")
 def cscal(n, alpha, x, incx):
     """CuPy cuBLAS baseline for cscal: x = alpha * x (in-place complex64 scaling)"""
     # Convert to CuPy

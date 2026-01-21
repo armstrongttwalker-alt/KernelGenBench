@@ -1,11 +1,9 @@
-from sandbox.register import register
 from flagbench.dataset import Autograd
 import torch
 import cupy as cp
 from cupy import cublas
 from torch.utils.dlpack import to_dlpack, from_dlpack
 
-@register("CUDA", "csyrk", has_backward=Autograd.disable, namespace="baseline")
 def csyrk(uplo, trans, n, k, alpha, A, lda, beta, C, ldc):
     """CuPy cuBLAS baseline for csyrk: C = alpha * A @ A^H + beta * C (complex64)"""
     # Convert to CuPy

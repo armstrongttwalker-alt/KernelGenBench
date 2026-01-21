@@ -1,11 +1,9 @@
-from sandbox.register import register
 from flagbench.dataset import Autograd
 import torch
 import cupy as cp
 from cupy import cublas
 from torch.utils.dlpack import to_dlpack, from_dlpack
 
-@register("CUDA", "cdgmm", has_backward=Autograd.disable, namespace="baseline")
 def cdgmm(mode, m, n, A, lda, x, incx, C, ldc):
     """CuPy cuBLAS baseline for cdgmm: C = A diag(x) (left) or diag(x) A (right)"""
     # Convert to CuPy

@@ -1,11 +1,9 @@
-from sandbox.register import register
 from flagbench.dataset import Autograd
 import torch
 import cupy as cp
 from cupy import cublas
 from torch.utils.dlpack import to_dlpack, from_dlpack
 
-@register("CUDA", "zgemm", has_backward=Autograd.disable, namespace="baseline")
 def zgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc):
     """CuPy cuBLAS baseline for zgemm: C = alpha * op(A) @ op(B) + beta * C"""
     # Convert to CuPy

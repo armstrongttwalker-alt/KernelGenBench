@@ -1,11 +1,9 @@
-from sandbox.register import register
 from flagbench.dataset import Autograd
 import torch
 import cupy as cp
 from cupy import cublas
 from torch.utils.dlpack import to_dlpack, from_dlpack
 
-@register("CUDA", "ssbmv", has_backward=Autograd.disable, namespace="baseline")
 def ssbmv(uplo, n, k, alpha, A, lda, x, incx, beta, y, incy):
     """CuPy cuBLAS baseline for ssbmv: y = alpha*A*x + beta*y where A is symmetric band matrix"""
     # Convert to CuPy

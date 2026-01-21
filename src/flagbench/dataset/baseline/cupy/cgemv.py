@@ -1,11 +1,9 @@
-from sandbox.register import register
 from flagbench.dataset import Autograd
 import torch
 import cupy as cp
 from cupy import cublas
 from torch.utils.dlpack import to_dlpack, from_dlpack
 
-@register("CUDA", "cgemv", has_backward=Autograd.disable, namespace="baseline")
 def cgemv(trans, m, n, alpha, A, lda, x, incx, beta, y, incy):
     """CuPy cuBLAS baseline for cgemv: y = alpha * op(A) * x + beta * y"""
     # Convert to CuPy arrays

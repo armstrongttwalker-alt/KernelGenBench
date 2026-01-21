@@ -1,11 +1,9 @@
-from sandbox.register import register
 from flagbench.dataset import Autograd
 import torch
 import cupy as cp
 from cupy import cublas
 from torch.utils.dlpack import to_dlpack, from_dlpack
 
-@register("CUDA", "dgeam", has_backward=Autograd.disable, namespace="baseline")
 def dgeam(transa, transb, m, n, alpha, A, lda, beta, B, ldb, C, ldc):
     """CuPy cuBLAS baseline for dgeam: C = alpha * op(A) + beta * op(B)"""
     # Convert to CuPy

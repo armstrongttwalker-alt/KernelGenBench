@@ -1,11 +1,9 @@
-from sandbox.register import register
 from flagbench.dataset import Autograd
 import torch
 import cupy as cp
 from cupy import cublas
 from torch.utils.dlpack import to_dlpack, from_dlpack
 
-@register("CUDA", "zscal", has_backward=Autograd.disable, namespace="baseline")
 def zscal(n, alpha, x, incx):
     """CuPy cuBLAS baseline for zscal: x = alpha * x (in-place scaling of complex128 vector)"""
     # Convert to CuPy

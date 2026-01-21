@@ -1,11 +1,9 @@
-from sandbox.register import register
 from flagbench.dataset import Autograd
 import torch
 import cupy as cp
 from cupy import cublas
 from torch.utils.dlpack import to_dlpack, from_dlpack
 
-@register("CUDA", "snrm2", has_backward=Autograd.disable, namespace="baseline")
 def snrm2(n, x, incx, result):
     """CuPy cuBLAS baseline for snrm2: computes Euclidean norm of vector x"""
     # Convert to CuPy

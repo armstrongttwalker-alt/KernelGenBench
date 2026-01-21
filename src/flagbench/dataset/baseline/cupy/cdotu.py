@@ -1,11 +1,9 @@
-from sandbox.register import register
 from flagbench.dataset import Autograd
 import torch
 import cupy as cp
 from cupy import cublas
 from torch.utils.dlpack import to_dlpack, from_dlpack
 
-@register("CUDA", "cdotu", has_backward=Autograd.disable, namespace="baseline")
 def cdotu(n, x, incx, y, incy, result):
     """CuPy cuBLAS baseline for complex dot product (cdotu)."""
     # Convert to CuPy arrays
