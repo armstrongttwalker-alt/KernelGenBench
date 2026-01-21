@@ -232,6 +232,45 @@ class Verifier:
         logger.info(f"failed {info}")
         return summary, info
 
+    def _auto_load_baseline(self, op_name: str) -> Optional[str]:
+        """自动加载 baseline 实现
+
+        尝试顺序：
+        1. 根据命名约定：cublas::gemm -> baseline/cublas/gemm.py
+        2. custom目录：baseline/custom/<op_name>.py
+        3. example目录（测试用）：baseline/example/baseline_<op_name>.py
+        """
+        from pathlib import Path
+
+        baseline_root = Path(REPO_TOP_DIR).parent / "flagbench" / "dataset" / "baseline"
+
+        # 尝试 1：解析命名约定 (category::opname)
+        if "::" in op_name:
+            parts = op_name.split("::", 1)
+            category, name = parts[0], parts[1]
+            baseline_path = baseline_root / category / f"{name}.py"
+            if baseline_path.exists():
+                logger.info(f"Auto-loading baseline from {baseline_path}")
+                return baseline_path.read_text()
+
+        # 尝试 2：custom 目录
+        baseline_path = baseline_root / "custom" / f"{op_name}.py"
+        if baseline_path.exists():
+            logger.info(f"Auto-loading baseline from {baseline_path}")
+            return baseline_path.read_text()
+
+        # 尝试 3：example 目录（测试用）
+        # 对于 non_torch_prelu，尝试 baseline_prelu.py
+        if op_name.startswith("non_torch_"):
+            simple_name = op_name.replace("non_torch_", "")
+            baseline_path = baseline_root / "example" / f"baseline_{simple_name}.py"
+            if baseline_path.exists():
+                logger.info(f"Auto-loading baseline from {baseline_path}")
+                return baseline_path.read_text()
+
+        logger.warning(f"Baseline not found for {op_name}")
+        return None
+
     def _check_code(self, code: str, name: str, namespace: str = None):
         if not code:
             return None
@@ -252,23 +291,35 @@ class Verifier:
         name = name.split(".")[-1]
         compile(code, name, "exec")
         from flagbench.dataset.kernel_list import IMPL_INFO
-        # assert f"def {name}(" in code, f"no func {name} in code"
-        ops = IMPL_INFO.get(name)
-        if not ops:
-            ops = [(name, None)]
-        ops = [op for op, _ in ops]
+
+        # 步骤 2.1.1：添加算子类型判断
+        is_pytorch_op = IMPL_INFO.get(name) is not None
+
+        if is_pytorch_op:
+            # PyTorch 算子：检查所有 overload 变体
+            impl_info = IMPL_INFO.get(name)
+            ops = [op for op, _ in impl_info]
+        else:
+            # 非 PyTorch 算子：只检查主函数名
+            ops = [name]
+
+        # 统一检查函数定义
         for op in ops:
             op_func_name = op.replace(".", "_")
             if f"def {op_func_name}(" not in code:
                 logger.error(f"no func {op_func_name} in code \n{code}")
                 raise ValueError(f"no func {op_func_name} in code, must include def {op_func_name}")
         
-        # check package import 
+        # check package import
         code = ensure_import_torch(code)
         if "@register" not in code:
             code = "from flagbench import register\n" + code
+
+            # 直接使用传入的 namespace，不进行重映射
+            actual_namespace = namespace
+
             for op in ops:
-                code = add_register_decorator(code, op, namespace, api=name)
+                code = add_register_decorator(code, op, actual_namespace, api=name)
         if not os.path.isfile(code):
             with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as tmp:
                 tmp.write(code)
@@ -561,9 +612,56 @@ class Verifier:
             logger.error(f"Init test functions failed: {e}")
             raise e
         try:
-            if DISPATCH_TORCH_LIB:
-                checked_source = [self._check_code(s, fn_name, ns) for s, fn_name, ns in zip(source, function_name, namespace)]
-            # TODO 
+            # 步骤 2.3：处理 DISPATCH_TORCH_LIB 环境变量
+            from flagbench.dataset.kernel_list import IMPL_INFO
+            is_pytorch_op = IMPL_INFO.get(function_name[0]) is not None
+
+            # 自动加载 baseline（方案1+方案4）
+            if not is_pytorch_op:
+                # 检查是否已提供 baseline
+                has_baseline = any(ns == "baseline" for ns in namespace)
+
+                if not has_baseline:
+                    # 尝试自动加载 baseline
+                    baseline_code = self._auto_load_baseline(function_name[0])
+                    if baseline_code:
+                        source.insert(0, baseline_code)
+                        function_name.insert(0, function_name[0])
+                        namespace.insert(0, "baseline")
+                        logger.info(f"Auto-loaded baseline for {function_name[0]}")
+
+            if is_pytorch_op:
+                # PyTorch 算子：保持原有逻辑
+                if DISPATCH_TORCH_LIB:
+                    checked_source = [self._check_code(s, fn_name, ns) for s, fn_name, ns in zip(source, function_name, namespace)]
+            else:
+                # 非 PyTorch 算子：处理 baseline 和 triton 注册
+                filtered_sources = []
+                filtered_function_names = []
+                filtered_namespaces = []
+
+                for s, fn_name, ns in zip(source, function_name, namespace):
+                    if ns == "baseline":
+                        # 总是注册 baseline 到 "baseline" 命名空间
+                        filtered_sources.append(s)
+                        filtered_function_names.append(fn_name)
+                        filtered_namespaces.append("baseline")
+
+                        if not DISPATCH_TORCH_LIB:
+                            # DISPATCH_TORCH_LIB=0: 也注册 baseline 到 "triton" 命名空间
+                            filtered_sources.append(s)
+                            filtered_function_names.append(fn_name)
+                            filtered_namespaces.append("triton")
+                    elif ns == "triton" and DISPATCH_TORCH_LIB:
+                        # DISPATCH_TORCH_LIB=1: 注册 triton 到 "triton" 命名空间
+                        filtered_sources.append(s)
+                        filtered_function_names.append(fn_name)
+                        filtered_namespaces.append("triton")
+
+                # 确保 _check_code() 总是被调用
+                checked_source = [self._check_code(s, fn_name, ns) for s, fn_name, ns in zip(filtered_sources, filtered_function_names, filtered_namespaces)]
+
+            # TODO
             # should check the test_func
             if test_func is not None:
                 for tf in test_func:

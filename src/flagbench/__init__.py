@@ -63,6 +63,7 @@ accuracy_modules = [
     "flagbench.accuracy.test_unary_pointwise_ops",
     "flagbench.accuracy.test_non_flaggems_ops",
     "flagbench.accuracy.test_v2_ops",
+    "flagbench.accuracy.test_non_torch_prelu_ops",
 ]
 perf_modules = [
     "flagbench.perfermance.test_attention_perf",

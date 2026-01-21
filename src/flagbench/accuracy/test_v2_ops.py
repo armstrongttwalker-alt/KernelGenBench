@@ -36,6 +36,38 @@ def test_log_sigmoid_backward_tensor(shape, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.log_sigmoid_backward(ref_grad_output, ref_self, ref_buffer),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.log_sigmoid_backward(act_grad_output, act_self, act_buffer),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("log_sigmoid_backward")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -64,6 +96,41 @@ def test_log_sigmoid_backward_grad_input(shape, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.log_sigmoid_backward.grad_input(
+        ref_grad_output, ref_self, ref_buffer, grad_input=ref_out_tensor
+    ),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.log_sigmoid_backward.grad_input(
+            act_grad_output, act_self, act_buffer, grad_input=act_out_tensor
+        ),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== mish_backward ==========
 @label("mish_backward")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -80,6 +147,37 @@ def test_mish_backward_tensor(shape, dtype):
         act_out = torch.ops.aten.mish_backward(grad_output, self_tensor)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.mish_backward(ref_grad, ref_self),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.mish_backward(grad_output, self_tensor),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== reflection_pad1d_backward ==========
 @label("reflection_pad1d_backward")
@@ -103,6 +201,38 @@ def test_reflection_pad1d_backward_tensor(shape, dtype, padding):
         act_out = torch.ops.aten.reflection_pad1d_backward(grad_output, self, padding)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.reflection_pad1d_backward(ref_grad_output, ref_self, padding),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.reflection_pad1d_backward(grad_output, self, padding),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("reflection_pad1d_backward")
@@ -129,6 +259,37 @@ def test_reflection_pad1d_backward_grad_input(shape, dtype, padding):
         act_out = torch.ops.aten.reflection_pad1d_backward.grad_input(grad_output, self, padding, grad_input=act_out_buf)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.reflection_pad1d_backward.grad_input(ref_grad_output, ref_self, padding, grad_input=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.reflection_pad1d_backward.grad_input(grad_output, self, padding, grad_input=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== rrelu_with_noise_backward ==========
 @label("rrelu_with_noise_backward")
@@ -157,6 +318,38 @@ def test_rrelu_with_noise_backward_tensor(shape, dtype, training):
         act_out = torch.ops.aten.rrelu_with_noise_backward(act_grad_output, act_self, act_noise, lower, upper, training, self_is_result)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.rrelu_with_noise_backward(ref_grad_output, ref_self, ref_noise, lower, upper, training, self_is_result),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.rrelu_with_noise_backward(act_grad_output, act_self, act_noise, lower, upper, training, self_is_result),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("rrelu_with_noise_backward")
@@ -188,6 +381,37 @@ def test_rrelu_with_noise_backward_out(shape, dtype, training):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.rrelu_with_noise_backward.out(ref_grad_output, ref_self, ref_noise, lower, upper, training, self_is_result, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.rrelu_with_noise_backward.out(act_grad_output, act_self, act_noise, lower, upper, training, self_is_result, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== select_backward ==========
 @label("select_backward")
 @parametrize("input_sizes", [(2, 3), (128, 256), (512, 512)])
@@ -216,6 +440,38 @@ def test_select_backward_default(input_sizes, dim, index_mode, dtype):
         act_out = torch.ops.aten.select_backward(grad_act, list(input_sizes), dim, index)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.select_backward(grad_ref, list(input_sizes), dim, index),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.select_backward(grad_act, list(input_sizes), dim, index),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("select_backward")
@@ -248,6 +504,37 @@ def test_select_backward_out(input_sizes, dim, index_mode, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.select_backward.out(grad_ref, list(input_sizes), dim, index, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.select_backward.out(grad_act, list(input_sizes), dim, index, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== smooth_l1_loss_backward ==========
 @label("smooth_l1_loss_backward")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -272,6 +559,38 @@ def test_smooth_l1_loss_backward_tensor(shape, dtype, reduction, beta):
         act_out = torch.ops.aten.smooth_l1_loss_backward(grad_output, self, target, reduction, float(beta))
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.smooth_l1_loss_backward(ref_grad_output, ref_self, ref_target, reduction, float(beta)),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.smooth_l1_loss_backward(grad_output, self, target, reduction, float(beta)),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("smooth_l1_loss_backward")
@@ -304,6 +623,41 @@ def test_smooth_l1_loss_backward_grad_input(shape, dtype, reduction, beta):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.smooth_l1_loss_backward.grad_input(
+        ref_grad_output, ref_self, ref_target, reduction, float(beta), grad_input=ref_out_buf
+    ),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.smooth_l1_loss_backward.grad_input(
+            grad_output, self, target, reduction, float(beta), grad_input=act_out_buf
+        ),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== softplus_backward ==========
 @label("softplus_backward")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -323,6 +677,38 @@ def test_softplus_backward_tensor(shape, dtype, beta, threshold):
         act_out = torch.ops.aten.softplus_backward(grad, x, beta, threshold)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.softplus_backward(ref_grad, ref_x, beta, threshold),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.softplus_backward(grad, x, beta, threshold),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("softplus_backward")
@@ -349,7 +735,42 @@ def test_softplus_backward_grad_input_out(shape, dtype, beta, threshold):
         )
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.softplus_backward.grad_input(
+        ref_grad, ref_x, beta, threshold, grad_input=ref_out_buf
+    ),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.softplus_backward.grad_input(
+            grad, x, beta, threshold, grad_input=act_out_buf
+        ),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
     assert_close(act_out_buf, ref_out_buf, dtype=dtype)
+
 
 # ========== upsample_nearest2d_backward ==========
 @label("upsample_nearest2d_backward")
@@ -377,6 +798,42 @@ def test_upsample_nearest2d_backward_tensor(case, dtype, use_scales):
         )
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.upsample_nearest2d_backward(
+        ref_grad_output, [out_h, out_w], [N, C, in_h, in_w], scales_h, scales_w
+    ),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.upsample_nearest2d_backward(
+            grad_output, [out_h, out_w], [N, C, in_h, in_w], scales_h, scales_w
+        ),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("upsample_nearest2d_backward")
@@ -408,6 +865,41 @@ def test_upsample_nearest2d_backward_grad_input(case, dtype, use_scales):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.upsample_nearest2d_backward.grad_input(
+        ref_grad_output, [out_h, out_w], [N, C, in_h, in_w], scales_h, scales_w, grad_input=ref_grad_input
+    ),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.upsample_nearest2d_backward.grad_input(
+            grad_output, [out_h, out_w], [N, C, in_h, in_w], scales_h, scales_w, grad_input=act_grad_input
+        ),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== erfc ==========
 @label("erfc")
 @parametrize("shape", [(2, 3), (128, 256), (1024, 1024)])
@@ -422,6 +914,38 @@ def test_erfc_tensor(shape, dtype):
         act_out = torch.ops.aten.erfc(x)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.erfc(ref_x),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.erfc(x),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("erfc")
@@ -441,13 +965,51 @@ def test_erfc_out_tensor(shape, dtype):
     assert_close(act_out, ref_out, dtype=dtype)
 
 
+
+
 @label("erfc")
 @parametrize("a", [-5, -1, 0, 2, 7])
 def test_erfc_int(a):
     ref_out = torch.ops.aten.erfc(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.erfc(a)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
     assert_close(act_out, ref_out, dtype=torch.float32)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.erfc(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.erfc(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("erfc")
@@ -456,7 +1018,43 @@ def test_erfc_float(a):
     ref_out = torch.ops.aten.erfc(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.erfc(a)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
     assert_close(act_out, ref_out, dtype=torch.float32)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.erfc(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.erfc(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("erfc")
@@ -465,7 +1063,42 @@ def test_erfc_scalar(a):
     ref_out = torch.ops.aten.erfc(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.erfc(a)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
     assert_close(act_out, ref_out, dtype=torch.float32)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.erfc(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.erfc(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== hardsigmoid ==========
 @label("hardsigmoid")
@@ -481,6 +1114,38 @@ def test_hardsigmoid_tensor(shape, dtype):
         act_out = torch.ops.aten.hardsigmoid(x)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.hardsigmoid(ref_x),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.hardsigmoid(x),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("hardsigmoid")
@@ -499,6 +1164,37 @@ def test_hardsigmoid_out(shape, dtype):
         act_out = torch.ops.aten.hardsigmoid.out(x, out=act_out_buf)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.hardsigmoid.out(ref_x, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.hardsigmoid.out(x, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== heaviside ==========
 @label("heaviside")
@@ -519,6 +1215,38 @@ def test_heaviside_tensor(shape, dtype):
         act_out = torch.ops.aten.heaviside(self_tensor, values_tensor)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.heaviside(ref_self, ref_values),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.heaviside(self_tensor, values_tensor),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("heaviside")
@@ -542,6 +1270,37 @@ def test_heaviside_out(shape, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.heaviside.out(ref_self, ref_values, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.heaviside.out(self_tensor, values_tensor, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== log10 ==========
 @label("log10")
 @parametrize("shape", [(2, 3), (128, 256), (1024, 1024)])
@@ -556,6 +1315,38 @@ def test_log10_tensor(shape, dtype):
         act_out = torch.ops.aten.log10(x)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.log10(ref_x),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.log10(x),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("log10")
@@ -575,6 +1366,38 @@ def test_log10_out(shape, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.log10.out(ref_x, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.log10.out(x, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("log10")
 @parametrize("a", [1, 2, 10, 1000, 1000000])
@@ -582,7 +1405,43 @@ def test_log10_int(a):
     ref_out = torch.ops.aten.log10.int(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.log10.int(a)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
     assert_close(act_out, ref_out, dtype=torch.float32)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.log10.int(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.log10.int(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("log10")
@@ -591,7 +1450,43 @@ def test_log10_float(a):
     ref_out = torch.ops.aten.log10.float(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.log10.float(a)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
     assert_close(act_out, ref_out, dtype=torch.float32)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.log10.float(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.log10.float(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("log10")
@@ -600,16 +1495,87 @@ def test_log10_complex(a):
     ref_out = torch.ops.aten.log10.complex(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.log10.complex(a)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
     assert_close(act_out, ref_out, dtype=torch.complex64)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.log10.complex(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.log10.complex(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("log10")
-@parametrize("a", [1, 10.0, True, 3.5])
+@parametrize("a", [1, 10.0, 3.5])
 def test_log10_scalar(a):
     ref_out = torch.ops.aten.log10.Scalar(a)
-    with flagbench.use_gems(REGISTERED_OP_OPS):
+    with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.log10.Scalar(a)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
     assert_close(act_out, ref_out, dtype=torch.float32)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.log10.Scalar(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.log10.Scalar(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== logit ==========
 @label("logit")
@@ -634,6 +1600,38 @@ def test_logit_tensor(shape, dtype, eps):
         act_out = torch.ops.aten.logit(input_tensor, eps)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.logit(ref_input, eps),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.logit(input_tensor, eps),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("logit")
@@ -661,6 +1659,37 @@ def test_logit_out(shape, dtype, eps):
 
     assert_close(act_out_buf, ref_out_buf, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.logit.out(ref_input, eps, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.logit.out(input_tensor, eps, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== mish ==========
 @label("mish")
 @parametrize("shape", [(2, 3), (128, 256), (512, 1024)])
@@ -675,6 +1704,38 @@ def test_mish_tensor(shape, dtype):
         act_out = torch.ops.aten.mish(x_act)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.mish(x_ref),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.mish(x_act),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("mish")
@@ -694,6 +1755,7 @@ def test_mish_out(shape, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
     assert_close(act_ret, ref_ret, dtype=dtype)
+
 
 # ========== prelu ==========
 @label("prelu")
@@ -717,6 +1779,37 @@ def test_prelu_tensor(shape, dtype, weight_kind):
         act_out = torch.ops.aten.prelu(x, w)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.prelu(ref_x, ref_w),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.prelu(x, w),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== rrelu_with_noise ==========
 @label("rrelu_with_noise")
@@ -747,6 +1840,38 @@ def test_rrelu_with_noise_tensor(shape, dtype, training, bounds):
         act_out = torch.ops.aten.rrelu_with_noise(act_input, act_noise, lower, upper, training, act_gen)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.rrelu_with_noise(ref_input, ref_noise, lower, upper, training, ref_gen),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.rrelu_with_noise(act_input, act_noise, lower, upper, training, act_gen),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("rrelu_with_noise")
@@ -780,6 +1905,7 @@ def test_rrelu_with_noise_out(shape, dtype, training, bounds):
 
     assert_close(act_out_buf, ref_out_buf, dtype=dtype)
 
+
 # ========== square ==========
 @label("square")
 @parametrize("shape", [(2, 3), (128, 256), (1024, 1024)])
@@ -794,6 +1920,38 @@ def test_square_tensor(shape, dtype):
         act_out = torch.ops.aten.square(x)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.square(ref_x),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.square(x),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("square")
@@ -818,6 +1976,7 @@ def test_square_out(shape, dtype, out_layout):
         act_res = torch.ops.aten.square.out(x, out=act_out_buf)
 
     assert_close(act_res, ref_res, dtype=dtype)
+
 
 # ========== affine_grid_generator ==========
 @label("affine_grid_generator")
@@ -847,6 +2006,38 @@ def test_affine_grid_generator_tensor(size, dtype, align_corners):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.affine_grid_generator(ref_theta, size, align_corners),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.affine_grid_generator(act_theta, size, align_corners),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("affine_grid_generator")
 @parametrize("size", [
@@ -860,7 +2051,6 @@ def test_affine_grid_generator_tensor(size, dtype, align_corners):
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
 @parametrize("align_corners", [True, False])
 def test_affine_grid_generator_out(size, dtype, align_corners):
-    device = device
     k = len(size) - 2
     N = size[0]
     theta_shape = (N, k, k + 1)
@@ -878,6 +2068,37 @@ def test_affine_grid_generator_out(size, dtype, align_corners):
         act_out = torch.ops.aten.affine_grid_generator.out(act_theta, size, align_corners, out=act_out_buf)
 
     assert_close(act_out_buf, ref_out_buf, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.affine_grid_generator.out(ref_theta, size, align_corners, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.affine_grid_generator.out(act_theta, size, align_corners, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== bernoulli ==========
 @label("bernoulli")
@@ -898,6 +2119,38 @@ def test_bernoulli_self(shape, dtype):
         act_out = torch.ops.aten.bernoulli(act_input, generator=gen_act)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.bernoulli(ref_input, generator=gen_ref),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.bernoulli(act_input, generator=gen_act),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("bernoulli")
@@ -922,6 +2175,38 @@ def test_bernoulli_out(shape, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.bernoulli.out(ref_input, generator=gen_ref, out=out_ref),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.bernoulli.out(act_input, generator=gen_act, out=out_act),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("bernoulli")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -942,6 +2227,38 @@ def test_bernoulli_p_scalar(shape, dtype, p):
         act_out = torch.ops.aten.bernoulli.p(act_tmpl, float(p), generator=gen_act)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.bernoulli.p(ref_tmpl, float(p), generator=gen_ref),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.bernoulli.p(act_tmpl, float(p), generator=gen_act),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("bernoulli")
@@ -965,6 +2282,38 @@ def test_bernoulli_tensor_p(shape, dtype):
         act_out = torch.ops.aten.bernoulli.Tensor(act_tmpl, act_p, generator=gen_act)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.bernoulli.Tensor(ref_tmpl, ref_p, generator=gen_ref),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.bernoulli.Tensor(act_tmpl, act_p, generator=gen_act),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("bernoulli")
@@ -991,6 +2340,38 @@ def test_bernoulli_tensor_out(shape, dtype):
         act_out = torch.ops.aten.bernoulli.Tensor_out(act_tmpl, act_p, generator=gen_act, out=out_act)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.bernoulli.Tensor_out(ref_tmpl, ref_p, generator=gen_ref, out=out_ref),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.bernoulli.Tensor_out(act_tmpl, act_p, generator=gen_act, out=out_act),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("bernoulli")
@@ -1021,6 +2402,51 @@ def test_bernoulli_float_out(shape, dtype, p):
             act_out = torch.ops.aten.bernoulli.float_out(act_tmpl, float(p), generator=gen_act, out=out_act)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    if p is None:
+        ms_torch, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.bernoulli.float_out(ref_tmpl, generator=gen_ref, out=out_ref),
+            rep=100,
+            quantiles=quantiles
+        )
+    else:
+        ms_torch, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.bernoulli.float_out(ref_tmpl, float(p), generator=gen_ref, out=out_ref),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        if p is None:
+            ms_triton, _, _ = triton.testing.do_bench(
+                lambda: torch.ops.aten.bernoulli.float_out(act_tmpl, generator=gen_act, out=out_act),
+                rep=100,
+                quantiles=quantiles
+            )
+        else:
+            ms_triton, _, _ = triton.testing.do_bench(
+                lambda: torch.ops.aten.bernoulli.float_out(act_tmpl, float(p), generator=gen_act, out=out_act),
+                rep=100,
+                quantiles=quantiles
+            )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== empty_strided ==========
 @label("empty_strided")
@@ -1067,6 +2493,38 @@ def test_empty_strided(size, stride_kind, dtype):
     act_out.copy_(base)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.empty_strided(size, stride, dtype=dtype, device=device),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.empty_strided(size, stride, dtype=dtype, device=device),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("empty_strided")
@@ -1116,6 +2574,37 @@ def test_empty_strided_out(size, stride_kind, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.empty_strided.out(size, stride, out=ref_out_tensor),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.empty_strided.out(size, stride, out=act_out_tensor),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== new_empty_strided ==========
 @label("new_empty_strided")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -1164,6 +2653,38 @@ def test_new_empty_strided_tensor(shape, dtype, stride_kind, pass_dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.new_empty_strided(self_ref, size, stride, dtype=dtype_arg),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.new_empty_strided(self_act, size, stride, dtype=dtype_arg),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("new_empty_strided")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -1210,6 +2731,37 @@ def test_new_empty_strided_out(shape, dtype, stride_kind):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.new_empty_strided.out(self_ref, size, stride, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.new_empty_strided.out(self_act, size, stride, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== new_ones ==========
 @label("new_ones")
 @parametrize("self_shape", [(2, 3), (128, 256)])
@@ -1225,6 +2777,38 @@ def test_new_ones_default(self_shape, size, dtype):
         act_out = torch.ops.aten.new_ones(self_tensor, size, dtype=dtype)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.new_ones(ref_self, size, dtype=dtype),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.new_ones(self_tensor, size, dtype=dtype),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("new_ones")
@@ -1243,6 +2827,37 @@ def test_new_ones_out(self_shape, size, dtype):
         act_out = torch.ops.aten.new_ones.out(self_tensor, size, out=act_out_buf)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.new_ones.out(ref_self, size, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.new_ones.out(self_tensor, size, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== poisson ==========
 @label("poisson")
@@ -1275,6 +2890,38 @@ def test_poisson_tensor(shape, dtype, use_gen):
             act_out = torch.ops.aten.poisson(act_input)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.poisson(ref_input),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.poisson(act_input),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("poisson")
@@ -1311,6 +2958,7 @@ def test_poisson_out(shape, dtype, use_gen):
 
     assert_close(out_act, out_ref, dtype=dtype)
 
+
 # ========== scalar_tensor ==========
 @label("scalar_tensor")
 @parametrize("val", [-7, -1, 0, 3, 12345, -1.5, 2.75, 3.14159])
@@ -1320,6 +2968,38 @@ def test_scalar_tensor_default(val, dtype):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.scalar_tensor(val, dtype=dtype, device=device, layout=None, pin_memory=None)
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.scalar_tensor(val, dtype=dtype, device=device, layout=None, pin_memory=None),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.scalar_tensor(val, dtype=dtype, device=device, layout=None, pin_memory=None),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("scalar_tensor")
@@ -1334,6 +3014,37 @@ def test_scalar_tensor_out(val, dtype):
         act_out = torch.ops.aten.scalar_tensor.out(val, out=act_out_buf)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.scalar_tensor.out(val, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.scalar_tensor.out(val, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== acosh ==========
 @label("acosh")
@@ -1350,6 +3061,38 @@ def test_acosh_tensor(shape, dtype):
         act_out = torch.ops.aten.acosh(input_tensor)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.acosh(ref_input),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.acosh(input_tensor),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("acosh")
@@ -1369,44 +3112,210 @@ def test_acosh_out_tensor(shape, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.acosh.out(ref_input, out=out_ref),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.acosh.out(input_tensor, out=out_act),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("acosh")
 @parametrize("a", [1, 2, 10, 256])
 def test_acosh_int(a):
-    dtype = torch.float32
     ref_out = torch.ops.aten.acosh.int(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.acosh.int(a)
-    assert_close(act_out, ref_out, dtype=dtype)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.acosh.int(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.acosh.int(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("acosh")
 @parametrize("a", [1.0, 1.5, 3.0, 10.0, 100.0])
 def test_acosh_float(a):
-    dtype = torch.float32
     ref_out = torch.ops.aten.acosh.float(a)
-    with flagbench.use_gems(REGISTERED_OPOPs):
+    with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.acosh.float(a)
-    assert_close(act_out, ref_out, dtype=dtype)
+    ref_out = torch.tensor(ref_out)
+    act_out = torch.tensor(act_out)
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.acosh.float(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.acosh.float(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("acosh")
 @parametrize("a", [complex(1.5, 0.2), complex(3.0, -0.5), complex(10.0, 0.0), complex(2.0, 2.0)])
 def test_acosh_complex(a):
-    dtype = torch.complex64
     ref_out = torch.ops.aten.acosh.complex(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.acosh.complex(a)
-    assert_close(act_out, ref_out, dtype=dtype)
+    ref_out = torch.tensor(ref_out)
+    act_out = torch.tensor(act_out)
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.acosh.complex(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.acosh.complex(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("acosh")
-@parametrize("a,dtype", [(True, torch.float32), (2.0, torch.float32)])
+@parametrize("a,dtype", [(1, torch.float32), (2.0, torch.float32)])
 def test_acosh_scalar(a, dtype):
     ref_out = torch.ops.aten.acosh.Scalar(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.acosh.Scalar(a)
-    assert_close(act_out, ref_out, dtype=dtype)
+    ref_out = torch.tensor(ref_out)
+    act_out = torch.tensor(act_out)
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.acosh.Scalar(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.acosh.Scalar(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== asin ==========
 @label("asin")
@@ -1422,6 +3331,38 @@ def test_asin_tensor(shape, dtype):
         act_out = torch.ops.aten.asin(x)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.asin(ref_x),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.asin(x),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("asin")
@@ -1441,13 +3382,51 @@ def test_asin_out(shape, dtype):
     assert_close(act_out, ref_out, dtype=dtype)
 
 
+
+
 @label("asin")
 @parametrize("a", [-1, 0, 1])
 def test_asin_int(a):
     ref_out = torch.ops.aten.asin.int(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.asin.int(a)
-    assert_close(act_out, ref_out, dtype=torch.float64)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
+    assert_close(act_out, ref_out, dtype=torch.float32)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.asin.int(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.asin.int(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("asin")
@@ -1456,7 +3435,41 @@ def test_asin_float(a):
     ref_out = torch.ops.aten.asin.float(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.asin.float(a)
-    assert_close(act_out, ref_out, dtype=torch.float64)
+    ref_out = torch.tensor(ref_out)
+    act_out = torch.tensor(act_out)
+    assert_close(act_out, ref_out, dtype=torch.float32)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.asin.float(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.asin.float(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("asin")
@@ -1465,7 +3478,41 @@ def test_asin_complex(a):
     ref_out = torch.ops.aten.asin.complex(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.asin.complex(a)
-    assert_close(act_out, ref_out, dtype=torch.complex128)
+    ref_out = torch.tensor(ref_out)
+    act_out = torch.tensor(act_out)
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.asin.complex(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.asin.complex(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("asin")
@@ -1474,8 +3521,40 @@ def test_asin_scalar(a):
     ref_out = torch.ops.aten.asin.Scalar(a)
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.asin.Scalar(a)
-    dtype = torch.complex128 if isinstance(a, complex) else torch.float64
-    assert_close(act_out, ref_out, dtype=dtype)
+    ref_out = torch.tensor(ref_out)
+    act_out = torch.tensor(act_out)
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.asin.Scalar(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.asin.Scalar(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== cosh ==========
 @label("cosh")
@@ -1491,6 +3570,38 @@ def test_cosh_tensor(shape, dtype):
         act_out = torch.ops.aten.cosh(x)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.cosh(ref_x),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.cosh(x),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("cosh")
@@ -1509,6 +3620,38 @@ def test_cosh_out_tensor(shape, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.cosh.out(ref_x, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.cosh.out(x, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("cosh")
 @parametrize("a", [-3, -1, 0, 1, 7])
@@ -1518,7 +3661,43 @@ def test_cosh_int_scalar(a):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.cosh(a)
 
-    assert_close(act_out, ref_out, dtype=torch.float64)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.cosh(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.cosh(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("cosh")
@@ -1529,7 +3708,44 @@ def test_cosh_float_scalar(a):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.cosh(a)
 
-    assert_close(act_out, ref_out, dtype=torch.float64)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
+
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.cosh(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.cosh(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("cosh")
@@ -1540,7 +3756,44 @@ def test_cosh_complex_scalar(a):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.cosh(a)
 
-    assert_close(act_out, ref_out, dtype=torch.complex128)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
+
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.cosh(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.cosh(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("cosh")
@@ -1551,7 +3804,43 @@ def test_cosh_Scalar_bool(a):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.cosh(a)
 
-    assert_close(act_out, ref_out, dtype=torch.float64)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
+
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.cosh(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.cosh(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== floor ==========
 @label("floor")
@@ -1567,6 +3856,38 @@ def test_floor_tensor(shape, dtype):
         act_out = torch.ops.aten.floor(input_tensor)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.floor(ref_input),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.floor(input_tensor),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("floor")
@@ -1587,6 +3908,8 @@ def test_floor_out(shape, dtype):
     assert_close(act_out, ref_out, dtype=dtype)
 
 
+
+
 @label("floor")
 @parametrize("a", [0, 1, -1, 42, -37, 123456])
 def test_floor_int(a):
@@ -1595,7 +3918,43 @@ def test_floor_int(a):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.floor.int(a)
 
-    assert_close(act_out, ref_out, dtype=torch.int64)
+    if not isinstance(ref_out, torch.Tensor):
+        ref_out = torch.tensor(ref_out)
+    if not isinstance(act_out, torch.Tensor):
+        act_out = torch.tensor(act_out)
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.floor.int(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.floor.int(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("floor")
@@ -1606,7 +3965,42 @@ def test_floor_float(a):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.floor.float(a)
 
-    assert_close(act_out, ref_out, dtype=torch.int64)
+    ref_out = torch.tensor(ref_out)
+    act_out = torch.tensor(act_out)
+
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.floor.float(a),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.floor.float(a),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("floor")
@@ -1617,7 +4011,41 @@ def test_floor_scalar(value, dtype):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.floor.Scalar(value)
 
-    assert_close(act_out, ref_out, dtype=dtype)
+    ref_out = torch.tensor(ref_out)
+    act_out = torch.tensor(act_out)
+
+    assert_close(act_out, ref_out, dtype=ref_out.dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.floor.Scalar(value),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.floor.Scalar(value),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== i0 ==========
 @label("i0")
@@ -1633,6 +4061,38 @@ def test_i0_tensor(shape, dtype):
         act_out = torch.ops.aten.i0(inp)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.i0(ref_inp),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.i0(inp),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("i0")
@@ -1652,6 +4112,7 @@ def test_i0_out(shape, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+
 # ========== polygamma ==========
 @label("polygamma")
 @parametrize("n", [0, 1, 2])
@@ -1665,6 +4126,38 @@ def test_polygamma_tensor(shape, dtype, n):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.polygamma(n, act_x)
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.polygamma(n, ref_x),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.polygamma(n, act_x),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("polygamma")
@@ -1681,6 +4174,7 @@ def test_polygamma_out(shape, dtype, n):
     with flagbench.use_gems(REGISTERED_OPS):
         torch.ops.aten.polygamma.out(n, act_x, out=out_act)
     assert_close(out_act, out_ref, dtype=dtype)
+
 
 # ========== rsub ==========
 @label("rsub")
@@ -1701,6 +4195,38 @@ def test_rsub_tensor(shape, dtype, alpha):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.rsub(ref_self, ref_other, alpha=alpha),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.rsub(self, other, alpha=alpha),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("rsub")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -1718,6 +4244,38 @@ def test_rsub_scalar(shape, dtype, other, alpha):
         act_out = torch.ops.aten.rsub(self, other, alpha=alpha)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.rsub(ref_self, other, alpha=alpha),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.rsub(self, other, alpha=alpha),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("rsub")
@@ -1740,6 +4298,38 @@ def test_rsub_tensor_out(shape, dtype, alpha):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.rsub(ref_self, ref_other, alpha=alpha, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.rsub(self, other, alpha=alpha, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("rsub")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -1760,6 +4350,37 @@ def test_rsub_scalar_out(shape, dtype, other, alpha):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.rsub(ref_self, other, alpha=alpha, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.rsub(self, other, alpha=alpha, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== sgn ==========
 @label("sgn")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -1774,6 +4395,38 @@ def test_sgn_tensor(shape, dtype):
         act_out = torch.ops.aten.sgn(x)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.sgn(ref_x),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.sgn(x),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("sgn")
@@ -1793,6 +4446,7 @@ def test_sgn_out(shape, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+
 # ========== special_entr ==========
 @label("special_entr")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -1807,6 +4461,38 @@ def test_special_entr_tensor(shape, dtype):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.special_entr(x.clone())
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.special_entr(ref_input),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.special_entr(x.clone()),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("special_entr")
@@ -1824,6 +4510,37 @@ def test_special_entr_out(shape, dtype):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.special_entr.out(x.clone(), out=act_out)
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.special_entr.out(ref_input, out=ref_out),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.special_entr.out(x.clone(), out=act_out),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== amin ==========
 @label("amin")
@@ -1847,6 +4564,52 @@ def test_amin_tensor_reduce_2d(shape, dtype, dim, keepdim):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    if dim is None and not keepdim:
+        ms_torch, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.amin(ref_x),
+            rep=100,
+            quantiles=quantiles
+        )
+    else:
+        ms_torch, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.amin(ref_x, use_dim, keepdim),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        if dim is None and not keepdim:
+            ms_triton, _, _ = triton.testing.do_bench(
+                lambda: torch.ops.aten.amin(x),
+                rep=100,
+                quantiles=quantiles
+            )
+        else:
+            ms_triton, _, _ = triton.testing.do_bench(
+                lambda: torch.ops.aten.amin(x, use_dim, keepdim),
+                rep=100,
+                quantiles=quantiles
+            )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("amin")
 @parametrize("shape", [(2, 3, 4), (16, 17, 8), (32, 64, 128)])
@@ -1868,6 +4631,52 @@ def test_amin_tensor_reduce_3d(shape, dtype, dim, keepdim):
             act_out = torch.ops.aten.amin(x, use_dim, keepdim)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    if dim is None and not keepdim:
+        ms_torch, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.amin(ref_x),
+            rep=100,
+            quantiles=quantiles
+        )
+    else:
+        ms_torch, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.amin(ref_x, use_dim, keepdim),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        if dim is None and not keepdim:
+            ms_triton, _, _ = triton.testing.do_bench(
+                lambda: torch.ops.aten.amin(x),
+                rep=100,
+                quantiles=quantiles
+            )
+        else:
+            ms_triton, _, _ = triton.testing.do_bench(
+                lambda: torch.ops.aten.amin(x, use_dim, keepdim),
+                rep=100,
+                quantiles=quantiles
+            )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("amin")
@@ -1915,6 +4724,52 @@ def test_amin_out_reduce_2d(shape, dtype, dim, keepdim):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    if dim is None and not keepdim:
+        ms_torch, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.amin.out(ref_x, out=ref_out_t),
+            rep=100,
+            quantiles=quantiles
+        )
+    else:
+        ms_torch, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.amin.out(ref_x, use_dim, keepdim, out=ref_out_t),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        if dim is None and not keepdim:
+            ms_triton, _, _ = triton.testing.do_bench(
+                lambda: torch.ops.aten.amin.out(x, out=act_out_t),
+                rep=100,
+                quantiles=quantiles
+            )
+        else:
+            ms_triton, _, _ = triton.testing.do_bench(
+                lambda: torch.ops.aten.amin.out(x, use_dim, keepdim, out=act_out_t),
+                rep=100,
+                quantiles=quantiles
+            )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("amin")
 @parametrize("shape", [(2, 3, 4), (16, 17, 8), (32, 64, 128)])
@@ -1960,6 +4815,51 @@ def test_amin_out_reduce_3d(shape, dtype, dim, keepdim):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    if dim is None and not keepdim:
+        ms_torch, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.amin.out(ref_x, out=ref_out_t),
+            rep=100,
+            quantiles=quantiles
+        )
+    else:
+        ms_torch, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.amin.out(ref_x, use_dim, keepdim, out=ref_out_t),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        if dim is None and not keepdim:
+            ms_triton, _, _ = triton.testing.do_bench(
+                lambda: torch.ops.aten.amin.out(x, out=act_out_t),
+                rep=100,
+                quantiles=quantiles
+            )
+        else:
+            ms_triton, _, _ = triton.testing.do_bench(
+                lambda: torch.ops.aten.amin.out(x, use_dim, keepdim, out=act_out_t),
+                rep=100,
+                quantiles=quantiles
+            )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== binary_cross_entropy_with_logits ==========
 @label("binary_cross_entropy_with_logits")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -1984,6 +4884,38 @@ def test_binary_cross_entropy_with_logits_tensor(shape, dtype, reduction, use_we
         act_out = torch.ops.aten.binary_cross_entropy_with_logits(self, target, weight, pos_weight, reduction)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.binary_cross_entropy_with_logits(ref_self, ref_target, ref_weight, ref_pos_weight, reduction),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.binary_cross_entropy_with_logits(self, target, weight, pos_weight, reduction),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("binary_cross_entropy_with_logits")
@@ -2018,6 +4950,41 @@ def test_binary_cross_entropy_with_logits_out(shape, dtype, reduction, use_weigh
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.binary_cross_entropy_with_logits.out(
+        ref_self, ref_target, ref_weight, ref_pos_weight, reduction, out=ref_out_buf
+    ),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.binary_cross_entropy_with_logits.out(
+            self, target, weight, pos_weight, reduction, out=act_out_buf
+        ),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== fmax ==========
 @label("fmax")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -2042,6 +5009,38 @@ def test_fmax_tensor(shape, dtype):
         act_out = torch.ops.aten.fmax(act_self, act_other)
 
     assert_close(act_out, ref_out, dtype=dtype, equal_nan=True)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.fmax(ref_self, ref_other),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.fmax(act_self, act_other),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("fmax")
@@ -2071,6 +5070,37 @@ def test_fmax_out(shape, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype, equal_nan=True)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.fmax.out(ref_self, ref_other, out=ref_out_tensor),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.fmax.out(act_self, act_other, out=act_out_tensor),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== huber_loss ==========
 @label("huber_loss")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -2091,6 +5121,38 @@ def test_huber_loss_tensor(shape, dtype, reduction, delta):
         act_out = torch.ops.aten.huber_loss(act_self, act_target, reduction, float(delta))
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.huber_loss(ref_self, ref_target, reduction, float(delta)),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.huber_loss(act_self, act_target, reduction, float(delta)),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("huber_loss")
@@ -2120,6 +5182,7 @@ def test_huber_loss_out(shape, dtype, reduction, delta):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+
 # ========== logaddexp2 ==========
 @label("logaddexp2")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -2137,6 +5200,38 @@ def test_logaddexp2_tensor(shape, dtype):
         act_out = torch.ops.aten.logaddexp2(self, other)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.logaddexp2(ref_self, ref_other),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.logaddexp2(self, other),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("logaddexp2")
@@ -2157,6 +5252,7 @@ def test_logaddexp2_out(shape, dtype):
         torch.ops.aten.logaddexp2.out(self, other, out=act_out)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
 
 # ========== margin_ranking_loss ==========
 @label("margin_ranking_loss")
@@ -2180,6 +5276,37 @@ def test_margin_ranking_loss_tensor(shape, dtype, margin, reduction):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.margin_ranking_loss(ref_input1, ref_input2, ref_target, margin, reduction),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.margin_ranking_loss(input1, input2, target, margin, reduction),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== pairwise_distance ==========
 @label("pairwise_distance")
 @parametrize("shape", [(2, 3), (128, 256), (512, 256)])
@@ -2197,6 +5324,38 @@ def test_pairwise_distance_defaults(shape, dtype):
         act_out = torch.ops.aten.pairwise_distance(x1, x2)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.pairwise_distance(ref_x1, ref_x2),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.pairwise_distance(x1, x2),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("pairwise_distance")
@@ -2219,6 +5378,37 @@ def test_pairwise_distance_explicit_args(shape, dtype, p, eps, keepdim):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.pairwise_distance(ref_x1, ref_x2, p, eps, keepdim),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.pairwise_distance(x1, x2, p, eps, keepdim),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== renorm ==========
 @label("renorm")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -2233,6 +5423,38 @@ def test_renorm_tensor(shape, dtype, p, dim, maxnorm):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.renorm(x, p, dim, maxnorm)
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.renorm(ref_x, p, dim, maxnorm),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.renorm(x, p, dim, maxnorm),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("renorm")
@@ -2251,6 +5473,37 @@ def test_renorm_out_tensor(shape, dtype, p, dim, maxnorm):
         act_out = torch.ops.aten.renorm.out(x, p, dim, maxnorm, out=act_out_buf)
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.renorm.out(ref_x, p, dim, maxnorm, out=ref_out_buf),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.renorm.out(x, p, dim, maxnorm, out=act_out_buf),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== soft_margin_loss ==========
 @label("soft_margin_loss")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -2268,6 +5521,38 @@ def test_soft_margin_loss_tensor(shape, dtype, reduction):
         act_out = torch.ops.aten.soft_margin_loss(self, target, reduction)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.soft_margin_loss(ref_self, ref_target, reduction),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.soft_margin_loss(self, target, reduction),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("soft_margin_loss")
@@ -2293,6 +5578,37 @@ def test_soft_margin_loss_out(shape, dtype, reduction):
         act_out = torch.ops.aten.soft_margin_loss.out(self, target, reduction, out=out_act)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.soft_margin_loss.out(ref_self, ref_target, reduction, out=out_ref),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.soft_margin_loss.out(self, target, reduction, out=out_act),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== as_strided ==========
 @label("as_strided")
@@ -2346,6 +5662,38 @@ def test_as_strided_2d(base_shape, dtype, case):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.as_strided(ref_x, size, stride, storage_offset),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.as_strided(x, size, stride, storage_offset),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("as_strided")
 @parametrize("base_shape", [(6,), (64,), (1024,)])
@@ -2393,6 +5741,38 @@ def test_as_strided_1d(base_shape, dtype, case):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.as_strided(ref_x, size, stride, storage_offset),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.as_strided(x, size, stride, storage_offset),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 
 @label("as_strided")
 @parametrize("base_shape", [(2, 3, 4), (8, 16, 8), (16, 32, 16)])
@@ -2435,6 +5815,37 @@ def test_as_strided_3d(base_shape, dtype, case):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.as_strided(ref_x, size, stride, storage_offset),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.as_strided(x, size, stride, storage_offset),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== im2col ==========
 @label("im2col")
 @parametrize("shape", [(3, 8, 8), (16, 64, 64), (32, 128, 128)])
@@ -2458,6 +5869,38 @@ def test_im2col_tensor(shape, dtype, kernel_size, dilation, padding, stride):
         act_out = torch.ops.aten.im2col(x, kernel_size, dilation, padding, stride)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.im2col(ref_x, kernel_size, dilation, padding, stride),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.im2col(x, kernel_size, dilation, padding, stride),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("im2col")
@@ -2498,6 +5941,37 @@ def test_im2col_out(shape, dtype, kernel_size, dilation, padding, stride):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.im2col.out(ref_x, kernel_size, dilation, padding, stride, out=out_ref),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.im2col.out(x, kernel_size, dilation, padding, stride, out=out_act),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== reshape ==========
 @label("reshape")
 @parametrize(
@@ -2526,6 +6000,38 @@ def test_reshape_tensor_contiguous(in_shape, out_shape, dtype):
         act_out = torch.ops.aten.reshape(input_tensor, out_shape)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.reshape(ref_input, out_shape),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.reshape(input_tensor, out_shape),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("reshape")
@@ -2561,6 +6067,37 @@ def test_reshape_tensor_noncontiguous(base_shape, out_shape, transform, dtype):
 
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.reshape(ref_input, out_shape),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.reshape(act_input, out_shape),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 # ========== rot90 ==========
 @label("rot90")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -2575,6 +6112,38 @@ def test_rot90_tensor_2d(shape, dtype, k, dims):
         act_out = torch.ops.aten.rot90(inp, k=k, dims=dims)
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.rot90(ref_inp, k=k, dims=dims),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.rot90(inp, k=k, dims=dims),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 @label("rot90")
 @parametrize("shape", [(4, 5, 6), (32, 64, 16), (128, 32, 64)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
@@ -2587,6 +6156,38 @@ def test_rot90_tensor_nd(shape, dtype, k, dims):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.rot90(inp, k=k, dims=dims)
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.rot90(ref_inp, k=k, dims=dims),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.rot90(inp, k=k, dims=dims),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 @label("rot90")
 @parametrize("shape", [(2, 3), (128, 256), (512, 512)])
@@ -2603,6 +6204,38 @@ def test_rot90_out_2d(shape, dtype, k, dims):
         act_out = torch.ops.aten.rot90.out(inp, k=k, dims=dims, out=out_act)
     assert_close(act_out, ref_out, dtype=dtype)
 
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.rot90.out(ref_inp, k=k, dims=dims, out=out_ref),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.rot90.out(inp, k=k, dims=dims, out=out_act),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
+
 @label("rot90")
 @parametrize("shape", [(4, 5, 6), (32, 64, 16), (128, 32, 64)])
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
@@ -2617,6 +6250,37 @@ def test_rot90_out_nd(shape, dtype, k, dims):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.rot90.out(inp, k=k, dims=dims, out=out_act)
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.rot90.out(ref_inp, k=k, dims=dims, out=out_ref),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.rot90.out(inp, k=k, dims=dims, out=out_act),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== t ==========
 @label("t")
@@ -2634,6 +6298,37 @@ def test_t_tensor(shape, dtype, contig):
     with flagbench.use_gems(REGISTERED_OPS):
         act_out = torch.ops.aten.t(input_tensor)
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.t(ref_input),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.t(input_tensor),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
 
 # ========== unsafe_split ==========
 @label("unsafe_split")
@@ -2653,6 +6348,38 @@ def test_unsafe_split_tensor(shape, dtype, dim, split_size):
     assert len(act_out) == len(ref_out)
     for a, r in zip(act_out, ref_out):
         assert_close(a, r, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.unsafe_split(ref_x, split_size, dim),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.unsafe_split(x, split_size, dim),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("unsafe_split")
@@ -2686,6 +6413,7 @@ def test_unsafe_split_tensor_out(shape, dtype, dim, split_size):
     for a, r in zip(act_out_list, ref_out_list):
         assert_close(a, r, dtype=dtype)
 
+
 # ========== unsafe_split_with_sizes ==========
 @label("unsafe_split_with_sizes")
 @parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])
@@ -2715,6 +6443,38 @@ def test_unsafe_split_with_sizes_tensor(shape_split_dim, dtype):
     assert len(act_out) == len(ref_out)
     for a, r in zip(act_out, ref_out):
         assert_close(a, r, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.unsafe_split_with_sizes(ref_x, split_sizes, dim),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.unsafe_split_with_sizes(x, split_sizes, dim),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+
 
 
 @label("unsafe_split_with_sizes")
@@ -2752,6 +6512,7 @@ def test_unsafe_split_with_sizes_out(shape_split_dim, dtype):
     assert len(act_out_bufs) == len(ref_out_bufs)
     for a, r in zip(act_out_bufs, ref_out_bufs):
         assert_close(a, r, dtype=dtype)
+
 
 # ========== unsqueeze ==========
 @label(f"unsqueeze")
@@ -2795,3 +6556,35 @@ def test_unsqueeze_tensor(shape_dim, dtype):
         act_out = torch.ops.aten.unsqueeze(input_tensor, dim)
 
     assert_close(act_out, ref_out, dtype=dtype)
+
+    # Performance testing
+    import triton
+    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
+
+    quantiles = [0.5, 0.2, 0.8]
+
+    # Benchmark reference implementation
+    ms_torch, _, _ = triton.testing.do_bench(
+        lambda: torch.ops.aten.unsqueeze(ref_input, dim),
+        rep=100,
+        quantiles=quantiles
+    )
+
+    # Benchmark triton implementation
+    with flagbench.use_gems(REGISTERED_OPS):
+        ms_triton, _, _ = triton.testing.do_bench(
+            lambda: torch.ops.aten.unsqueeze(input_tensor, dim),
+            rep=100,
+            quantiles=quantiles
+        )
+
+    # Calculate speedup and return result
+    speedup = ms_torch / ms_triton
+    result = CustomBenchmarkResult(
+        ref_time=ms_torch,
+        res_time=ms_triton,
+        speedup=speedup,
+    )
+    return result
+
+

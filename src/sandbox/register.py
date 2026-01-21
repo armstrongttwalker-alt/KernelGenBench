@@ -93,28 +93,27 @@ class Register:
         return []
 
     def register_impl(self, api, key, fn, has_backward):
-        if has_backward is Autograd.enable:
-            device_key = self.reg_bac_key
-        else:
-            device_key = self.reg_key
-        self.all_ops.append(key)
         try:
+            # Check if this is a PyTorch operator
             impl_info = IMPL_INFO.get(api)
             if not impl_info:
-                # import sys
-                # package_name = __name__.split('.')[0]
-                # bench_module = sys.modules[package_name]
-                # setattr(bench_module, key, fn)
-                # logging.warning(f"Operator {key} not found in IMPL_INFO, setattr to bench_module, make sure using bench.{key} in your test func rather than torch.{key}")
-                raise ValueError(f"Operator {key} not found in IMPL_INFO. Using bench.{key} directly rather than bench.use_gems")
+                # Non-PyTorch operator: skip torch.library registration
+                logging.info(f"Non-PyTorch operator {key} (api={api}), skip torch.library registration")
+                return
+
+            # PyTorch operator: register to torch.library
+            self.all_ops.append(key)
+
+            if has_backward is Autograd.enable:
+                device_key = self.reg_bac_key
             else:
-                # for impl_key, _ in impl_info:
-                #     self.lib.impl(impl_key, fn, device_key)
-                keys = [impl_key for impl_key, _ in impl_info]
-                if key not in keys:
-                    raise ValueError(f"Operator {key} not found in IMPL_INFO[{api}],")
-                self.lib.impl(key, fn, device_key)
-            # print(f"\033[92mRegister {key} in torch library\033[0m")
+                device_key = self.reg_key
+
+            keys = [impl_key for impl_key, _ in impl_info]
+            if key not in keys:
+                raise ValueError(f"Operator {key} not found in IMPL_INFO[{api}]")
+
+            self.lib.impl(key, fn, device_key)
         except RuntimeError as e:
             if "already a kernel registered" in str(e):
                 pass
