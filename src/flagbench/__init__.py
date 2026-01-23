@@ -10,20 +10,6 @@ from sandbox.verifier.test_parametrize import Param, parametrize, label
 # Import baseline modules to trigger registration
 from .dataset.baseline import cupy as cupy_baseline
 
-# Create triton namespace and copy baseline functions to it
-# When DISPATCH_TORCH_LIB=0, triton namespace will use baseline implementations
-import sys
-from types import SimpleNamespace
-if not hasattr(sys.modules[__name__], 'triton'):
-    setattr(sys.modules[__name__], 'triton', SimpleNamespace())
-
-# Copy all baseline functions to triton namespace
-if hasattr(sys.modules[__name__], 'baseline'):
-    baseline_ns = getattr(sys.modules[__name__], 'baseline')
-    triton_ns = getattr(sys.modules[__name__], 'triton')
-    for attr_name in dir(baseline_ns):
-        if not attr_name.startswith('_'):
-            setattr(triton_ns, attr_name, getattr(baseline_ns, attr_name))
 
 import os
 DISPATCH_TORCH_LIB = os.environ.get("DISPATCH_TORCH_LIB", "1") == "1"

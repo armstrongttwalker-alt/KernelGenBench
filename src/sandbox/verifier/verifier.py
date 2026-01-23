@@ -288,6 +288,7 @@ class Verifier:
                     code = "import triton.language as tl\n" + code
             return code
         
+        name = name.split("::")[-1] if "::" in name else name
         name = name.split(".")[-1]
         compile(code, name, "exec")
         from flagbench.dataset.kernel_list import IMPL_INFO
