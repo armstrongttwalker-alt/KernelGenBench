@@ -151,6 +151,11 @@ successful_operators.txt
 # Backup files
 *.bak
 *copy.py
+*.backup
+*.backup_fixed
 
 # Temporary result files
 result.json
+
+TODO.md
+tmp/
