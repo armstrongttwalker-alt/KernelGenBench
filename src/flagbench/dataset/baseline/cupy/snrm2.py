@@ -1,4 +1,3 @@
-from flagbench.dataset import Autograd
 import torch
 import cupy as cp
 from cupy import cublas

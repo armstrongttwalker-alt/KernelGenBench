@@ -122,6 +122,9 @@ class PassAtKTester:
                     from flagbench.dataset import QWEN_NEXT_OPERATORS
                     self.operator_loader = flatten_operator_dict(QWEN_NEXT_OPERATORS, "aten")
                     self.qwen_next = True
+                case "cupy":
+                    from flagbench.dataset import CUPY_OPERATORS
+                    self.operator_loader = CUPY_OPERATORS  # Already in flat format
                 case _:
                     raise ValueError(f"Unsupported dataset: {self.dataset}")
         elif self.test_type == "accuracy":
@@ -411,7 +414,7 @@ class PassAtKTester:
         
         verifier = Verifier(self.verify_config)
         if self.custom_test_modules:
-            mode = "accuracy" if self.test_type == "accuracy" else "performance"
+            mode = "performance" if self.test_type == "performance" else "accuracy"
             verifier.set_modules(
                 modules=self.custom_test_modules,
                 mode=mode
@@ -624,7 +627,7 @@ def main():
     parser.add_argument("--name", type=str, default="aten", help="Namespace to test (default: aten)")
     parser.add_argument("--acc-test-func-path", type=str, default="", help="Path to the accuracy test function directory")
     parser.add_argument("--benchmark-func-path", type=str, default="", help="Path to the performance test function directory")
-    parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["pytorch", "gems", "v1", "v2", "qwen_next"])
+    parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["pytorch", "gems", "v1", "v2", "qwen_next", "cupy"])
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
     parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
     parser.add_argument("--test-type", type=str, default="triton", choices=["accuracy", "performance", "triton"])
