@@ -171,13 +171,34 @@ class CupyAdapter(FrameworkAdapter):
 
     def create_generate_args(self, op_name: str, func, impl_info):
         """创建 CupyGenerateArgs"""
+        import inspect
+        # 确定 BLAS 操作类型
+        blas_type = self._determine_blas_type(op_name)
+
         return CupyGenerateArgs(
-            op_name=op_name,
+            cupy_kernel_name=op_name,
             baseline_func=func,
-            signature=self.get_signature_info(func, op_name),
-            reference_code=self.get_reference_code(func, op_name),
+            baseline_code=inspect.getsource(func),
+            func_desc=func.__doc__ or f"cuBLAS {op_name} operation",
+            blas_operation_type=blas_type,
             impl_info=impl_info
         )
+
+    def _determine_blas_type(self, op_name: str) -> str:
+        """根据函数名确定 BLAS 操作类型"""
+        kernel_name = op_name.split("::")[-1]
+        # Level 1: asum, axpy, dot, nrm2, scal
+        if any(op in kernel_name for op in ['asum', 'axpy', 'dot', 'nrm2', 'scal']):
+            return "Level 1"
+        # Level 2: gemv, ger, sbmv
+        elif any(op in kernel_name for op in ['gemv', 'ger', 'sbmv']):
+            return "Level 2"
+        # Level 3: gemm, syrk
+        elif any(op in kernel_name for op in ['gemm', 'syrk']):
+            return "Level 3"
+        # Extensions: geam, dgmm
+        else:
+            return "Extension"
 
     def get_reference_code(self, func, op_name: str) -> str:
         """读取 cupy baseline 源代码作为参考"""
@@ -187,33 +208,35 @@ class CupyAdapter(FrameworkAdapter):
 
 #### 4. GenerateArgs 层次结构
 
-```python
-# src/flagbench/framework/generate_args.py
+**重要说明：**
+- 现有代码中已有 `BaseGenerateArgs` 和 `TritonKernelGenerateArgs` 在 `src/generator/sampler/generate_samples.py`
+- 重构时将在 `src/flagbench/framework/generate_args.py` 创建新的基类
+- 现有的 `TritonKernelGenerateArgs` 将继承新的基类
+- 通过别名保持向后兼容
 
-@dataclass
-class BaseGenerateArgs(ABC):
+```python
+# src/flagbench/framework/generate_args.py (新文件)
+
+from pydantic import BaseModel
+from typing import Optional, Any, List
+from abc import ABC, abstractmethod
+
+class BaseGenerateArgs(BaseModel, ABC):
     """生成参数基类 - 只负责存储和提供算子信息"""
 
-    # 通用字段
-    op_name: str
-    signature_info: Dict
-    reference_code: str
-    impl_info: Any
-
-    # 可选字段
+    # 通用字段（从现有 BaseGenerateArgs 继承）
+    from_mcp: bool = False
+    user_advice: Optional[str] = None
+    check_result: Optional[Any] = None  # VerifyResult
+    old_code: Optional[str] = None
     sample_id: int = 0
+    wiki_reference: Optional[Any] = None
 
-    def get_prompt_data(self) -> Dict:
-        """
-        返回用于构造 prompt 的结构化数据
-        这个方法只是数据的 getter，不负责构造 prompt
-        """
-        return {
-            "op_name": self.op_name,
-            "signature": self.signature_info,
-            "reference_code": self.reference_code,
-            "sample_id": self.sample_id,
-        }
+    @property
+    @abstractmethod
+    def op_name(self):
+        """子类必须实现此属性"""
+        pass
 
     @property
     @abstractmethod
@@ -221,48 +244,49 @@ class BaseGenerateArgs(ABC):
         """框架名称"""
         pass
 
-@dataclass
-class TorchGenerateArgs(BaseGenerateArgs):
-    """Torch API 的生成参数"""
-    torch_op_func: Any
-    torch_op_func_name: str
-    overloads: List[str]        # 重载列表
-    schemas: Dict[str, str]     # 每个重载的 schema
+    class Config:
+        arbitrary_types_allowed = True
+
+# Torch API 的生成参数（对应现有的 TritonKernelGenerateArgs）
+class TritonKernelGenerateArgs(BaseGenerateArgs):
+    """Torch API 的生成参数 - 用于从 torch API 生成 Triton kernel"""
+
+    # Torch 特定字段（保持与现有 TritonKernelGenerateArgs 一致）
+    triton_kernel_name: str
+    func_desc: str
+    torch_kernel_code: str
+    input_args: Any = None  # List[InputArg] | None | dict
+    output_args: Any = None  # List[OutputArg] | None
+    func_type: Optional[str] = None
+    impl_info: Optional[Any] = None
+
+    @property
+    def op_name(self):
+        return self.triton_kernel_name
 
     @property
     def framework_name(self) -> str:
         return "torch"
 
-    def get_prompt_data(self) -> Dict:
-        """返回 Torch 特定的数据"""
-        base_data = super().get_prompt_data()
-        base_data.update({
-            "framework": "torch",
-            "func_name": self.torch_op_func_name,
-            "overloads": self.overloads,
-            "schemas": self.schemas,
-        })
-        return base_data
-
-@dataclass
+# Cupy baseline 的生成参数
 class CupyGenerateArgs(BaseGenerateArgs):
-    """Cupy baseline 的生成参数"""
+    """Cupy baseline 的生成参数 - 用于从 cupy baseline 生成 Triton kernel"""
+
+    # Cupy 特定字段
+    cupy_kernel_name: str
     baseline_func: Any
+    baseline_code: str
+    func_desc: str
     blas_operation_type: str  # "Level 1" / "Level 2" / "Level 3"
+    impl_info: Optional[Any] = None
+
+    @property
+    def op_name(self):
+        return self.cupy_kernel_name
 
     @property
     def framework_name(self) -> str:
         return "cupy"
-
-    def get_prompt_data(self) -> Dict:
-        """返回 Cupy 特定的数据"""
-        base_data = super().get_prompt_data()
-        base_data.update({
-            "framework": "cupy",
-            "blas_type": self.blas_operation_type,
-            "baseline_doc": self.baseline_func.__doc__ if self.baseline_func else "",
-        })
-        return base_data
 ```
 
 #### 5. PromptBuilder 层（新增）
@@ -316,25 +340,21 @@ class PromptBuilder(ABC):
 class TorchPromptBuilder(PromptBuilder):
     """Torch 框架的 Prompt 构造器"""
 
-    def build_new(self, gen_args: TorchGenerateArgs) -> str:
+    def build_new(self, gen_args: TritonKernelGenerateArgs) -> str:
         """构造 Torch 特定的新 kernel prompt"""
-        prompt_data = gen_args.get_prompt_data()
-
         prompt = "You are a skilled GPU programmer proficient in Triton.\n"
         prompt += "The Triton kernel should implement the same functionality as the following PyTorch function:\n"
-        prompt += f"```python\n{prompt_data['reference_code']}\n```\n"
+        prompt += f"```python\n{gen_args.torch_kernel_code}\n```\n"
 
         # Torch 特定：ATen operators 信息
-        if 'impl_info' in prompt_data and len(prompt_data['impl_info']) > 1:
+        if gen_args.impl_info and isinstance(gen_args.impl_info, list) and len(gen_args.impl_info) > 1:
             prompt += "\nIMPORTANT: This PyTorch API uses multiple ATen operators:\n"
-            for op in prompt_data['impl_info']:
+            for op in gen_args.impl_info:
                 prompt += f"  - {op}\n"
 
-        # 添加 overloads 信息
-        if 'overloads' in prompt_data:
-            prompt += "\nSupported overloads:\n"
-            for overload in prompt_data['overloads']:
-                prompt += f"  - {overload}\n"
+        # 函数描述
+        if gen_args.func_desc:
+            prompt += f"\nFunction description: {gen_args.func_desc}\n"
 
         # 根据 mode 添加额外内容
         if self.mode == "with_wiki" and gen_args.wiki_reference:
@@ -342,12 +362,12 @@ class TorchPromptBuilder(PromptBuilder):
 
         return prompt
 
-    def build_fix(self, gen_args: TorchGenerateArgs) -> str:
+    def build_fix(self, gen_args: TritonKernelGenerateArgs) -> str:
         """构造修复 prompt"""
         # 实现修复逻辑
         pass
 
-    def build_optimization(self, gen_args: TorchGenerateArgs) -> str:
+    def build_optimization(self, gen_args: TritonKernelGenerateArgs) -> str:
         """构造优化 prompt"""
         # 实现优化逻辑
         pass
@@ -357,19 +377,20 @@ class CupyPromptBuilder(PromptBuilder):
 
     def build_new(self, gen_args: CupyGenerateArgs) -> str:
         """构造 Cupy 特定的新 kernel prompt"""
-        prompt_data = gen_args.get_prompt_data()
-
         prompt = "You are a skilled GPU programmer proficient in Triton.\n"
         prompt += "The Triton kernel should implement the same functionality as the following cuBLAS baseline:\n"
-        prompt += f"```python\n{prompt_data['reference_code']}\n```\n"
+        prompt += f"```python\n{gen_args.baseline_code}\n```\n"
 
         # Cupy 特定：BLAS 操作类型
-        if 'blas_type' in prompt_data:
-            prompt += f"\nThis is a BLAS {prompt_data['blas_type']} operation.\n"
+        prompt += f"\nThis is a BLAS {gen_args.blas_operation_type} operation.\n"
 
         # Cupy 特定：baseline 文档
-        if 'baseline_doc' in prompt_data:
-            prompt += f"\nBaseline documentation:\n{prompt_data['baseline_doc']}\n"
+        if gen_args.func_desc:
+            prompt += f"\nBaseline documentation:\n{gen_args.func_desc}\n"
+
+        # 根据 mode 添加额外内容
+        if self.mode == "with_wiki" and gen_args.wiki_reference:
+            prompt += self._build_wiki_section(gen_args.wiki_reference)
 
         return prompt
 
@@ -499,11 +520,65 @@ class PassAtKTester:
 - `tests/framework/test_adapter.py`
 - `tests/generator/test_prompt_builder.py`
 
+**详细实施步骤：**
+
+**步骤1：创建目录结构**
+```bash
+mkdir -p src/flagbench/framework
+mkdir -p tests/framework
+mkdir -p tests/generator
+touch src/flagbench/framework/__init__.py
+touch tests/framework/__init__.py
+touch tests/generator/__init__.py
+```
+
+**步骤2：实现 BaseGenerateArgs（无依赖）**
+- 文件：`src/flagbench/framework/generate_args.py`
+- 内容：
+  - `BaseGenerateArgs` 基类（使用 Pydantic BaseModel）
+  - 定义通用字段：`from_mcp`, `user_advice`, `check_result`, `old_code`, `sample_id`, `wiki_reference`
+  - 实现 `op_name` 抽象属性
+  - 实现 `framework_name` 抽象属性
+- 测试：`tests/framework/test_generate_args.py`
+  - 测试基类的字段定义
+  - 测试抽象属性
+
+**步骤3：实现 FrameworkAdapter（依赖 BaseGenerateArgs）**
+- 文件：`src/flagbench/framework/adapter.py`
+- 内容：
+  - `FrameworkAdapter` 抽象基类
+  - 定义抽象方法：`get_operator_function`, `get_signature_info`, `create_generate_args`, `get_reference_code`
+  - 定义 `framework_name` 抽象属性
+- 测试：`tests/framework/test_adapter.py`
+  - 测试抽象基类的接口定义
+  - 创建 mock adapter 测试
+
+**步骤4：实现 PromptBuilder（依赖 BaseGenerateArgs）**
+- 文件：`src/generator/prompt_builder.py`
+- 内容：
+  - `PromptBuilder` 抽象基类
+  - 定义抽象方法：`build_new`, `build_fix`, `build_optimization`
+  - 实现 `build()` 方法（根据 gen_args 状态选择）
+  - 定义 `mode` 参数（basic, reflection, with_wiki）
+- 测试：`tests/generator/test_prompt_builder.py`
+  - 测试抽象基类的接口定义
+  - 创建 mock builder 测试
+  - 测试 `build()` 方法的逻辑
+
+**步骤5：更新 framework/__init__.py**
+- 导出 `BaseGenerateArgs`, `FrameworkAdapter`
+
+**验证标准：**
+- ✅ 所有文件创建成功
+- ✅ 所有测试通过
+- ✅ 代码符合类型检查（mypy）
+- ✅ 代码符合代码规范（flake8/black）
+
 ### 阶段2：封装现有 Torch 逻辑（3-4天）
 
 **任务：**
 1. 实现 `TorchAdapter`
-2. 重构现有的 `TritonKernelGenerateArgs` 为 `TorchGenerateArgs`
+2. 扩展现有的 `BaseGenerateArgs` 和 `TritonKernelGenerateArgs`（如需要）
 3. 实现 `TorchPromptBuilder`（迁移现有的 prompt 构造逻辑）
 4. 重构 `TritonKernelGenerator` 使用依赖注入的 PromptBuilder
 5. 确保不破坏现有功能
@@ -511,11 +586,83 @@ class PassAtKTester:
 
 **产出：**
 - `src/flagbench/framework/torch_adapter.py`
-- `src/flagbench/framework/generate_args.py` 中的 `TorchGenerateArgs`
+- `src/flagbench/framework/generate_args.py` 中的新 `BaseGenerateArgs` 和 `TritonKernelGenerateArgs`
+- `src/generator/sampler/generate_samples.py` 中的向后兼容别名
 - `src/generator/prompt_builder.py` 中的 `TorchPromptBuilder`
 - 重构后的 `src/generator/triton_kernel_generator.py`
 - 所有现有测试通过
 - 新增 torch adapter 和 prompt builder 测试
+
+**详细实施步骤：**
+
+**步骤1：迁移 TritonKernelGenerateArgs 到新基类**
+- 文件：`src/flagbench/framework/generate_args.py` 和 `src/generator/sampler/generate_samples.py`
+- 内容：
+  - 在 `src/flagbench/framework/generate_args.py` 中创建新的 `BaseGenerateArgs` 和 `TritonKernelGenerateArgs`
+  - 在 `src/generator/sampler/generate_samples.py` 中添加导入和别名：
+    ```python
+    from flagbench.framework.generate_args import (
+        BaseGenerateArgs as _NewBaseGenerateArgs,
+        TritonKernelGenerateArgs as _NewTritonKernelGenerateArgs
+    )
+    # 向后兼容别名
+    BaseGenerateArgs = _NewBaseGenerateArgs
+    TritonKernelGenerateArgs = _NewTritonKernelGenerateArgs
+    ```
+  - 确保所有现有字段都保留
+- 迁移策略：
+  - 通过别名保持向后兼容
+  - 现有代码无需修改导入
+- 测试：确保所有现有测试通过
+
+**步骤2：实现 TorchPromptBuilder（迁移现有逻辑）**
+- 文件：`src/generator/prompt_builder.py`
+- 内容：
+  - 添加 `TorchPromptBuilder` 类
+  - 迁移 `TritonKernelGenerator` 中的三个方法：
+    - `build_new()` ← `generate_prompt_for_new()`
+    - `build_fix()` ← `generate_prompt_for_fix()`
+    - `build_optimization()` ← `generate_prompt_for_optimization()`
+  - 保留所有现有的 prompt 逻辑（ATen operators、overloads、wiki reference 等）
+- 测试：`tests/generator/test_prompt_builder.py`
+  - 测试三种 prompt 类型的生成
+  - 对比新旧实现的输出一致性
+
+**步骤3：实现 TorchAdapter**
+- 文件：`src/flagbench/framework/torch_adapter.py`
+- 内容：
+  - 实现 `get_operator_function()` - 从 `torch.ops` 获取
+  - 实现 `get_signature_info()` - 调用现有的 `get_torch_api_signature()`
+  - 实现 `create_generate_args()` - 创建 `TritonKernelGenerateArgs`
+  - 实现 `get_reference_code()` - 生成 torch 参考代码
+  - 迁移 `scripts/utils.py` 中的 `create_triton_generate_args()` 逻辑
+- 测试：`tests/framework/test_adapter.py`
+  - 测试每个方法的功能
+  - 使用真实的 torch operator 测试
+
+**步骤4：重构 TritonKernelGenerator**
+- 文件：`src/generator/triton_kernel_generator.py`
+- 修改：
+  - 构造函数接收 `prompt_builder: PromptBuilder` 参数
+  - 删除三个 prompt 生成方法（已迁移到 PromptBuilder）
+  - 修改 `generate_prompt()` 方法委托给 `prompt_builder.build()`
+  - 保留其他逻辑不变
+- 向后兼容：
+  - 如果没有传入 `prompt_builder`，自动创建 `TorchPromptBuilder`（带 deprecation warning）
+- 测试：确保所有现有测试通过
+
+**步骤5：更新 generate_kernel_and_verify.py（部分）**
+- 修改 `PassAtKTester.__init__()`:
+  - 根据 dataset 创建对应的 PromptBuilder
+  - 传递给 Generator
+- 保持其他逻辑不变
+- 测试：运行现有的 v2 dataset 测试
+
+**验证标准：**
+- ✅ 所有新增测试通过
+- ✅ 所有现有测试通过（向后兼容）
+- ✅ 运行 `--dataset v2` 测试成功
+- ✅ 代码符合类型检查和规范
 
 **验证：**
 ```bash
@@ -537,6 +684,58 @@ python scripts/generate_kernel_and_verify.py --dataset v2 --test-type triton --m
 - `src/flagbench/framework/generate_args.py` 中的 `CupyGenerateArgs`
 - `src/generator/prompt_builder.py` 中的 `CupyPromptBuilder`
 - cupy adapter 和 prompt builder 测试
+
+**详细实施步骤：**
+
+**步骤1：实现 CupyGenerateArgs**
+- 文件：`src/flagbench/framework/generate_args.py`
+- 内容：
+  - 添加 `CupyGenerateArgs` 类
+  - Cupy 特定字段：`cupy_kernel_name`, `baseline_func`, `baseline_code`, `func_desc`, `blas_operation_type`, `impl_info`
+  - 实现 `framework_name` 属性返回 "cupy"
+  - 实现 `op_name` 属性返回 `cupy_kernel_name`
+- 测试：扩展 `tests/framework/test_generate_args.py`
+
+**步骤2：实现 CupyPromptBuilder**
+- 文件：`src/generator/prompt_builder.py`
+- 内容：
+  - 添加 `CupyPromptBuilder` 类
+  - 实现 `build_new()` - 强调 cuBLAS baseline、BLAS 操作类型
+  - 实现 `build_fix()` - cupy 特定的错误修复提示
+  - 实现 `build_optimization()` - cupy 特定的优化提示
+  - Prompt 重点：
+    - 说明这是 cuBLAS baseline 的 Triton 实现
+    - 提供 BLAS Level 信息（Level 1/2/3）
+    - 包含 baseline 函数的源代码和文档
+- 测试：`tests/generator/test_prompt_builder.py`
+  - 测试 cupy 特定的 prompt 生成
+  - 验证包含 BLAS 类型信息
+
+**步骤3：实现 CupyAdapter**
+- 文件：`src/flagbench/framework/cupy_adapter.py`
+- 内容：
+  - 实现 `get_operator_function()` - 从 `CUPY_OPERATORS` 获取
+  - 实现 `get_signature_info()` - 使用 `inspect.signature()`
+  - 实现 `create_generate_args()` - 创建 `CupyGenerateArgs`
+    - 需要确定 BLAS 操作类型（Level 1/2/3）
+    - 可以根据函数名前缀判断（s/d/c/z + asum/axpy/gemm等）
+  - 实现 `get_reference_code()` - 使用 `inspect.getsource()`
+- 测试：`tests/framework/test_adapter.py`
+  - 测试每个方法的功能
+  - 使用真实的 cupy baseline 函数测试
+
+**步骤4：更新 generate_kernel_and_verify.py**
+- 修改 `PassAtKTester._create_adapter()`:
+  - 添加 cupy case，返回 `CupyAdapter()`
+- 修改 `PassAtKTester.__init__()`:
+  - 根据 adapter 创建对应的 PromptBuilder
+- 测试：运行 cupy dataset 测试
+
+**验证标准：**
+- ✅ 所有新增测试通过
+- ✅ 运行 `--dataset cupy` 测试成功
+- ✅ 生成的 prompt 包含 cupy 特定信息
+- ✅ 代码符合类型检查和规范
 
 **验证：**
 ```bash
@@ -560,12 +759,89 @@ python scripts/generate_kernel_and_verify.py \
 - 重构后的 `generate_kernel_and_verify.py`
 - 更新的文档和使用示例
 
+**详细实施步骤：**
+
+**步骤1：完善 PassAtKTester 的 Adapter 集成**
+- 修改 `_create_adapter()` 方法：
+  - 支持所有 dataset 类型（pytorch, gems, v1, v2, qwen_next, cupy）
+  - 返回对应的 Adapter 实例
+- 修改 `__init__()` 方法：
+  - 根据 adapter 创建对应的 PromptBuilder
+  - 传递给 Generator
+- 修改 `generate_round()` 方法：
+  - 使用 `adapter.create_generate_args()` 创建 GenerateArgs
+  - 移除硬编码的框架判断逻辑
+
+**步骤2：清理冗余代码**
+- 检查 `scripts/utils.py` 中的 `create_triton_generate_args()`：
+  - 如果已迁移到 TorchAdapter，标记为 deprecated
+  - 或者删除并更新所有引用
+- 检查其他可能的硬编码逻辑
+
+**步骤3：更新文档**
+- 更新 `CLAUDE.md` 或 `README.md`：
+  - 说明新的架构
+  - 说明如何添加新框架支持
+  - 提供使用示例
+
+**验证标准：**
+- ✅ 所有 dataset 类型都能正常工作
+- ✅ 代码中没有硬编码的框架判断
+- ✅ 文档清晰完整
+
 ### 阶段5：测试和优化（1-2天）
 
 **任务：**
 1. 端到端测试
 2. 性能优化
 3. 代码审查和清理
+
+**产出：**
+- 完整的测试覆盖
+- 性能优化报告
+- 清理后的代码
+
+**详细实施步骤：**
+
+**步骤1：端到端测试**
+- 测试所有 dataset 类型：
+  ```bash
+  # Torch datasets
+  python scripts/generate_kernel_and_verify.py --dataset v2 --test-type triton --max-rounds 1 --debug
+  python scripts/generate_kernel_and_verify.py --dataset qwen_next --test-type triton --max-rounds 1 --debug
+
+  # Cupy dataset
+  python scripts/generate_kernel_and_verify.py --dataset cupy --test-type triton --custom-test-modules src/flagbench/accuracy/cupy --max-rounds 1 --debug
+  ```
+- 测试不同的 prompt 模式（basic, reflection, with_wiki）
+- 测试错误处理和边界情况
+
+**步骤2：性能测试**
+- 对比重构前后的性能：
+  - Prompt 生成时间
+  - 内存使用
+  - 整体运行时间
+- 如果有性能下降，进行优化
+
+**步骤3：代码审查**
+- 检查代码质量：
+  - 类型注解完整性
+  - 文档字符串完整性
+  - 代码规范（flake8/black）
+- 检查测试覆盖率
+- 清理临时代码和注释
+
+**步骤4：向后兼容性验证**
+- 确保现有的脚本和工具仍然可用
+- 确保 API 变更有清晰的迁移路径
+- 提供 deprecation warnings
+
+**验证标准：**
+- ✅ 所有端到端测试通过
+- ✅ 性能没有明显下降（<5%）
+- ✅ 测试覆盖率 >80%
+- ✅ 代码质量检查通过
+- ✅ 向后兼容性保持
 
 ---
 
@@ -578,8 +854,8 @@ python scripts/generate_kernel_and_verify.py \
 **决策：采用方案A（基类 + 子类）**
 
 **设计原则：**
-1. **职责单一**：GenerateArgs 专注于存储和提供算子信息，不负责 prompt 构造
-2. **统一接口**：通过 `get_prompt_data()` 方法返回结构化数据
+1. **职责单一**：GenerateArgs 专注于存储算子信息，PromptBuilder 负责 prompt 构造
+2. **直接访问**：PromptBuilder 直接访问 GenerateArgs 的字段，简单清晰
 3. **类型安全**：使用基类定义通用字段，子类添加框架特定字段
 4. **结构化信息**：重载、schema 等信息应该是独立的结构化字段，而不是放在描述文本中
 
@@ -587,11 +863,11 @@ python scripts/generate_kernel_and_verify.py \
 - 类型安全，IDE 支持好
 - 清晰的扩展路径
 - 易于测试和维护
-- 强制实现统一接口
+- 简单直接，无需额外的数据转换层
 
 **关键设计：**
-- `get_prompt_data()` 方法：返回用于构造 prompt 的结构化数据
-- `framework_name` 属性：标识框架类型
+- `op_name` 属性：返回算子名称（抽象属性）
+- `framework_name` 属性：标识框架类型（抽象属性）
 - Prompt 构造由独立的 PromptBuilder 负责（见下文）
 
 ### 2. Prompt Template 管理 ✅ 已决策
@@ -680,7 +956,7 @@ python scripts/generate_kernel_and_verify.py \
 
 **已解决的问题：**
 1. ✅ GenerateArgs 的设计方案：采用方案A（基类 + 子类）
-2. ✅ GenerateArgs 职责：专注于数据提供，通过 `get_prompt_data()` 方法
+2. ✅ GenerateArgs 职责：专注于数据存储，PromptBuilder 直接访问字段
 3. ✅ Prompt 构造职责：由独立的 PromptBuilder 负责
 4. ✅ Prompt 管理架构：采用方案C（PromptBuilder 模式，组合优于继承）
 
@@ -690,7 +966,7 @@ python scripts/generate_kernel_and_verify.py \
 
 **可以开始的工作：**
 - 阶段1：接口定义和基础设施（BaseGenerateArgs、PromptBuilder 基类、FrameworkAdapter）
-- 阶段2：封装现有 Torch 逻辑（TorchAdapter、TorchGenerateArgs、TorchPromptBuilder）
+- 阶段2：封装现有 Torch 逻辑（TorchAdapter、TritonKernelGenerateArgs、TorchPromptBuilder）
 - 阶段3：实现 Cupy 支持（CupyAdapter、CupyGenerateArgs、CupyPromptBuilder）
 
 **架构优势总结：**
