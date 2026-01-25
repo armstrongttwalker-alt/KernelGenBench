@@ -713,7 +713,6 @@ class Verifier:
         except Exception as e:
             console.rule(f"[bold red]Verify failed: {e}")
             raise ValueError(f"Verify failed: {e}")
-        print(_label_registry)
         after = set(_label_registry.keys())
         new_labels = after - before
 
