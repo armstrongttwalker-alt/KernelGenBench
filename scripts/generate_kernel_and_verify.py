@@ -127,6 +127,9 @@ class PassAtKTester:
                     self.operator_loader = CUPY_OPERATORS  # Already in flat format
                 case _:
                     raise ValueError(f"Unsupported dataset: {self.dataset}")
+
+            # 根据 dataset 创建对应的 PromptBuilder
+            self.prompt_builder = self._create_prompt_builder()
         elif self.test_type == "accuracy":
             self.create_verify_args = self.create_acc_test_verify_args
             self.create_generate_args = self.create_ut_generate_args
@@ -134,6 +137,33 @@ class PassAtKTester:
             raise NotImplementedError("Performance test type is not supported yet.")
         else:
             raise ValueError(f"Unsupported test type: {self.test_type}")
+
+    def _create_prompt_builder(self):
+        """
+        根据 dataset 创建对应的 PromptBuilder
+
+        Returns:
+            PromptBuilder 实例
+        """
+        from generator.torch_prompt_builder import TorchPromptBuilder
+
+        # 根据 dataset 选择 PromptBuilder
+        # 目前所有 torch 相关的 dataset 都使用 TorchPromptBuilder
+        if self.dataset in ["pytorch", "gems", "v1", "v2", "qwen_next"]:
+            # 根据 use_wiki 参数选择 mode
+            mode = "with_wiki" if self.use_wiki else "basic"
+            prompt_builder = TorchPromptBuilder(mode=mode)
+            logger.info(f"Created TorchPromptBuilder with mode: {mode}")
+            return prompt_builder
+        elif self.dataset == "cupy":
+            # TODO: 实现 CupyPromptBuilder
+            # 暂时使用 TorchPromptBuilder
+            logger.warning(f"CupyPromptBuilder not implemented yet, using TorchPromptBuilder as fallback")
+            mode = "with_wiki" if self.use_wiki else "basic"
+            prompt_builder = TorchPromptBuilder(mode=mode)
+            return prompt_builder
+        else:
+            raise ValueError(f"Unsupported dataset for PromptBuilder: {self.dataset}")
 
     def initialize_operators(self, namespace: str = "all") -> None:
         """初始化算子列表，返回扁平结构 {op_name: value}"""
@@ -282,10 +312,14 @@ class PassAtKTester:
             return round_dir
         
         logger.info(f"Generating {len(gen_args)} tests...")
-        
+
         # Generate tests
         self.gen_config.sample_id = round_idx
-        generator = GENERATOR[self.test_type](self.gen_config)
+        # 根据 test_type 创建 Generator，triton 类型需要传递 PromptBuilder
+        if self.test_type == "triton":
+            generator = GENERATOR[self.test_type](self.gen_config, prompt_builder=self.prompt_builder)
+        else:
+            generator = GENERATOR[self.test_type](self.gen_config)
         generated_codes = generator(gen_args)
         
         # Process and save the generated codes
