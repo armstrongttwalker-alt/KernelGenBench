@@ -925,9 +925,11 @@ CUPY_OPERATORS = {
 # PYTORCH_OPERATORS = BENCHMARK_OPERATORS
 # PYTORCH_OPERATORS = V2_OPERATORS
 
-if os.environ.get("FLAGBENCH_USE_DYNAMIC_IMPL_INFO", "0") == "1":
-    dynamic_impl_info = DynamicImplInfo()
-    IMPL_INFO = dynamic_impl_info
+# if os.environ.get("FLAGBENCH_USE_DYNAMIC_IMPL_INFO", "0") == "1":
+#     dynamic_impl_info = DynamicImplInfo()
+#     IMPL_INFO = dynamic_impl_info
+dynamic_impl_info = DynamicImplInfo()
+IMPL_INFO = dynamic_impl_info
     
 if __name__ == "__main__":
     op_name_list = list(PYTORCH_OPERATORS.keys())
