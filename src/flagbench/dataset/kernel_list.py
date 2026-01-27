@@ -5,6 +5,12 @@ from typing import Dict
 from .dataloader import TorchOpsLoader
 from logging import getLogger
 import os
+from .baseline.cupy import (
+    caxpy, cdgmm, cdotc, cdotu, cgeam, cgemm, cgemv, cgerc, cgeru, cscal, csyrk,
+    dasum, daxpy, ddgmm, ddot, dgeam, dgemm, dgemv, dger, dnrm2, dsbmv, dscal, dsyrk,
+    hgemm, sasum, saxpy, sdgmm, sdot, sgeam, sgemm, sgemv, sger, snrm2, ssbmv, sscal, ssyrk,
+    zaxpy, zdgmm, zdotc, zdotu, zgeam, zgemm, zgemv, zgerc, zgeru, zscal, zsyrk
+)
 
 logger = getLogger(__name__)
 
@@ -847,6 +853,73 @@ QWEN_NEXT_OPERATORS = {
     # 'torch.ops.aten.zero_': torch.ops.aten.zero_,
     # 'torch.ops.aten.zeros': torch.ops.aten.zeros,
     # 'torch.ops.aten.zeros_like': torch.ops.aten.zeros_like,
+}
+
+def is_pytorch_op(name: str, *, namespace: str = "") -> bool:
+    """
+    判断算子是否是 PyTorch 算子
+
+    Args:
+        name: 算子名称（可以带或不带 namespace，如 "abs" 或 "aten::abs"）
+
+    Returns:
+        True 如果是 PyTorch 算子，False 否则
+    """
+    try:
+        return IMPL_INFO.get(name, namespace=namespace) is not None
+    except (AssertionError, KeyError):
+        # 如果 namespace 不存在（如 cupy），说明不是 PyTorch 算子
+        return False
+
+
+CUPY_OPERATORS = {
+    'cupy::caxpy': caxpy,
+    'cupy::cdgmm': cdgmm,
+    'cupy::cdotc': cdotc,
+    'cupy::cdotu': cdotu,
+    'cupy::cgeam': cgeam,
+    'cupy::cgemm': cgemm,
+    'cupy::cgemv': cgemv,
+    'cupy::cgerc': cgerc,
+    'cupy::cgeru': cgeru,
+    'cupy::cscal': cscal,
+    'cupy::csyrk': csyrk,
+    'cupy::dasum': dasum,
+    'cupy::daxpy': daxpy,
+    'cupy::ddgmm': ddgmm,
+    'cupy::ddot': ddot,
+    'cupy::dgeam': dgeam,
+    'cupy::dgemm': dgemm,
+    'cupy::dgemv': dgemv,
+    'cupy::dger': dger,
+    'cupy::dnrm2': dnrm2,
+    'cupy::dsbmv': dsbmv,
+    'cupy::dscal': dscal,
+    'cupy::dsyrk': dsyrk,
+    'cupy::hgemm': hgemm,
+    'cupy::sasum': sasum,
+    'cupy::saxpy': saxpy,
+    'cupy::sdgmm': sdgmm,
+    'cupy::sdot': sdot,
+    'cupy::sgeam': sgeam,
+    'cupy::sgemm': sgemm,
+    'cupy::sgemv': sgemv,
+    'cupy::sger': sger,
+    'cupy::snrm2': snrm2,
+    'cupy::ssbmv': ssbmv,
+    'cupy::sscal': sscal,
+    'cupy::ssyrk': ssyrk,
+    'cupy::zaxpy': zaxpy,
+    'cupy::zdgmm': zdgmm,
+    'cupy::zdotc': zdotc,
+    'cupy::zdotu': zdotu,
+    'cupy::zgeam': zgeam,
+    'cupy::zgemm': zgemm,
+    'cupy::zgemv': zgemv,
+    'cupy::zgerc': zgerc,
+    'cupy::zgeru': zgeru,
+    'cupy::zscal': zscal,
+    'cupy::zsyrk': zsyrk,
 }
 
 # PYTORCH_OPERATORS = BENCHMARK_OPERATORS

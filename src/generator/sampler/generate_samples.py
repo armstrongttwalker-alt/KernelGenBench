@@ -17,10 +17,24 @@ from .utils import (
     maybe_multithread,
     read_file,
     # set_gpu_arch,
-    construct_dataset, 
-    prompt_generate_custom_triton_from_prompt_template, 
+    construct_dataset,
+    prompt_generate_custom_triton_from_prompt_template,
     prompt_generate_test_func_from_prompt_template
 )
+
+# 导入新的基类和 TritonKernelGenerateArgs
+from flagbench.framework.generate_args import (
+    BaseGenerateArgs as _NewBaseGenerateArgs,
+    TritonKernelGenerateArgs as _NewTritonKernelGenerateArgs,
+    InputArg as _NewInputArg,
+    OutputArg as _NewOutputArg,
+)
+
+# 向后兼容别名
+BaseGenerateArgs = _NewBaseGenerateArgs
+TritonKernelGenerateArgs = _NewTritonKernelGenerateArgs
+InputArg = _NewInputArg
+OutputArg = _NewOutputArg
 
 """
 Batch Generate Samples for Particular Level
@@ -68,53 +82,16 @@ class WorkArgs:
     op_name: str | None = None
     op_obj: Callable | None = None
 
-@dataclass
-class InputArg:
-    arg_name: str
-    arg_type: str
-    arg_value: Any = None
-    arg_default: Any = None, 
-    arg_desc: str = ""
-
-@dataclass
-class OutputArg:
-    arg_type: str
-    arg_value: Any = None
-    arg_desc: str = ""
-
 class ConstructDataArgs(BaseModel):
     kernel_bench_code: str
     problem_name: str
-    
+
     @property
     def op_name(self):
         return self.problem_name
 
-class BaseGenerateArgs(BaseModel):
-    from_mcp: bool = False
-    user_advice: Optional[str] = None
-    check_result: Optional[VerifyResult | None] = None
-    old_code: Optional[str] = None
-    sample_id: int = 0
-    wiki_reference: Optional[Any] = None
-
-    @property
-    def op_name(self):
-        return NotImplementedError
-
-class TritonKernelGenerateArgs(BaseGenerateArgs):
-    triton_kernel_name: str
-    func_desc: str
-    torch_kernel_code: str
-    input_args: List[InputArg] | None | dict = None
-    output_args: List[OutputArg] | None = None
-    func_type: Optional[str] = None  # "unary", "binary", "reduction", "other"
-    impl_info: Optional[dict|list] = None
-
-    @property
-    def op_name(self):
-        return self.triton_kernel_name
-
+# TorchKernelGenerateArgs, TestFuncGenerateArgs, BenchmarkFuncGenerateArgs 保留在这里
+# 因为它们还没有迁移到 framework 模块
 class TorchKernelGenerateArgs(BaseGenerateArgs):
     torch_kernel_name: str
     func_desc: str
