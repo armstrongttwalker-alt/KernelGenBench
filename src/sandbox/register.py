@@ -8,13 +8,13 @@ from collections import OrderedDict
 
 import logging
 
-from flagbench.dataset import IMPL_INFO
+from flagbench.dataset import IMPL_INFO, is_pytorch_op
 from sandbox.config import DEVICE as device
 
 REGISTERED_OPS = OrderedDict()
 REGISTERED_OPS_TORCH = []
 
-def register(api, key, has_backward=Autograd.enable, namespace=None):
+def register(api, key, has_backward=Autograd.enable, namespace: str=""):
     """
     Register a function with a key and an optional backward flag.
     """
@@ -38,7 +38,9 @@ def register(api, key, has_backward=Autograd.enable, namespace=None):
             # REGISTERED_OPS[key] = (key, func, has_backward)
         else:
             REGISTERED_OPS[namespace][key] = (key, func, has_backward)
-        if api not in IMPL_INFO:
+        # 只对 PyTorch 算子检查 IMPL_INFO，非 PyTorch 算子（如 cupy::sgemm）跳过
+        if is_pytorch_op(api, namespace=namespace) is False and "::" not in api:
+            # api 不在 IMPL_INFO 中，且没有 namespace 前缀（如 cupy::），说明是一个未注册的 aten 算子
             logging.warning(f"Operator {key} not found in IMPL_INFO, make sure using bench.{key} directly rather than bench.use_gems")
         import sys
         # package_name = __name__.split('.')[0]

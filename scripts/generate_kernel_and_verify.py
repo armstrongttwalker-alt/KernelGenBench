@@ -74,6 +74,7 @@ class PassAtKTester:
         self.impl_info = IMPL_INFO
         self.create_generate_args = _placeholder
         self.create_verify_args = _placeholder
+        self.adapter = None  # Framework adapter (TorchAdapter or CupyAdapter)
 
         self.debug = debug
         self.reflection = reflection
@@ -102,7 +103,6 @@ class PassAtKTester:
             os.environ["FLAGBENCH_SKIP_BOTH_TEST"] = "1"
         if self.test_type == "triton":
             self.create_verify_args = self.create_triton_kernel_verify_args
-            self.create_generate_args = create_triton_generate_args
             # 导入转换函数
             from flagbench.dataset.kernel_list import flatten_operator_dict
 
@@ -128,8 +128,17 @@ class PassAtKTester:
                 case _:
                     raise ValueError(f"Unsupported dataset: {self.dataset}")
 
-            # 根据 dataset 创建对应的 PromptBuilder
+            # 根据 dataset 创建对应的 PromptBuilder 和 Adapter
             self.prompt_builder = self._create_prompt_builder()
+            self.adapter = self._create_adapter()
+
+            # 根据 dataset 设置 create_generate_args 方法
+            if self.dataset == "cupy":
+                # 对于 cupy dataset，使用 adapter 的方法
+                self.create_generate_args = self._create_cupy_generate_args_wrapper()
+            else:
+                # 对于 torch 相关的 dataset，使用现有的函数
+                self.create_generate_args = create_triton_generate_args
         elif self.test_type == "accuracy":
             self.create_verify_args = self.create_acc_test_verify_args
             self.create_generate_args = self.create_ut_generate_args
@@ -146,6 +155,7 @@ class PassAtKTester:
             PromptBuilder 实例
         """
         from generator.torch_prompt_builder import TorchPromptBuilder
+        from generator.cupy_prompt_builder import CupyPromptBuilder
 
         # 根据 dataset 选择 PromptBuilder
         # 目前所有 torch 相关的 dataset 都使用 TorchPromptBuilder
@@ -156,14 +166,68 @@ class PassAtKTester:
             logger.info(f"Created TorchPromptBuilder with mode: {mode}")
             return prompt_builder
         elif self.dataset == "cupy":
-            # TODO: 实现 CupyPromptBuilder
-            # 暂时使用 TorchPromptBuilder
-            logger.warning(f"CupyPromptBuilder not implemented yet, using TorchPromptBuilder as fallback")
+            # 使用 CupyPromptBuilder
             mode = "with_wiki" if self.use_wiki else "basic"
-            prompt_builder = TorchPromptBuilder(mode=mode)
+            prompt_builder = CupyPromptBuilder(mode=mode)
+            logger.info(f"Created CupyPromptBuilder with mode: {mode}")
             return prompt_builder
         else:
             raise ValueError(f"Unsupported dataset for PromptBuilder: {self.dataset}")
+
+    def _create_adapter(self):
+        """
+        根据 dataset 创建对应的 FrameworkAdapter
+
+        Returns:
+            FrameworkAdapter 实例
+        """
+        from flagbench.framework.torch_adapter import TorchAdapter
+        from flagbench.framework.cupy_adapter import CupyAdapter
+
+        # 根据 dataset 选择 Adapter
+        if self.dataset in ["pytorch", "gems", "v1", "v2", "qwen_next"]:
+            adapter = TorchAdapter()
+            logger.info(f"Created TorchAdapter for dataset: {self.dataset}")
+            return adapter
+        elif self.dataset == "cupy":
+            adapter = CupyAdapter()
+            logger.info(f"Created CupyAdapter for dataset: {self.dataset}")
+            return adapter
+        else:
+            raise ValueError(f"Unsupported dataset for Adapter: {self.dataset}")
+
+    def _create_cupy_generate_args_wrapper(self):
+        """
+        创建 cupy 的 generate_args 包装函数
+
+        这个包装函数适配 generate_round() 中的调用方式，
+        将参数转换为 CupyAdapter.create_generate_args 需要的格式
+
+        Returns:
+            包装函数
+        """
+        def wrapper(torch_op_name: str, torch_op_func_or_namespace: str, impl_info: Any):
+            """
+            包装函数，适配 cupy 的调用方式
+
+            Args:
+                torch_op_name: kernel 名称（如 "caxpy"）
+                torch_op_func_or_namespace: namespace（如 "cupy"）
+                impl_info: 实现信息
+
+            Returns:
+                CupyGenerateArgs 实例
+            """
+            # 构造完整的 op_name（格式：cupy::caxpy）
+            op_name = f"{torch_op_func_or_namespace}::{torch_op_name}"
+
+            # 从 adapter 获取函数对象
+            func = self.adapter.get_operator_function(op_name)
+
+            # 调用 adapter 的 create_generate_args 方法
+            return self.adapter.create_generate_args(op_name, func, impl_info)
+
+        return wrapper
 
     def initialize_operators(self, namespace: str = "all") -> None:
         """初始化算子列表，返回扁平结构 {op_name: value}"""
@@ -266,7 +330,7 @@ class PassAtKTester:
 
             # Choose impl_info based on test_type
             if self.test_type == "triton":
-                impl_info_arg = self.impl_info.get(kernel_name)
+                impl_info_arg = self.adapter.get_impl_info(kernel_name)
             else:  # accuracy or performance
                 impl_info_arg = api_info
 
@@ -419,7 +483,8 @@ class PassAtKTester:
         return VerifyRequest(
             source=[Source(
                 source=kernel_code,
-                function_name=op_name
+                function_name=op_name, 
+                namespace="triton"
             )],
             test_func=[test_func] if test_func else None,
         )

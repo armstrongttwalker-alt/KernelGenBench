@@ -21,6 +21,9 @@ from flagbench.perfermance.attri_util import BenchmarkResult
 from sandbox.utils.accuracy_utils import CustomBenchmarkResult
 
 
+from flagbench.dataset import is_pytorch_op, IMPL_INFO
+
+
 def set_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -288,15 +291,18 @@ class Verifier:
                     code = "import triton.language as tl\n" + code
             return code
         
+        # 保存原始的完整名称（用于判断是否是 PyTorch 算子）
+        original_name = name
+
         name = name.split("::")[-1] if "::" in name else name
         name = name.split(".")[-1]
         compile(code, name, "exec")
-        from flagbench.dataset.kernel_list import IMPL_INFO
 
         # 步骤 2.1.1：添加算子类型判断
-        is_pytorch_op = IMPL_INFO.get(name) is not None
+        # 使用原始名称（带 namespace）来判断，避免默认使用 aten namespace
+        _is_torch_op = is_pytorch_op(original_name)
 
-        if is_pytorch_op:
+        if _is_torch_op:
             # PyTorch 算子：检查所有 overload 变体
             impl_info = IMPL_INFO.get(name)
             ops = [op for op, _ in impl_info]
@@ -614,11 +620,10 @@ class Verifier:
             raise e
         try:
             # 步骤 2.3：处理 DISPATCH_TORCH_LIB 环境变量
-            from flagbench.dataset.kernel_list import IMPL_INFO
-            is_pytorch_op = IMPL_INFO.get(function_name[0]) is not None
+            _is_torch_op = is_pytorch_op(function_name[0])
 
             # 自动加载 baseline（方案1+方案4）
-            if not is_pytorch_op:
+            if not _is_torch_op:
                 # 检查是否已提供 baseline
                 has_baseline = any(ns == "baseline" for ns in namespace)
 
@@ -631,7 +636,7 @@ class Verifier:
                         namespace.insert(0, "baseline")
                         logger.info(f"Auto-loaded baseline for {function_name[0]}")
 
-            if is_pytorch_op:
+            if _is_torch_op:
                 # PyTorch 算子：保持原有逻辑
                 if DISPATCH_TORCH_LIB:
                     checked_source = [self._check_code(s, fn_name, ns) for s, fn_name, ns in zip(source, function_name, namespace)]

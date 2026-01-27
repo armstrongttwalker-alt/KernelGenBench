@@ -36,12 +36,12 @@ class TritonKernelGenerator(BaseGenerator):
         self.prompt_builder = prompt_builder
 
     # @print_prompt
-    def generate_prompt(self, info: TritonKernelGenerateArgs):
+    def generate_prompt(self, info):
         """
         生成 prompt（委托给 PromptBuilder）
 
         Args:
-            info: 生成参数
+            info: 生成参数（BaseGenerateArgs 或其子类）
 
         Returns:
             生成的 prompt 字符串
@@ -61,19 +61,29 @@ class TritonKernelGenerator(BaseGenerator):
         return self.prompt_builder.build(info)
 
     def _init_data(self, kwargs):
+        # 保存原始类型
+        original_type = type(kwargs)
+
         config = kwargs.dict()
         if "from_mcp" in config:
             self.from_mcp = config.pop("from_mcp")
         if "check_result" in config and isinstance(config["check_result"], dict):
             from sandbox.utils.accuracy_utils import VerifyResult
             config["check_result"] = VerifyResult(**config["check_result"])
-        if self.generation_config.use_ai_advice is True:
+
+        # ai_advice 只对 TritonKernelGenerateArgs 有效
+        from flagbench.framework.generate_args import TritonKernelGenerateArgs
+        if self.generation_config.use_ai_advice is True and original_type == TritonKernelGenerateArgs:
             console.print("AI advice generation is enabled for Triton kernel generator.")
             self.ai_advice = TritonKernelAdviceGenerator(self.generation_config)
             config["user_advice"] = self.ai_advice(TritonKernelGenerateArgs(**config))
-        # config["op_name"] = config.pop("triton_kernel_name", None)
-        config = TritonKernelGenerateArgs(**config)
-        self.kernel_name = config.triton_kernel_name
+
+        # 恢复为原始类型（不强制转换为 TritonKernelGenerateArgs）
+        config = original_type(**config)
+
+        # 使用通用的 op_name 属性
+        self.kernel_name = config.op_name
+
         return config
     
     def post_process(self, results: list) -> list:

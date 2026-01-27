@@ -74,3 +74,23 @@ class TritonKernelGenerateArgs(BaseGenerateArgs):
     @property
     def framework_name(self) -> str:
         return "torch"
+
+
+class CupyGenerateArgs(BaseGenerateArgs):
+    """Cupy baseline 的生成参数 - 用于从 cupy baseline 生成 Triton kernel"""
+
+    # Cupy 特定字段
+    cupy_kernel_name: str  # 算子名称，如 "cublas::sgemm"
+    baseline_func: Any  # baseline 函数对象
+    baseline_code: str  # baseline 函数源代码（通过 inspect.getsource() 获取）
+    func_desc: str  # 函数描述
+    blas_operation_type: str  # BLAS 操作类型："Level 1" / "Level 2" / "Level 3" / "Extension"
+    impl_info: Optional[Any] = None  # 实现信息
+
+    @property
+    def op_name(self):
+        return self.cupy_kernel_name
+
+    @property
+    def framework_name(self) -> str:
+        return "cupy"

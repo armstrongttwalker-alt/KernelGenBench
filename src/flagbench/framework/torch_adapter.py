@@ -148,3 +148,16 @@ import torch
 
         return torch_kernel_code
 
+    def get_impl_info(self, kernel_name: str) -> Any:
+        """
+        获取 torch 算子的实现信息
+
+        Args:
+            kernel_name: 算子名称（不含namespace，如 "add"）
+
+        Returns:
+            从 IMPL_INFO 获取的实现信息
+        """
+        from flagbench.dataset import IMPL_INFO
+        return IMPL_INFO.get(kernel_name)
+

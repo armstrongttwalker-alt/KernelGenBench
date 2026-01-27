@@ -68,6 +68,19 @@ class FrameworkAdapter(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_impl_info(self, kernel_name: str) -> Any:
+        """
+        获取算子的实现信息
+
+        Args:
+            kernel_name: 算子名称（不含namespace，如 "add", "caxpy"）
+
+        Returns:
+            实现信息，对于不需要的framework返回None
+        """
+        pass
+
     @property
     @abstractmethod
     def framework_name(self) -> str:

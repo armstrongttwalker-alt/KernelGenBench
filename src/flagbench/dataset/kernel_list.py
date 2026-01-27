@@ -855,6 +855,23 @@ QWEN_NEXT_OPERATORS = {
     # 'torch.ops.aten.zeros_like': torch.ops.aten.zeros_like,
 }
 
+def is_pytorch_op(name: str, *, namespace: str = "") -> bool:
+    """
+    判断算子是否是 PyTorch 算子
+
+    Args:
+        name: 算子名称（可以带或不带 namespace，如 "abs" 或 "aten::abs"）
+
+    Returns:
+        True 如果是 PyTorch 算子，False 否则
+    """
+    try:
+        return IMPL_INFO.get(name, namespace=namespace) is not None
+    except (AssertionError, KeyError):
+        # 如果 namespace 不存在（如 cupy），说明不是 PyTorch 算子
+        return False
+
+
 CUPY_OPERATORS = {
     'cupy::caxpy': caxpy,
     'cupy::cdgmm': cdgmm,
