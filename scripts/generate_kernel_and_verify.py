@@ -471,7 +471,13 @@ class PassAtKTester:
         
         return round_dir
     
-    def create_triton_kernel_verify_args(self, kernel_path: Path, test_path: Path, op_name: str) -> VerifyRequest:
+    def create_triton_kernel_verify_args(
+            self, 
+            kernel_path: Path, 
+            test_path: Path, 
+            op_name: str, 
+            add_namespace_triton: bool = False
+        ) -> VerifyRequest:
         """Create verification request. op_name 格式: aten::add"""
         test_func = None
         if test_path.is_file() and test_path.exists():
@@ -484,7 +490,7 @@ class PassAtKTester:
             source=[Source(
                 source=kernel_code,
                 function_name=op_name, 
-                namespace="triton"
+                namespace="triton" if add_namespace_triton else ""
             )],
             test_func=[test_func] if test_func else None,
         )
@@ -561,7 +567,8 @@ class PassAtKTester:
             verify_req = self.create_triton_kernel_verify_args(
                 kernel_path,
                 test_file_path,
-                op_name
+                op_name, 
+                add_namespace_triton=self.dataset == "cupy"
             )
             verify_requests.append(verify_req)
             op_names.append(op_name)
