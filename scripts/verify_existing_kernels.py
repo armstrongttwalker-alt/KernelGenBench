@@ -41,6 +41,7 @@ class VerifyExistingKernels:
         device_count: int = 8,
         timeout: int = 300,
         skip_verified: bool = True,
+        custom_test_modules: Optional[List[str]] = None,
     ):
         """
         Initialize the verifier.
@@ -51,12 +52,14 @@ class VerifyExistingKernels:
             device_count: Number of devices for testing
             timeout: Timeout for each test
             skip_verified: Whether to skip already verified files
+            custom_test_modules: Custom test module paths for verification
         """
         self.data_dir = Path(data_dir)
         self.verify_output_dir = verify_output_dir
         self.device_count = device_count
         self.timeout = timeout
         self.skip_verified = skip_verified
+        self.custom_test_modules = custom_test_modules
 
         # Validate data directory
         if not self.data_dir.exists():
@@ -233,10 +236,11 @@ class VerifyExistingKernels:
 
         # Create verifier
         verifier = Verifier(verify_config)
-        verifier.set_modules(
-            modules=["src/flagbench/accuracy/test_qwen_next_ops_with_benchmark.py"],
-            mode="accuracy"
-        )
+        if self.custom_test_modules:
+            verifier.set_modules(
+                modules=self.custom_test_modules,
+                mode="accuracy"
+            )
 
         # Run verification
         _, results = verifier.only_verify(
@@ -399,6 +403,13 @@ def main():
         dest="skip_verified",
         help="Do not skip already verified rounds"
     )
+    parser.add_argument(
+        "--custom-test-modules",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Custom test module paths (e.g., src/flagbench/accuracy/test_v2_1_ops_with_benchmark.py)"
+    )
 
     args = parser.parse_args()
 
@@ -437,6 +448,7 @@ def main():
         device_count=args.device_count,
         timeout=args.timeout,
         skip_verified=args.skip_verified,
+        custom_test_modules=args.custom_test_modules,
     )
 
     # Run verification

@@ -17,20 +17,55 @@ import numpy as np
 import re
 
 
-def load_test_reports(eval_dir: Path) -> Dict[str, List[Dict[str, Any]]]:
+def detect_max_rounds(eval_dir: Path) -> int:
+    """
+    Detect the actual number of log directories in eval_dir.
+
+    Args:
+        eval_dir: Path to the evaluation directory
+
+    Returns:
+        Number of rounds (max log number + 1)
+    """
+    log_dirs = [d for d in eval_dir.iterdir()
+                if d.is_dir() and d.name.startswith('log_')]
+
+    if not log_dirs:
+        print("Warning: No log directories found")
+        return 0
+
+    # Extract log numbers
+    log_numbers = []
+    for d in log_dirs:
+        try:
+            num = int(d.name.split('_')[1])
+            log_numbers.append(num)
+        except (IndexError, ValueError):
+            continue
+
+    if not log_numbers:
+        return 0
+
+    max_round = max(log_numbers) + 1
+    print(f"Detected {max_round} rounds (log_0 to log_{max_round - 1})")
+    return max_round
+
+
+def load_test_reports(eval_dir: Path, max_rounds: int = 10) -> Dict[str, List[Dict[str, Any]]]:
     """
     Load all test reports from log directories.
-    
+
     Args:
-        eval_dir: Path to the evaluation directory containing log_0 to log_9
-        
+        eval_dir: Path to the evaluation directory containing log directories
+        max_rounds: Maximum number of rounds to load (default: 10)
+
     Returns:
         Dictionary mapping operator names to list of test results across samples
     """
     op_results = {}
-    
-    # Iterate through log_0 to log_9 directories
-    for i in range(10):
+
+    # Iterate through log directories
+    for i in range(max_rounds):
         log_dir = eval_dir / f"log_{i}"
         if not log_dir.exists():
             print(f"Warning: {log_dir} does not exist, skipping...")
@@ -140,62 +175,64 @@ def classify_error(traceback: str) -> str:
     return 'other'
 
 
-def calculate_pass_at_k(op_results: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Dict[int, float]]:
+def calculate_pass_at_k(op_results: Dict[str, List[Dict[str, Any]]], max_rounds: int = 10) -> Dict[str, Dict[int, float]]:
     """
     Calculate pass@k for each operator.
     log_0 evaluates all operators, log_i re-evaluates previous failures.
     Once an operator succeeds, it's not tested in subsequent logs.
     Pass@k means: with k attempts (log_0 to log_(k-1)), did it succeed at least once?
-    
+
     Args:
         op_results: Dictionary mapping operator names to list of test results
-        
+        max_rounds: Maximum number of rounds to calculate (default: 10)
+
     Returns:
         Dictionary mapping operator names to dict of {k: success_rate}
     """
     pass_at_k_stats = {}
-    
+
     for op_name, results in op_results.items():
         # Sort results by sample_id to ensure consistent ordering
         results = sorted(results, key=lambda x: x['sample_id'])
-        
+
         # Build a complete picture: which iteration did it first succeed?
         first_success_at = None
         for i, result in enumerate(results):
             if result['success']:
                 first_success_at = result['sample_id']
                 break
-        
+
         k_stats = {}
-        # For k=1 to 10, check if succeeded within first k attempts
-        for k in range(1, 11):
+        # For k=1 to max_rounds, check if succeeded within first k attempts
+        for k in range(1, max_rounds + 1):
             if first_success_at is not None and first_success_at < k:
                 # Succeeded at iteration first_success_at, which is < k
                 k_stats[k] = 1.0
             else:
                 # Either never succeeded, or succeeded at iteration >= k
                 k_stats[k] = 0.0
-        
+
         pass_at_k_stats[op_name] = k_stats
-    
+
     return pass_at_k_stats
 
 
-def calculate_error_type_stats(op_results: Dict[str, List[Dict[str, Any]]]) -> Dict[int, Dict[str, int]]:
+def calculate_error_type_stats(op_results: Dict[str, List[Dict[str, Any]]], max_rounds: int = 10) -> Dict[int, Dict[str, int]]:
     """
     Calculate error type statistics for each pass@k.
     For log_x (x>0), we only count errors that were fixed in that iteration.
-    
+
     Args:
         op_results: Dictionary mapping operator names to list of test results
-        
+        max_rounds: Maximum number of rounds to calculate (default: 10)
+
     Returns:
         Dictionary mapping k to error type counts at that k
     """
     error_types = [
         'no_func',
         'no_attribute',
-        'triton_compilation_error', 
+        'triton_compilation_error',
         'output_mismatch',
         'unsupported_language_construct',
         'assertion_error',
@@ -206,9 +243,9 @@ def calculate_error_type_stats(op_results: Dict[str, List[Dict[str, Any]]]) -> D
         'only_fp16_supported',
         'other'
     ]
-    
-    # Initialize error counts for k=1 to 10
-    error_stats = {k: {error_type: 0 for error_type in error_types} for k in range(1, 11)}
+
+    # Initialize error counts for k=1 to max_rounds
+    error_stats = {k: {error_type: 0 for error_type in error_types} for k in range(1, max_rounds + 1)}
     
     for op_name, results in op_results.items():
         results = sorted(results, key=lambda x: x['sample_id'])
@@ -226,14 +263,14 @@ def calculate_error_type_stats(op_results: Dict[str, List[Dict[str, Any]]]) -> D
                 break
         
         # For each k, count this operator's error if it hasn't succeeded yet
-        for k in range(1, 11):
+        for k in range(1, max_rounds + 1):
             # Check if operator failed at all attempts < k
             failed_at_k = True
             for result in results:
                 if result['sample_id'] < k and result['success']:
                     failed_at_k = False
                     break
-            
+
             if failed_at_k and initial_error_type:
                 # If it succeeded at iteration k-1, don't count it for k
                 if first_success_at is not None and first_success_at < k:
@@ -431,7 +468,13 @@ def main():
         default=None,
         help="Output directory for results (default: same as eval_dir)"
     )
-    
+    parser.add_argument(
+        "--max-k",
+        type=int,
+        default=None,
+        help="Maximum k value for pass@k calculation (default: auto-detect from log directories)"
+    )
+
     args = parser.parse_args()
     
     # Set the evaluation directory
@@ -446,26 +489,37 @@ def main():
     if not output_dir.exists():
         output_dir.mkdir(parents=True, exist_ok=True)
     
+    # Determine max_rounds: use --max-k if provided, otherwise auto-detect
+    if args.max_k is not None:
+        max_rounds = args.max_k
+        print(f"Using max_k = {max_rounds} (from command line)")
+    else:
+        max_rounds = detect_max_rounds(eval_dir)
+        if max_rounds == 0:
+            print("Error: No log directories found!")
+            return 1
+        print(f"Using max_k = {max_rounds} (auto-detected)")
+
     print(f"Loading test reports from {eval_dir}...")
-    
+
     # Load all test reports
-    op_results = load_test_reports(eval_dir)
+    op_results = load_test_reports(eval_dir, max_rounds)
     print(f"Loaded results for {len(op_results)} operators")
-    
+
     if not op_results:
         print("No test results found!")
         return 1
-    
+
     # Calculate pass@k for each operator
     print("Calculating pass@k statistics...")
-    pass_at_k_stats = calculate_pass_at_k(op_results)
-    
+    pass_at_k_stats = calculate_pass_at_k(op_results, max_rounds)
+
     # Calculate overall pass@k
     overall_stats = calculate_overall_pass_at_k(pass_at_k_stats)
-    
+
     # Calculate error type statistics
     print("Calculating error type statistics...")
-    error_stats = calculate_error_type_stats(op_results)
+    error_stats = calculate_error_type_stats(op_results, max_rounds)
     
     # Print summary
     print_summary(overall_stats)
