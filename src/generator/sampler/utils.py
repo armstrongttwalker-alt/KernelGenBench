@@ -246,7 +246,14 @@ def query_server(
                 timeout=10000000,
                 max_retries=10,
             )
-            model = model_name
+            # Model name mapping for ksyun
+            ksyun_model_mapping = {
+                "gpt-5": "mog-1",
+                "gpt-5.2": "mog-2",
+                "gemini-3-pro-preview": "mgg-2",
+                "gemini-3-flash": "mgg-7",
+            }
+            model = ksyun_model_mapping.get(model_name, model_name)
 
         case _:
             raise NotImplementedError
