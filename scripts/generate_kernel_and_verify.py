@@ -162,7 +162,7 @@ class PassAtKTester:
 
         # 根据 dataset 选择 PromptBuilder
         # 目前所有 torch 相关的 dataset 都使用 TorchPromptBuilder
-        if self.dataset in ["pytorch", "gems", "v1", "v2", "qwen_next"]:
+        if self.dataset in ["pytorch", "gems", "v1", "v2", "v2_1", "qwen_next"]:
             # 根据 use_wiki 参数选择 mode
             mode = "with_wiki" if self.use_wiki else "basic"
             prompt_builder = TorchPromptBuilder(mode=mode)
@@ -188,7 +188,7 @@ class PassAtKTester:
         from flagbench.framework.cupy_adapter import CupyAdapter
 
         # 根据 dataset 选择 Adapter
-        if self.dataset in ["pytorch", "gems", "v1", "v2", "qwen_next"]:
+        if self.dataset in ["pytorch", "gems", "v1", "v2", "v2_1", "qwen_next"]:
             adapter = TorchAdapter()
             logger.info(f"Created TorchAdapter for dataset: {self.dataset}")
             return adapter
