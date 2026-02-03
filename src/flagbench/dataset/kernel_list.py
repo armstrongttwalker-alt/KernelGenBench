@@ -968,7 +968,7 @@ V2_1_OPERATORS = {
     'torch.ops.aten.zeros_like': torch.ops.aten.zeros_like,
 }
 
-def is_pytorch_op(name: str, *, namespace: str = "") -> bool:
+def is_pytorch_op(name: str, *, namespace: str = "aten") -> bool:
     """
     判断算子是否是 PyTorch 算子
 
