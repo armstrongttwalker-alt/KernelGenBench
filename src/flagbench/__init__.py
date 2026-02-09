@@ -122,7 +122,7 @@ accuracy_modules = [
     "flagbench.accuracy.vllm.test_scaled_fp8_quant",
     "flagbench.accuracy.vllm.test_rotary_embedding",
     "flagbench.accuracy.vllm.test_fused_add_rms_norm",
-    "flagbench.accuracy.vllm.test_silu_and_mul_scaled_fp4_experts_quant",
+    "flagbench.accuracy.vllm.test_topk_softmax",
     "flagbench.accuracy.vllm.test_fused_qk_norm_rope",
     "flagbench.accuracy.vllm.test_scaled_int8_quant",
     "flagbench.accuracy.vllm.test_cutlass_scaled_mm",

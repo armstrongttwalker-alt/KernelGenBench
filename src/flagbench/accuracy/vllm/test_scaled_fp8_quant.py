@@ -79,15 +79,23 @@ def test_accuracy_scaled_fp8_quant(shape, dtype, num_token_padding, scale_kind, 
 
     # Compare: unpack tuple and compare each element
     # FP8 tensors need to be cast to float16 for comparison since assert_close doesn't support FP8
+    # When num_token_padding > M, output is padded; only compare the first M rows (valid data)
+    def _slice_valid(t):
+        if isinstance(t, torch.Tensor) and t.dim() >= 2 and t.shape[0] > M:
+            return t[:M]
+        return t
+
     if isinstance(ref_result, tuple):
         for ref_elem, act_elem in zip(ref_result, act_result):
             if isinstance(ref_elem, torch.Tensor):
-                if ref_elem.dtype in (torch.float8_e4m3fn, torch.float8_e5m2):
-                    assert_close(act_elem.to(torch.float16), ref_elem.to(torch.float16), torch.float16)
+                ref_v = _slice_valid(ref_elem)
+                act_v = _slice_valid(act_elem)
+                if ref_v.dtype in (torch.float8_e4m3fn, torch.float8_e5m2):
+                    assert_close(act_v.to(torch.float16), ref_v.to(torch.float16), torch.float16)
                 else:
-                    assert_close(act_elem, ref_elem, ref_elem.dtype)
+                    assert_close(act_v, ref_v, ref_v.dtype)
     else:
-        assert_close(act_result, ref_result, dtype)
+        assert_close(_slice_valid(act_result), _slice_valid(ref_result), dtype)
 
     # ===== Performance Test =====
     # Skip small sizes for performance test (use M as main size param)
