@@ -256,6 +256,13 @@ class Verifier:
                 logger.info(f"Auto-loading baseline from {baseline_path}")
                 return baseline_path.read_text()
 
+        # 尝试 2.5：cublas_ctypes 目录
+        if op_name.startswith("cublas"):
+            baseline_path = baseline_root / "cublas_ctypes" / f"{op_name}.py"
+            if baseline_path.exists():
+                logger.info(f"Auto-loading baseline from {baseline_path}")
+                return baseline_path.read_text()
+
         # 尝试 2：custom 目录
         baseline_path = baseline_root / "custom" / f"{op_name}.py"
         if baseline_path.exists():

@@ -115,6 +115,17 @@ accuracy_modules = [
     "flagbench.accuracy.cupy.test_zgeru_cublas_ops",
     "flagbench.accuracy.cupy.test_zscal_cublas_ops",
     "flagbench.accuracy.cupy.test_zsyrk_cublas_ops",
+    # cuBLAS ctypes operators (10 ops, excluding CgemmStridedBatched)
+    "flagbench.accuracy.cublas.test_cublasSaxpy_v2",
+    "flagbench.accuracy.cublas.test_cublasSscal_v2",
+    "flagbench.accuracy.cublas.test_cublasSgemmStridedBatched",
+    "flagbench.accuracy.cublas.test_cublasDgemmStridedBatched",
+    "flagbench.accuracy.cublas.test_cublasZgemmStridedBatched",
+    "flagbench.accuracy.cublas.test_cublasHgemmStridedBatched",
+    "flagbench.accuracy.cublas.test_cublasSgemvStridedBatched",
+    "flagbench.accuracy.cublas.test_cublasDgemvStridedBatched",
+    "flagbench.accuracy.cublas.test_cublasCgemvStridedBatched",
+    "flagbench.accuracy.cublas.test_cublasZgemvStridedBatched",
 ]
 perf_modules = [
     "flagbench.perfermance.test_attention_perf",
