@@ -11,7 +11,7 @@ def _ceil_div(a, b):
     return (a + b - 1) // b
 
 
-@label("vllm::moe_align_block_size")
+@label("moe_align_block_size")
 @parametrize("num_tokens", [128, 1024, 4096, 6152, 11575, 16384])
 @parametrize("num_experts", [4, 8, 16, 32, 64])
 @parametrize("block_size", [8, 16, 32, 64])

@@ -117,6 +117,15 @@ accuracy_modules = [
     "flagbench.accuracy.cupy.test_zsyrk_cublas_ops",
     # vLLM operators
     "flagbench.accuracy.vllm.test_moe_align_block_size",
+    "flagbench.accuracy.vllm.test_selective_scan_fwd",
+    "flagbench.accuracy.vllm.test_paged_attention_v1",
+    "flagbench.accuracy.vllm.test_scaled_fp8_quant",
+    "flagbench.accuracy.vllm.test_rotary_embedding",
+    "flagbench.accuracy.vllm.test_fused_add_rms_norm",
+    "flagbench.accuracy.vllm.test_silu_and_mul_scaled_fp4_experts_quant",
+    "flagbench.accuracy.vllm.test_fused_qk_norm_rope",
+    "flagbench.accuracy.vllm.test_scaled_int8_quant",
+    "flagbench.accuracy.vllm.test_cutlass_scaled_mm",
 ]
 perf_modules = [
     "flagbench.perfermance.test_attention_perf",
