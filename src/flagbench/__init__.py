@@ -115,6 +115,8 @@ accuracy_modules = [
     "flagbench.accuracy.cupy.test_zgeru_cublas_ops",
     "flagbench.accuracy.cupy.test_zscal_cublas_ops",
     "flagbench.accuracy.cupy.test_zsyrk_cublas_ops",
+    # vLLM operators
+    "flagbench.accuracy.vllm.test_moe_align_block_size",
 ]
 perf_modules = [
     "flagbench.perfermance.test_attention_perf",

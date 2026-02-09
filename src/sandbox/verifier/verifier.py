@@ -430,7 +430,11 @@ class Verifier:
     ) -> VerifyResult:
         set_seed(seed)
         # get api name from op_mark if it contains "::"
-        report_name, name = name, name.split("::")[-1] if "::" in name else name
+        # vLLM算子保留完整命名空间（label是 "vllm::moe_align_block_size"）
+        if name.startswith("vllm::"):
+            report_name = name
+        else:
+            report_name, name = name, name.split("::")[-1] if "::" in name else name
         total = 0
         failed = 0
         ret = None
