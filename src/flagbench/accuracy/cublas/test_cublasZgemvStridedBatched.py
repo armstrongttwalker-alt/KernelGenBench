@@ -3,7 +3,6 @@ from sandbox.config import DEVICE as device
 from sandbox.verifier.test_parametrize import parametrize, label
 from sandbox.utils.accuracy_utils import gems_assert_close as assert_close
 import torch
-from flagbench.dataset.baseline.cublas_ctypes.cublasZgemvStridedBatched import cublasZgemvStridedBatched as baseline_cublasZgemvStridedBatched
 
 
 def _trans_to_int(trans_str):
@@ -52,7 +51,7 @@ def test_accuracy_cublasZgemvStridedBatched(M, N, alpha, beta, trans, batchCount
 
     # Convert trans string to integer for baseline (cuBLAS C API expects int)
     trans_int = _trans_to_int(trans)
-    ref_out = baseline_cublasZgemvStridedBatched(trans_int, M, N, alpha, A, lda, strideA, x, incx, stridex, beta, y_ref, incy, stridey, batchCount)
+    ref_out = flagbench.baseline.cublasZgemvStridedBatched(trans_int, M, N, alpha, A, lda, strideA, x, incx, stridex, beta, y_ref, incy, stridey, batchCount)
     act_out = flagbench.triton.cublasZgemvStridedBatched(trans, M, N, alpha, A, lda, strideA, x, incx, stridex, beta, y_act, incy, stridey, batchCount)
     assert_close(act_out, ref_out, dtype, reduce_dim=N if trans == 'N' else M)
 
@@ -65,7 +64,7 @@ def test_accuracy_cublasZgemvStridedBatched(M, N, alpha, beta, trans, batchCount
     x_bench = torch.randn(batchCount, lenx, dtype=dtype, device='cuda')
     for _ in range(10):
         y_warmup = torch.randn(batchCount, leny, dtype=dtype, device='cuda')
-        _ = baseline_cublasZgemvStridedBatched(trans_int, M, N, alpha, A_bench, lda, strideA, x_bench, incx, stridex, beta, y_warmup.clone(), incy, stridey, batchCount)
+        _ = flagbench.baseline.cublasZgemvStridedBatched(trans_int, M, N, alpha, A_bench, lda, strideA, x_bench, incx, stridex, beta, y_warmup.clone(), incy, stridey, batchCount)
         _ = flagbench.triton.cublasZgemvStridedBatched(trans, M, N, alpha, A_bench, lda, strideA, x_bench, incx, stridex, beta, y_warmup.clone(), incy, stridey, batchCount)
     torch.cuda.synchronize()
 
@@ -77,7 +76,7 @@ def test_accuracy_cublasZgemvStridedBatched(M, N, alpha, beta, trans, batchCount
     torch.cuda.synchronize()
     start_event.record()
     for _ in range(100):
-        _ = baseline_cublasZgemvStridedBatched(trans_int, M, N, alpha, A_bench, lda, strideA, x_bench, incx, stridex, beta, y_baseline.clone(), incy, stridey, batchCount)
+        _ = flagbench.baseline.cublasZgemvStridedBatched(trans_int, M, N, alpha, A_bench, lda, strideA, x_bench, incx, stridex, beta, y_baseline.clone(), incy, stridey, batchCount)
     end_event.record()
     torch.cuda.synchronize()
     ms_baseline = start_event.elapsed_time(end_event) / 100
@@ -91,5 +90,4 @@ def test_accuracy_cublasZgemvStridedBatched(M, N, alpha, beta, trans, batchCount
     torch.cuda.synchronize()
     ms_triton = start_event.elapsed_time(end_event) / 100
     speedup = ms_baseline / ms_triton
-    print(f"\nPerf: M={M}, N={N} | Baseline: {ms_baseline:.4f} ms | Triton: {ms_triton:.4f} ms | Speedup: {speedup:.2f}x\n")
     return CustomBenchmarkResult(ref_time=ms_baseline, res_time=ms_triton, speedup=speedup)
