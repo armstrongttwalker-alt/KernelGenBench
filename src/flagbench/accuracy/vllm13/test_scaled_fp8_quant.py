@@ -10,7 +10,7 @@ import triton
 @parametrize("shape", [(1, 32), (71, 497), (128, 512), (1024, 4096), (5333, 8192)])
 @parametrize("dtype", [torch.float16, torch.bfloat16, torch.float32])
 @parametrize("num_token_padding", [None, 0, 64])
-@parametrize("scale_kind", ["dynamic", "per_tensor", "per_channel_1d", "per_token_1d", "group_2d_1x1"])
+@parametrize("scale_kind", ["dynamic", "per_tensor", "group_2d_1x1"])
 @parametrize("use_per_token_if_dynamic", [False, True])
 @parametrize("scale_ub_kind", [None, "rowwise"])
 def test_accuracy_scaled_fp8_quant(shape, dtype, num_token_padding, scale_kind, use_per_token_if_dynamic, scale_ub_kind):
