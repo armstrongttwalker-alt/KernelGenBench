@@ -38,7 +38,8 @@ class PromptBuilder(ABC):
         根据 gen_args 的状态选择合适的 prompt 构造方法
         """
         if gen_args.check_result is not None and not gen_args.check_result.success:
-            if gen_args.old_code and gen_args.check_result.code.strip() == gen_args.old_code.strip():
+            if gen_args.old_code and gen_args.check_result.code and \
+               gen_args.check_result.code.strip() == gen_args.old_code.strip():
                 return self.build_fix(gen_args)
             else:
                 return self.build_optimization(gen_args)

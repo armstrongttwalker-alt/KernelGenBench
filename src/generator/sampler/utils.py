@@ -643,6 +643,9 @@ def extract_first_code(output_string: str, code_language_types: list[str]) -> st
     """
     Extract first code block from model output, specified by code_language_type
     """
+    if output_string is None:
+        return None
+
     trimmed = output_string.strip()
 
     # Extracting the first occurrence of content between backticks
