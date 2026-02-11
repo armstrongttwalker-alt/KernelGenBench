@@ -6,6 +6,7 @@ PromptBuilder 层
 
 from abc import ABC, abstractmethod
 from flagbench.framework.generate_args import BaseGenerateArgs
+from runtime import get_device_constraints
 
 
 class PromptBuilder(ABC):
@@ -17,6 +18,10 @@ class PromptBuilder(ABC):
             mode: prompt 模式 - "basic", "reflection", "with_wiki"
         """
         self.mode = mode
+
+    def _get_device_constraints(self) -> str:
+        """获取当前设备的 Prompt 约束"""
+        return get_device_constraints()
 
     @abstractmethod
     def build_new(self, gen_args: BaseGenerateArgs) -> str:
