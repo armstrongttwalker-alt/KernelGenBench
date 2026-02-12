@@ -4,6 +4,22 @@ FlagGems runtime 扩展
 补充 FlagGems runtime 中缺失的设备信息，提供统一的 runtime 接口。
 """
 import os
+
+# 防御性 import：确保设备扩展包在 FlagGems runtime 初始化前被加载
+# 这样 torch.npu / torch.musa API 才能正常使用
+_vendor = os.environ.get('GEMS_VENDOR', '')
+if _vendor == 'ascend' or os.environ.get('ASCEND_RT_VISIBLE_DEVICES'):
+    try:
+        import torch_npu  # noqa: F401
+    except ImportError:
+        pass
+
+if _vendor == 'mthreads' or os.environ.get('MUSA_VISIBLE_DEVICES'):
+    try:
+        import torch_musa  # noqa: F401
+    except ImportError:
+        pass
+
 from flag_gems.runtime import device, torch_device_fn
 
 # 设备可见性环境变量映射
