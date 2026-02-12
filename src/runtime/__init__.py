@@ -62,11 +62,29 @@ def get_device_constraints() -> str:
     return DEVICE_CONSTRAINTS.get(device.name, "")
 
 
+def get_triton_testing():
+    """
+    获取当前设备的 triton testing 模块
+
+    不同设备使用不同的 benchmark API：
+    - CUDA: triton.testing
+    - MUSA: triton.musa_testing
+
+    Returns:
+        triton testing 模块，包含 do_bench 等函数
+    """
+    import triton
+    if device.name == 'musa':
+        return triton.musa_testing
+    return triton.testing
+
+
 __all__ = [
     'device',
     'torch_device_fn',
     'get_visible_devices_env',
     'get_device_constraints',
+    'get_triton_testing',
     'VISIBLE_DEVICES_ENV',
     'DEVICE_CONSTRAINTS',
     'ENABLE_DEVICE_CONSTRAINTS',
