@@ -71,33 +71,54 @@ __all__ = [
 
 ## 3. 在 PromptBuilder 中添加设备约束
 
-**文件**: `src/generator/prompt_builder.py` 或 `src/generator/torch_prompt_builder.py`
+实际实现采用了更优雅的方案：在 `src/runtime/__init__.py` 中集中管理设备约束，通过环境变量控制开关。
+
+**文件**: `src/runtime/__init__.py`
 
 ```python
-from runtime import device
+import os
+from flag_gems.runtime import device, torch_device_fn
+
+# 设备约束开关（通过环境变量控制）
+ENABLE_DEVICE_CONSTRAINTS = os.environ.get('FLAGBENCH_ENABLE_DEVICE_CONSTRAINTS', '1') == '1'
+
+# 设备特定的 Prompt 约束
+DEVICE_CONSTRAINTS = {
+    'npu': """
+## Device-Specific Requirements
+It should be noted that the operator runs on Ascend NPU devices.
+1. In the generated operator implementation, if `import torch` is used, it must be immediately followed by `import torch_npu`.
+2. The device type is `npu`, and all device-related APIs should use `npu`, for example `device = torch.device("npu:0")`, `torch.npu.synchronize()`, etc. Always ensure consistent use of the `npu` device.
+3. Compilation errors like "error: ub overflow" usually indicate excessive Unified Buffer (UB) usage caused by large intermediate tensors. A common workaround is to split the computation into smaller tiles or chunks and handle them iteratively within the kernel.
+""",
+    'musa': """
+## Device-Specific Requirements
+It should be noted that the operator runs on MUSA devices.
+1. In the generated operator implementation, if `import torch` is used, it must be immediately followed by `import torch_musa`.
+2. The device type is `musa`, and all device-related APIs should use `musa`, for example `device = torch.device("musa:0")`, `torch.musa.synchronize()`, etc. Always ensure consistent use of the `musa` device.
+""",
+}
+
+
+def get_device_constraints() -> str:
+    """获取当前设备的 Prompt 约束（如果启用）"""
+    if not ENABLE_DEVICE_CONSTRAINTS:
+        return ""
+    return DEVICE_CONSTRAINTS.get(device.name, "")
+```
+
+**文件**: `src/generator/prompt_builder.py`
+
+```python
+from runtime import get_device_constraints
 
 class PromptBuilder(ABC):
     def _get_device_constraints(self) -> str:
-        """根据当前设备返回 Prompt 约束"""
-        if device.name == 'npu':
-            return """
-## Device-Specific Requirements
-It should be noted that the operator runs on Ascend NPU devices.
-1. If `import torch` is used, it must be immediately followed by `import torch_npu`.
-2. The device type is `npu`, e.g., `torch.device("npu:0")`, `torch.npu.synchronize()`.
-3. "ub overflow" errors indicate UB overflow - split computation into smaller chunks.
-"""
-        elif device.name == 'musa':
-            return """
-## Device-Specific Requirements
-It should be noted that the operator runs on MUSA devices.
-1. If `import torch` is used, it must be immediately followed by `import torch_musa`.
-2. The device type is `musa`, e.g., `torch.device("musa:0")`, `torch.musa.synchronize()`.
-"""
-        return ""  # CUDA 无需额外约束
+        """获取当前设备的 Prompt 约束"""
+        return get_device_constraints()
 ```
 
-在 `TorchPromptBuilder` 的 `build_new`, `build_fix` 等方法末尾调用：
+在 `TorchPromptBuilder` 的 `build_new` 和 `build_fix` 方法末尾调用（`build_optimization` 不添加设备约束）：
 
 ```python
 class TorchPromptBuilder(PromptBuilder):
@@ -105,7 +126,7 @@ class TorchPromptBuilder(PromptBuilder):
         # ... 现有代码 ...
         prompt += "You must use ```python ... ``` to format the code block.\n"
 
-        # 追加设备约束
+        # Add device constraints
         prompt += self._get_device_constraints()
 
         return prompt
@@ -113,11 +134,13 @@ class TorchPromptBuilder(PromptBuilder):
     def build_fix(self, gen_args: BaseGenerateArgs) -> str:
         # ... 现有代码 ...
 
-        # 追加设备约束
+        # Add device constraints
         prompt += self._get_device_constraints()
 
         return prompt
 ```
+
+**注意**: `build_optimization` 方法不添加设备约束，因为优化场景下原有代码已经包含了设备相关的实现。
 
 ---
 
@@ -175,20 +198,22 @@ def extract_first_code(output_string: str, code_language_types: list[str]) -> st
 
 ### 阶段 1：创建 Runtime 扩展模块
 
-- [ ] 创建 `src/runtime/__init__.py`
-- [ ] 添加 `VISIBLE_DEVICES_ENV` 映射和 `get_visible_devices_env()` 函数
-- [ ] 重新导出 FlagGems runtime 的常用对象
+- [x] 创建 `src/runtime/__init__.py`
+- [x] 添加 `VISIBLE_DEVICES_ENV` 映射和 `get_visible_devices_env()` 函数
+- [x] 重新导出 FlagGems runtime 的常用对象
 
 ### 阶段 2：集成到现有代码
 
-- [ ] 修改 `config.py`，从 runtime 获取设备名
-- [ ] 修改 `verifier.py`，使用 `get_visible_devices_env()` 设置设备可见性
-- [ ] 修改 `sampler/utils.py`，添加 None 检查
+- [x] 修改 `config.py`，从 runtime 获取设备名
+- [x] 修改 `verifier.py`，使用 `get_visible_devices_env()` 设置设备可见性
+- [x] 修改 `sampler/utils.py`，添加 None 检查
 
 ### 阶段 3：添加设备 Prompt 约束
 
-- [ ] 在 `PromptBuilder` 基类添加 `_get_device_constraints()` 方法
-- [ ] 在 `TorchPromptBuilder` 的 build 方法中调用设备约束
+- [x] 在 runtime 模块添加 `DEVICE_CONSTRAINTS` 字典和 `get_device_constraints()` 函数
+- [x] 添加 `ENABLE_DEVICE_CONSTRAINTS` 开关（环境变量 `FLAGBENCH_ENABLE_DEVICE_CONSTRAINTS`）
+- [x] 在 `PromptBuilder` 基类添加 `_get_device_constraints()` 方法
+- [x] 在 `TorchPromptBuilder` 的 `build_new` 和 `build_fix` 方法中调用设备约束
 
 ### 阶段 4：测试和验证
 
