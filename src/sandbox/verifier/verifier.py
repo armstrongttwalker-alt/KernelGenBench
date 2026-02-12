@@ -22,6 +22,7 @@ from sandbox.utils.accuracy_utils import CustomBenchmarkResult
 
 
 from flagbench.dataset import is_pytorch_op, IMPL_INFO
+from runtime import get_visible_devices_env
 
 
 def set_seed(seed):
@@ -348,7 +349,7 @@ class Verifier:
 
 
     def _verify_with_one_device(self, task_collections: List[VerifyRequest], device_id: int, result_queue: mp.Queue):
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(device_id)
+        os.environ[get_visible_devices_env()] = str(device_id)
         ctx = mp.get_context("spawn")
         for verifyrequest in task_collections:
             p  = ctx.Process(target=self._verify, kwargs={

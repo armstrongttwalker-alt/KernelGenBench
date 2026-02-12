@@ -148,6 +148,8 @@ python scripts/convert_flaggems_tests.py \
 - `FLAGBENCH_SKIP_BOTH_TEST=1`: Skip redundant double testing during verification
 - `DISPATCH_TORCH_LIB=0`: Disable custom operator dispatch (use PyTorch reference)
 - `FLAGBENCH_UPCAST=1`: Use float64 for reference computations (improves tolerance matching)
+- `FLAGBENCH_ENABLE_DEVICE_CONSTRAINTS=1`: Enable device-specific prompt constraints for NPU/MUSA (default: enabled)
+- `GEMS_VENDOR`: Override device vendor detection (values: `nvidia`, `ascend`, `mthreads`)
 
 ## Directory Structure
 

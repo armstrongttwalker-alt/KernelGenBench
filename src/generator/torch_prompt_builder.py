@@ -148,6 +148,9 @@ class TorchPromptBuilder(PromptBuilder):
         prompt += f"You must generate the valid Triton code directly without any explanations or additional text, and ensure no testing or benchmarking code is included. The code must be complete and ready to run.\n"
         prompt += f"You must use ```python ... ``` to format the code block.\n"
 
+        # Add device constraints
+        prompt += self._get_device_constraints()
+
         return prompt
 
     def build_fix(self, gen_args: BaseGenerateArgs) -> str:
@@ -255,6 +258,9 @@ class TorchPromptBuilder(PromptBuilder):
         prompt += f"You must generate the valid Triton code directly without any explanations or additional text, and ensure no testing or benchmarking code is included. The code must be complete and ready to run.\n"
         prompt += f"You must use ```python ... ``` to format the code block.\n"
         prompt += f"Do not consider the logical correctness of the torch function, only focus on fixing the Triton kernel logic based on the error message provided above.\n"
+
+        # Add device constraints
+        prompt += self._get_device_constraints()
 
         return prompt
 

@@ -97,7 +97,10 @@ class TritonKernelGenerator(BaseGenerator):
                 processed_results.append(extracted_code.strip())
             else:
                 console.print("Code extraction failed, using raw output.")
-                processed_results.append(res.strip())
+                if res is None:
+                    processed_results.append('')
+                else:
+                    processed_results.append(res.strip())
         
         # Apply decouple_bench if from_mcp is True
         if self.from_mcp:
