@@ -159,5 +159,8 @@ result.json
 
 TODO.md
 tmp/
+.history/
+output*/
+test_server_results/
 
 .claude/
