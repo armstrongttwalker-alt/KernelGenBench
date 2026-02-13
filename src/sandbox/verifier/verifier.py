@@ -47,6 +47,7 @@ class VerifyConfig:
     save_log: bool = True
     acc_timeout: int = 300    # seconds
     perf_timeout: int = 600    # seconds
+    manage_device_visibility: bool = True  # Whether to set device visibility env var
 
 @dataclass
 class Source:
@@ -349,7 +350,10 @@ class Verifier:
 
 
     def _verify_with_one_device(self, task_collections: List[VerifyRequest], device_id: int, result_queue: mp.Queue):
-        os.environ[get_visible_devices_env()] = str(device_id)
+        # Only set device visibility if manage_device_visibility is enabled
+        # When running under VerifierServer, this should be False as the server manages visibility
+        if self.config.manage_device_visibility:
+            os.environ[get_visible_devices_env()] = str(device_id)
         ctx = mp.get_context("spawn")
         for verifyrequest in task_collections:
             p  = ctx.Process(target=self._verify, kwargs={
