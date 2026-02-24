@@ -340,31 +340,49 @@ python scripts/analyze/analyze_speedup_txt.py \
 ### 单元测试
 
 #### 1. `test_accuracy_ut.py`
-**功能**: 准确性单元测试，支持单个或多个算子测试
+**功能**: 测试函数验证工具，用于验证某个算子对应的**测试函数本身**是否能够正常运行通过
+
+> **注意**: 此脚本不是用来测试算子实现是否正确，而是验证测试函数（accuracy test functions）的正确性。它使用 mock triton code 来运行测试函数，确保测试基础设施正常工作。
+
+**支持的测试集**:
+| 测试集 | 算子数量 | 说明 |
+|--------|----------|------|
+| `v2` | 50 | V2 PyTorch 算子 |
+| `v2_1` | 111 | V2.1 PyTorch 算子 |
+| `cupy` | 47 | cuBLAS 算子（通过 cupy） |
 
 **用法**:
 ```bash
-# 测试单个算子
-python test/test_accuracy_ut.py --name abs
+# 列出所有可用测试集
+python test/test_accuracy_ut.py --list-sets
 
-# 测试多个算子（逗号分隔）
-python test/test_accuracy_ut.py --name abs,mul,div
+# 列出指定测试集的算子
+python test/test_accuracy_ut.py --list-ops v2
 
-# 测试所有算子
-python test/test_accuracy_ut.py --name all
+# 测试 V2 测试集的单个算子
+python test/test_accuracy_ut.py --test-set v2 --name abs
+
+# 测试 V2.1 测试集的多个算子
+python test/test_accuracy_ut.py --test-set v2_1 --name add,mul,softmax
+
+# 测试 cupy 测试集的所有算子
+python test/test_accuracy_ut.py --test-set cupy --name all
 
 # 指定设备数量和超时
-python test/test_accuracy_ut.py --name abs --device-count 8 --timeout 300
+python test/test_accuracy_ut.py --test-set v2 --name abs --device-count 8 --timeout 300
 
-# 使用自定义测试文件
-python test/test_accuracy_ut.py --name abs --test-file path/to/test.py
+# 使用自定义测试文件（覆盖默认模块）
+python test/test_accuracy_ut.py --name abs --test-file flagbench.accuracy.test_v2_ops
 ```
 
 **参数**:
+- `--test-set`: 测试集名称（`v2`, `v2_1`, `cupy`，默认: `v2`）
 - `--name`: 算子名称（支持逗号分隔的多个算子或 `all`）
 - `--device-count`: GPU 数量（默认: 1）
 - `--timeout`: 超时时间（秒，默认: 300）
-- `--test-file`: 自定义测试文件路径（可选）
+- `--test-file`: 自定义测试文件路径（可选，覆盖 `--test-set` 的默认模块）
+- `--list-sets`: 列出所有可用测试集
+- `--list-ops`: 列出指定测试集的所有算子
 
 #### 2. `test_verifier_operator.py`
 **功能**: 验证器算子测试
