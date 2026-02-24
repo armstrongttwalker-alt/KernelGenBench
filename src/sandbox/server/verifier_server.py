@@ -51,7 +51,7 @@ from runtime import device, torch_device_fn, get_visible_devices_env
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent.parent.parent
 # Default test script - can be overridden via command line
-TEST_SCRIPT = PROJECT_ROOT / "scripts" / "tle_optimization" / "test_single_operator.py"
+TEST_SCRIPT = SCRIPT_DIR / "test_single_operator.py"
 
 logging.basicConfig(
     level=logging.INFO,
