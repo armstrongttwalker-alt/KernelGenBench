@@ -52,6 +52,7 @@ class VerifierClient:
         operator_name: str,
         kernel_code: str,
         test_module: str = "",
+        test_set: str = "v2_1",
         timeout: int = 300
     ) -> dict:
         """Submit a test request to the server.
@@ -59,7 +60,8 @@ class VerifierClient:
         Args:
             operator_name: Name of the operator to test
             kernel_code: Source code of the kernel
-            test_module: Optional test module name
+            test_module: Optional test module name (takes priority over test_set)
+            test_set: Test set to use: v2, v2_1, cupy (default: v2_1)
             timeout: Timeout in seconds (default: 300)
 
         Returns:
@@ -69,6 +71,7 @@ class VerifierClient:
             "operator_name": operator_name,
             "kernel_code": kernel_code,
             "test_module": test_module,
+            "test_set": test_set,
             "timeout": timeout,
         }
 
@@ -104,6 +107,7 @@ class VerifierClient:
         self,
         kernel_file: str,
         test_module: str = "",
+        test_set: str = "v2_1",
         timeout: int = 300,
         output_file: Optional[str] = None
     ) -> dict:
@@ -111,7 +115,8 @@ class VerifierClient:
 
         Args:
             kernel_file: Path to the kernel file
-            test_module: Optional test module name
+            test_module: Optional test module name (takes priority over test_set)
+            test_set: Test set to use: v2, v2_1, cupy (default: v2_1)
             timeout: Timeout in seconds (default: 300)
             output_file: Optional path to save the result
 
@@ -131,6 +136,7 @@ class VerifierClient:
             operator_name=operator_name,
             kernel_code=kernel_code,
             test_module=test_module,
+            test_set=test_set,
             timeout=timeout,
         )
 
@@ -201,7 +207,14 @@ Examples:
         "--test-module",
         type=str,
         default="",
-        help="Test module name"
+        help="Test module name (takes priority over --test-set)"
+    )
+    parser.add_argument(
+        "--test-set",
+        type=str,
+        choices=["v2", "v2_1", "cupy"],
+        default="v2_1",
+        help="Test set to use (default: v2_1)"
     )
     parser.add_argument(
         "--timeout",
@@ -263,6 +276,7 @@ Examples:
             operator_name=operator_name,
             kernel_code=kernel_code,
             test_module=args.test_module,
+            test_set=args.test_set,
             timeout=args.timeout,
         )
 

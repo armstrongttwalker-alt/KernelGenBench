@@ -177,6 +177,7 @@ class Task:
     operator_name: str
     kernel_code: str
     test_module: str
+    test_set: str
     timeout: int
     output_dir: str
 
@@ -228,11 +229,13 @@ class TasksManager:
                   f"--output-dir {task.output_dir}"
             if task.test_module:
                 cmd += f" --test-module {task.test_module}"
+            elif task.test_set:
+                cmd += f" --test-set {task.test_set}"
 
             logger.info(f"Executing command: {cmd}")
 
             # Execute subprocess asynchronously
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             returncode, stdout, stderr = await loop.run_in_executor(
                 None, self._run_subprocess_shell, cmd, task.timeout + 120
             )
@@ -300,7 +303,8 @@ class TestRequest(BaseModel):
     """Test request model."""
     operator_name: str = Field(..., description="Operator name")
     kernel_code: str = Field(..., description="Kernel source code content")
-    test_module: str = Field(default="", description="Test module")
+    test_module: str = Field(default="", description="Test module (takes priority over test_set)")
+    test_set: str = Field(default="v2_1", description="Test set: v2, v2_1, cupy")
     timeout: int = Field(default=300, description="Timeout in seconds")
 
 
@@ -360,6 +364,7 @@ class VerifierServer:
                 operator_name=request.operator_name,
                 kernel_code=request.kernel_code,
                 test_module=request.test_module,
+                test_set=request.test_set,
                 timeout=request.timeout,
                 output_dir=str(self.output_dir)
             )
