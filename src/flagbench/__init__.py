@@ -115,7 +115,7 @@ accuracy_modules = [
     "flagbench.accuracy.cupy.test_zgeru_cublas_ops",
     "flagbench.accuracy.cupy.test_zscal_cublas_ops",
     "flagbench.accuracy.cupy.test_zsyrk_cublas_ops",
-    # cuBLAS ctypes operators (10 ops, excluding CgemmStridedBatched)
+    # cuBLAS ctypes operators (10 ops)
     "flagbench.accuracy.cublas.test_cublasSaxpy_v2",
     "flagbench.accuracy.cublas.test_cublasSscal_v2",
     "flagbench.accuracy.cublas.test_cublasSgemmStridedBatched",
@@ -126,6 +126,28 @@ accuracy_modules = [
     "flagbench.accuracy.cublas.test_cublasDgemvStridedBatched",
     "flagbench.accuracy.cublas.test_cublasCgemvStridedBatched",
     "flagbench.accuracy.cublas.test_cublasZgemvStridedBatched",
+    # vLLM operators (v0.15)
+    "flagbench.accuracy.vllm15.test_moe_align_block_size",
+    "flagbench.accuracy.vllm15.test_selective_scan_fwd",
+    "flagbench.accuracy.vllm15.test_paged_attention_v1",
+    "flagbench.accuracy.vllm15.test_scaled_fp8_quant",
+    "flagbench.accuracy.vllm15.test_rotary_embedding",
+    "flagbench.accuracy.vllm15.test_fused_add_rms_norm",
+    "flagbench.accuracy.vllm15.test_topk_softmax",
+    "flagbench.accuracy.vllm15.test_fused_qk_norm_rope",
+    "flagbench.accuracy.vllm15.test_scaled_int8_quant",
+    "flagbench.accuracy.vllm15.test_cutlass_scaled_mm",
+    # vLLM operators (v0.13)
+    "flagbench.accuracy.vllm13.test_moe_align_block_size",
+    "flagbench.accuracy.vllm13.test_selective_scan_fwd",
+    "flagbench.accuracy.vllm13.test_paged_attention_v1",
+    "flagbench.accuracy.vllm13.test_scaled_fp8_quant",
+    "flagbench.accuracy.vllm13.test_rotary_embedding",
+    "flagbench.accuracy.vllm13.test_fused_add_rms_norm",
+    "flagbench.accuracy.vllm13.test_topk_softmax",
+    "flagbench.accuracy.vllm13.test_fused_qk_norm_rope",
+    "flagbench.accuracy.vllm13.test_scaled_int8_quant",
+    "flagbench.accuracy.vllm13.test_cutlass_scaled_mm",
 ]
 perf_modules = [
     "flagbench.perfermance.test_attention_perf",
