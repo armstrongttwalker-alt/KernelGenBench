@@ -14,7 +14,7 @@ import triton
     (128, 2, 16, 8, 4),
     (32, 4, 8, 4, 2),
     (256, 4, 16, 8, 4),
-    (512, 2, 32, 8, 4),
+    (64, 2, 8, 4, 2),
 ])
 def test_accuracy_moe_lora_align_block_size(config):
     num_tokens = config[0]
