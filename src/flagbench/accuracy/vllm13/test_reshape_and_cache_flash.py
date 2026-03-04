@@ -10,8 +10,13 @@ import triton
 @parametrize("shape", [
     (4, 8, 64, 16, 16),
     (32, 8, 64, 32, 16),
+    (128, 8, 64, 64, 16),
     (128, 16, 128, 64, 16),
+    (256, 8, 64, 64, 16),
+    (256, 16, 128, 64, 16),
+    (512, 16, 64, 128, 16),
     (512, 32, 128, 128, 16),
+    (1024, 16, 128, 256, 16),
 ])
 @parametrize("dtype", [torch.float16, torch.bfloat16])
 def test_accuracy_reshape_and_cache_flash(shape, dtype):

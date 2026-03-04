@@ -12,8 +12,10 @@ import triton
     (8, 8, 64),
     (16, 4, 128),
     (8, 4, 256),
+    (32, 8, 128),
     (32, 8, 64),
     (64, 8, 128),
+    (64, 16, 256),
     (128, 16, 256),
 ])
 def test_accuracy_batched_moe_align_block_size(config):

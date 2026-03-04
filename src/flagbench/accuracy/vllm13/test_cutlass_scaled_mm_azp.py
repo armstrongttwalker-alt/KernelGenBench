@@ -13,8 +13,10 @@ import triton
     (32, 128, 128, True, False),
     (128, 256, 256, False, True),
     (128, 256, 256, True, True),
+    (128, 256, 256, False, False),
     (256, 512, 512, False, False),
     (256, 512, 512, True, True),
+    (256, 512, 512, True, False),
 ])
 def test_accuracy_cutlass_scaled_mm_azp(config):
     # ===== Accuracy Test =====

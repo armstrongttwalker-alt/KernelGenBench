@@ -11,8 +11,13 @@ import triton
     # (num_tokens, kv_lora_rank, pe_dim, num_blocks, block_size)
     (4, 512, 64, 16, 16),
     (32, 512, 64, 32, 16),
+    (128, 256, 64, 64, 16),
     (128, 256, 128, 64, 16),
+    (256, 256, 64, 64, 16),
     (256, 512, 64, 64, 16),
+    (512, 256, 128, 128, 16),
+    (512, 512, 64, 128, 16),
+    (1024, 512, 64, 256, 16),
 ])
 @parametrize("dtype", [torch.float16, torch.bfloat16])
 def test_accuracy_concat_and_cache_mla(shape, dtype):

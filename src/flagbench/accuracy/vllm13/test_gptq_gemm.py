@@ -10,7 +10,9 @@ import triton
 @parametrize("config", [
     # (M, K, N, bit, use_exllama, use_v2_format)
     (1, 256, 256, 4, True, False),
+    (16, 256, 256, 4, True, False),
     (32, 256, 256, 4, True, False),
+    (64, 512, 512, 4, True, False),
 ])
 def test_accuracy_gptq_gemm(config):
     # ===== Accuracy Test =====
@@ -56,7 +58,7 @@ def test_accuracy_gptq_gemm(config):
     assert torch.equal(act_out, ref_out), f"Mismatch: max diff={(act_out - ref_out).abs().max()}"
 
     # ===== Performance Test =====
-    if K < 512:
+    if K < 256:
         return None
 
     ms_baseline = triton.testing.do_bench(

@@ -11,8 +11,13 @@ import triton
     # (num_tokens, num_heads, head_dim, num_blocks, block_size, x)
     (4, 8, 64, 16, 16, 8),
     (32, 8, 64, 32, 16, 8),
+    (128, 8, 64, 64, 16, 8),
     (128, 16, 128, 64, 16, 8),
+    (256, 8, 64, 64, 16, 8),
+    (256, 16, 128, 64, 16, 8),
+    (512, 16, 64, 128, 16, 8),
     (512, 32, 128, 128, 16, 8),
+    (1024, 16, 128, 256, 16, 8),
 ])
 @parametrize("dtype", [torch.float16, torch.bfloat16])
 def test_accuracy_reshape_and_cache(shape, dtype):

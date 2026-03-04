@@ -14,7 +14,10 @@ import triton
     (16, 256, 256, 4),
     (4, 256, 256, 8),
     (8, 512, 512, 4),
+    (8, 512, 512, 8),
+    (16, 512, 512, 4),
     (16, 512, 512, 8),
+    (8, 1024, 512, 4),
 ])
 def test_accuracy_awq_marlin_moe_repack(config):
     num_experts = config[0]

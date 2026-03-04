@@ -16,6 +16,8 @@ from vllm.model_executor.layers.quantization.utils.marlin_utils_test_24 import m
     (128, 256, 256),
     (256, 256, 512),
     (128, 512, 256),
+    (256, 512, 512),
+    (128, 256, 512),
 ])
 def test_accuracy_gptq_marlin_24_gemm(config):
     # ===== Accuracy Test =====

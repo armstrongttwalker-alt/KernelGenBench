@@ -8,7 +8,7 @@ import triton
 
 
 @label("apply_repetition_penalties_cuda")
-@parametrize("shape", [(1, 32), (4, 100), (128, 512), (1024, 32000), (2048, 32000)])
+@parametrize("shape", [(1, 32), (4, 100), (128, 512), (256, 1024), (512, 4096), (1024, 32000), (2048, 16000), (4096, 8000), (2048, 32000), (4096, 16000)])
 @parametrize("dtype", [torch.float32])
 def test_accuracy_apply_repetition_penalties_cuda(shape, dtype):
     batch, vocab = shape
