@@ -207,15 +207,23 @@ def test_accuracy_cupy_matmul(m, k, n, dtype):
 
 ## 运行测试
 
+> **注意**: `test_accuracy_ut.py` 用于验证**测试函数本身**是否正常工作，而非测试算子实现的正确性。
+
 ```bash
+# 列出 cupy 测试集的所有算子
+python test/test_accuracy_ut.py --list-ops cupy
+
 # 测试单个算子
-python test/test_accuracy_ut.py --name cupy::matmul
+python test/test_accuracy_ut.py --test-set cupy --name sgemm
 
 # 测试多个算子
-python test/test_accuracy_ut.py --name cupy::add,cupy::matmul
+python test/test_accuracy_ut.py --test-set cupy --name saxpy,sgemm,dgemm
+
+# 测试所有 cupy 算子
+python test/test_accuracy_ut.py --test-set cupy --name all
 
 # 使用多 GPU
-python test/test_accuracy_ut.py --name cupy::matmul --device-count 8
+python test/test_accuracy_ut.py --test-set cupy --name sgemm --device-count 8
 ```
 
 ---

@@ -73,24 +73,33 @@ pip install .
 
 ### Running Tests
 
-**Test single operator accuracy:**
+> **Note**: `test_accuracy_ut.py` verifies that **test functions** work correctly, not operators themselves. It uses mock triton code to validate the test infrastructure.
+
+**List available test sets:**
 ```bash
-python test/test_accuracy_ut.py --name <operator_name>
+python test/test_accuracy_ut.py --list-sets
 ```
 
-**Test multiple operators:**
+**Test V2 operators (default):**
 ```bash
-python test/test_accuracy_ut.py --name abs,mul,div
+python test/test_accuracy_ut.py --test-set v2 --name abs
+python test/test_accuracy_ut.py --test-set v2 --name abs,mul,div
+python test/test_accuracy_ut.py --test-set v2 --name all
 ```
 
-**Test all operators:**
+**Test V2.1 operators:**
 ```bash
-python test/test_accuracy_ut.py --name all
+python test/test_accuracy_ut.py --test-set v2_1 --name add,softmax
+```
+
+**Test cuBLAS operators:**
+```bash
+python test/test_accuracy_ut.py --test-set cupy --name saxpy,sgemm
 ```
 
 **With GPU control:**
 ```bash
-python test/test_accuracy_ut.py --name abs --device-count 8 --timeout 300
+python test/test_accuracy_ut.py --test-set v2 --name abs --device-count 8 --timeout 300
 ```
 
 ### Generating Kernels
@@ -148,6 +157,8 @@ python scripts/convert_flaggems_tests.py \
 - `FLAGBENCH_SKIP_BOTH_TEST=1`: Skip redundant double testing during verification
 - `DISPATCH_TORCH_LIB=0`: Disable custom operator dispatch (use PyTorch reference)
 - `FLAGBENCH_UPCAST=1`: Use float64 for reference computations (improves tolerance matching)
+- `FLAGBENCH_ENABLE_DEVICE_CONSTRAINTS=1`: Enable device-specific prompt constraints for NPU/MUSA (default: enabled)
+- `GEMS_VENDOR`: Override device vendor detection (values: `nvidia`, `ascend`, `mthreads`)
 
 ## Directory Structure
 
