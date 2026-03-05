@@ -1,8 +1,20 @@
 """
 cuBLAS Operations Test Functions
 
-40 new cuBLAS operators
+10 cuBLAS operators (original) + 40 new cuBLAS operators
 """
+
+# 10 original cuBLAS operators
+from .test_cublasSaxpy_v2 import test_accuracy_cublasSaxpy_v2
+from .test_cublasSscal_v2 import test_accuracy_cublasSscal_v2
+from .test_cublasSgemmStridedBatched import test_accuracy_cublasSgemmStridedBatched
+from .test_cublasDgemmStridedBatched import test_accuracy_cublasDgemmStridedBatched
+from .test_cublasHgemmStridedBatched import test_accuracy_cublasHgemmStridedBatched
+from .test_cublasZgemmStridedBatched import test_accuracy_cublasZgemmStridedBatched
+from .test_cublasSgemvStridedBatched import test_accuracy_cublasSgemvStridedBatched
+from .test_cublasDgemvStridedBatched import test_accuracy_cublasDgemvStridedBatched
+from .test_cublasCgemvStridedBatched import test_accuracy_cublasCgemvStridedBatched
+from .test_cublasZgemvStridedBatched import test_accuracy_cublasZgemvStridedBatched
 
 # 40 new cuBLAS operators
 from .test_cublasCcopy_v2 import test_accuracy_cublasCcopy_v2
@@ -48,6 +60,18 @@ from .test_cublasZtrsmBatched import test_accuracy_cublasZtrsmBatched
 
 
 __all__ = [
+    # 10 original operators
+    'test_accuracy_cublasSaxpy_v2',
+    'test_accuracy_cublasSscal_v2',
+    'test_accuracy_cublasSgemmStridedBatched',
+    'test_accuracy_cublasDgemmStridedBatched',
+    'test_accuracy_cublasHgemmStridedBatched',
+    'test_accuracy_cublasZgemmStridedBatched',
+    'test_accuracy_cublasSgemvStridedBatched',
+    'test_accuracy_cublasDgemvStridedBatched',
+    'test_accuracy_cublasCgemvStridedBatched',
+    'test_accuracy_cublasZgemvStridedBatched',
+    # 40 new operators
     'test_accuracy_cublasCcopy_v2',
     'test_accuracy_cublasCdotu_v2',
     'test_accuracy_cublasCgemmStridedBatched',
