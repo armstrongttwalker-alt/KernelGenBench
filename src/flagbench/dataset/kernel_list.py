@@ -1038,6 +1038,93 @@ CUPY_OPERATORS = {
 # PYTORCH_OPERATORS = BENCHMARK_OPERATORS
 # PYTORCH_OPERATORS = V2_OPERATORS
 
+# ============================================================
+# VLLM13 OPERATORS (50 ops) - 算子名列表，函数延迟加载
+# ============================================================
+VLLM_OPERATOR_NAMES = [
+    'allspark_repack_weight', 'allspark_w8a16_gemm',
+    'apply_repetition_penalties', 'apply_repetition_penalties_cuda',
+    'awq_marlin_moe_repack', 'awq_marlin_repack',
+    'batched_moe_align_block_size', 'concat_and_cache_mla',
+    'convert_fp8', 'convert_vertical_slash_indexes',
+    'copy_blocks', 'copy_blocks_mla',
+    'cp_gather_cache', 'cp_gather_indexer_k_quant_cache',
+    'cutlass_pack_scale_fp8', 'cutlass_scaled_mm', 'cutlass_scaled_mm_azp',
+    'fused_add_rms_norm', 'fused_qk_norm_rope',
+    'gather_and_maybe_dequant_cache',
+    'ggml_mul_mat_a8', 'ggml_mul_mat_vec_a8',
+    'gptq_gemm', 'gptq_marlin_24_gemm', 'gptq_marlin_gemm',
+    'gptq_marlin_moe_repack', 'gptq_marlin_repack', 'gptq_shuffle',
+    'grouped_topk', 'hadacore_transform',
+    'marlin_int4_fp8_preprocess', 'merge_attn_states',
+    'moe_align_block_size', 'moe_lora_align_block_size', 'moe_sum',
+    'paged_attention_v1', 'paged_attention_v2',
+    'permute_cols', 'reshape_and_cache', 'reshape_and_cache_flash',
+    'rms_norm', 'rms_norm_dynamic_per_token_quant', 'rms_norm_per_block_quant',
+    'rotary_embedding', 'scaled_fp8_quant', 'scaled_int8_quant',
+    'selective_scan_fwd', 'shuffle_rows', 'swap_blocks', 'topk_softmax',
+]
+
+# ============================================================
+# CUBLAS OPERATORS (50 ops) - 算子名列表，函数延迟加载
+# ============================================================
+CUBLAS_OPERATOR_NAMES = [
+    'cublasCcopy_v2', 'cublasCdotu_v2',
+    'cublasCgemmStridedBatched', 'cublasCgemmStridedBatched_64',
+    'cublasCgemm_v2', 'cublasCgemvBatched_64', 'cublasCgemvStridedBatched', 'cublasCgemv_v2',
+    'cublasCgeru_v2', 'cublasCsymm_v2', 'cublasCsymv_v2', 'cublasCsyrkEx',
+    'cublasDasum_v2', 'cublasDaxpy_v2', 'cublasDcopy_v2',
+    'cublasDgemmBatched', 'cublasDgemmStridedBatched', 'cublasDgemmStridedBatched_64',
+    'cublasDgemvBatched', 'cublasDgemvStridedBatched', 'cublasDgemv_v2',
+    'cublasDsbmv_v2', 'cublasDsyr2_v2', 'cublasDtrsmBatched',
+    'cublasHgemmBatched', 'cublasHgemmStridedBatched',
+    'cublasSaxpy_v2', 'cublasSdgmm', 'cublasSdot_v2', 'cublasSgeam',
+    'cublasSgemmBatched_64', 'cublasSgemmEx', 'cublasSgemmStridedBatched', 'cublasSgemm_v2',
+    'cublasSgemvBatched', 'cublasSgemvStridedBatched', 'cublasSger_v2', 'cublasSscal_v2',
+    'cublasSsyrk_v2', 'cublasStbmv_v2', 'cublasStrsm_v2', 'cublasStrsv_v2',
+    'cublasZdotc_v2', 'cublasZgemmBatched', 'cublasZgemmStridedBatched',
+    'cublasZgemvBatched', 'cublasZgemvStridedBatched', 'cublasZgerc_v2',
+    'cublasZswap_v2', 'cublasZtrsmBatched',
+]
+
+# ============================================================
+# 200 OPS BENCHMARK - 算子名列表 (50 vllm13 + 50 cublas + 100 torch later)
+# ============================================================
+OPS_200_OPERATOR_NAMES = (
+    [f'vllm13::{name}' for name in VLLM_OPERATOR_NAMES] +
+    [f'cublas::{name}' for name in CUBLAS_OPERATOR_NAMES]
+)
+
+
+def _load_vllm_operators():
+    """延迟加载 VLLM baseline 函数"""
+    from .baseline import vllm13
+    return {f'vllm13::{name}': getattr(vllm13, name) for name in VLLM_OPERATOR_NAMES}
+
+
+def _load_cublas_operators():
+    """延迟加载 CUBLAS baseline 函数"""
+    from .baseline import cublas
+    return {f'cublas::{name}': getattr(cublas, name) for name in CUBLAS_OPERATOR_NAMES}
+
+
+def get_vllm_operators():
+    """获取 VLLM_OPERATORS 字典"""
+    return _load_vllm_operators()
+
+
+def get_cublas_operators():
+    """获取 CUBLAS_OPERATORS 字典"""
+    return _load_cublas_operators()
+
+
+def get_ops_200_operators():
+    """获取 OPS_200_OPERATORS 字典 (50 vllm + 50 cublas)"""
+    ops = {}
+    ops.update(_load_vllm_operators())
+    ops.update(_load_cublas_operators())
+    return ops
+
 # if os.environ.get("FLAGBENCH_USE_DYNAMIC_IMPL_INFO", "0") == "1":
 #     dynamic_impl_info = DynamicImplInfo()
 #     IMPL_INFO = dynamic_impl_info

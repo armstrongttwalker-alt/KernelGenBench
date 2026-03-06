@@ -23,12 +23,13 @@ class CublasAdapter(FrameworkAdapter):
         if "::" not in op_name:
             raise ValueError(f"Invalid op_name format: {op_name}")
 
-        from flagbench.dataset import CUBLAS_OPERATORS
+        from flagbench.dataset import get_cublas_operators
+        cublas_operators = get_cublas_operators()
 
-        if op_name not in CUBLAS_OPERATORS:
+        if op_name not in cublas_operators:
             raise KeyError(f"Operator {op_name} not found")
 
-        return CUBLAS_OPERATORS[op_name]
+        return cublas_operators[op_name]
 
     def get_signature_info(self, func: Any, op_name: str) -> Dict:
         try:

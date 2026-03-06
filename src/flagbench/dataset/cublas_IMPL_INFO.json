@@ -903,7 +903,7 @@
         "role": "scalar"
       },
       {
-        "name": "A",
+        "name": "Aarray",
         "type": "const double* const",
         "role": "input"
       },
@@ -913,7 +913,7 @@
         "role": "value"
       },
       {
-        "name": "B",
+        "name": "Barray",
         "type": "double* const",
         "role": "input"
       },
@@ -1995,7 +1995,7 @@
         "role": "scalar"
       },
       {
-        "name": "A",
+        "name": "Aarray",
         "type": "const cuDoubleComplex* const",
         "role": "input"
       },
@@ -2005,7 +2005,7 @@
         "role": "value"
       },
       {
-        "name": "B",
+        "name": "Barray",
         "type": "cuDoubleComplex* const",
         "role": "input"
       },

@@ -23,12 +23,13 @@ class VllmAdapter(FrameworkAdapter):
         if "::" not in op_name:
             raise ValueError(f"Invalid op_name format: {op_name}")
 
-        from flagbench.dataset import VLLM_OPERATORS
+        from flagbench.dataset import get_vllm_operators
+        vllm_operators = get_vllm_operators()
 
-        if op_name not in VLLM_OPERATORS:
+        if op_name not in vllm_operators:
             raise KeyError(f"Operator {op_name} not found")
 
-        return VLLM_OPERATORS[op_name]
+        return vllm_operators[op_name]
 
     def get_signature_info(self, func: Any, op_name: str) -> Dict:
         try:

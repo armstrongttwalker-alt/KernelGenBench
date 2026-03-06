@@ -45,6 +45,68 @@ logger = logging.getLogger(__name__)
 mock_triton_code = "mock triton code"
 
 
+class Ops200Adapter:
+    """200ops 适配器，根据 op_name 前缀分发到 VllmAdapter 或 CublasAdapter"""
+
+    def __init__(self):
+        from flagbench.framework.vllm_adapter import VllmAdapter
+        from flagbench.framework.cublas_adapter import CublasAdapter
+        self.vllm_adapter = VllmAdapter()
+        self.cublas_adapter = CublasAdapter()
+
+    def _get_adapter(self, op_name: str):
+        if op_name.startswith("vllm13::"):
+            return self.vllm_adapter
+        elif op_name.startswith("cublas::"):
+            return self.cublas_adapter
+        else:
+            raise ValueError(f"Unknown op_name prefix: {op_name}")
+
+    def get_operator_function(self, op_name: str):
+        return self._get_adapter(op_name).get_operator_function(op_name)
+
+    def create_generate_args(self, op_name: str, func, impl_info):
+        return self._get_adapter(op_name).create_generate_args(op_name, func, impl_info)
+
+    def get_impl_info(self, kernel_name: str):
+        # 尝试从两个 adapter 获取
+        try:
+            return self.vllm_adapter.get_impl_info(kernel_name)
+        except:
+            return self.cublas_adapter.get_impl_info(kernel_name)
+
+
+class Ops200PromptBuilder:
+    """200ops prompt builder，根据 args 类型分发"""
+
+    def __init__(self, mode: str = "basic"):
+        from generator.vllm_prompt_builder import VllmPromptBuilder
+        from generator.cublas_prompt_builder import CublasPromptBuilder
+        self.vllm_builder = VllmPromptBuilder(mode=mode)
+        self.cublas_builder = CublasPromptBuilder(mode=mode)
+
+    def _get_builder(self, gen_args):
+        from flagbench.framework.generate_args import VllmGenerateArgs, CublasGenerateArgs
+        if isinstance(gen_args, VllmGenerateArgs):
+            return self.vllm_builder
+        elif isinstance(gen_args, CublasGenerateArgs):
+            return self.cublas_builder
+        else:
+            raise TypeError(f"Unknown args type: {type(gen_args)}")
+
+    def build(self, gen_args):
+        return self._get_builder(gen_args).build(gen_args)
+
+    def build_new(self, gen_args):
+        return self._get_builder(gen_args).build_new(gen_args)
+
+    def build_fix(self, gen_args):
+        return self._get_builder(gen_args).build_fix(gen_args)
+
+    def build_optimization(self, gen_args):
+        return self._get_builder(gen_args).build_optimization(gen_args)
+
+
 class PassAtKTester:
     def __init__(
         self,
@@ -58,6 +120,8 @@ class PassAtKTester:
         custom_test_modules: Optional[List[str]] = None,
         device_count: int = 8,
         debug: bool = False,
+        single_test: bool = False,
+        op_name: Optional[str] = None,
         reflection: bool = False,
         use_wiki: bool = False,
     ):
@@ -77,6 +141,8 @@ class PassAtKTester:
         self.adapter = None  # Framework adapter (TorchAdapter or CupyAdapter)
 
         self.debug = debug
+        self.single_test = single_test
+        self.op_name = op_name
         self.reflection = reflection
         
         # Track results
@@ -128,6 +194,9 @@ class PassAtKTester:
                 case "cupy":
                     from flagbench.dataset import CUPY_OPERATORS
                     self.operator_loader = CUPY_OPERATORS  # Already in flat format
+                case "200ops":
+                    from flagbench.dataset import get_ops_200_operators
+                    self.operator_loader = get_ops_200_operators()  # 50 vllm + 50 cublas
                 case _:
                     raise ValueError(f"Unsupported dataset: {self.dataset}")
 
@@ -136,8 +205,8 @@ class PassAtKTester:
             self.adapter = self._create_adapter()
 
             # 根据 dataset 设置 create_generate_args 方法
-            if self.dataset == "cupy":
-                # 对于 cupy dataset，使用 adapter 的方法
+            if self.dataset in ["cupy", "200ops"]:
+                # 对于 cupy/200ops dataset，使用 adapter 的方法
                 self.create_generate_args = self._create_cupy_generate_args_wrapper()
             else:
                 # 对于 torch 相关的 dataset，使用现有的函数
@@ -174,6 +243,12 @@ class PassAtKTester:
             prompt_builder = CupyPromptBuilder(mode=mode)
             logger.info(f"Created CupyPromptBuilder with mode: {mode}")
             return prompt_builder
+        elif self.dataset == "200ops":
+            # 200ops 使用 Ops200PromptBuilder 根据 args 类型分发
+            mode = "with_wiki" if self.use_wiki else "basic"
+            prompt_builder = Ops200PromptBuilder(mode=mode)
+            logger.info(f"Created Ops200PromptBuilder for 200ops with mode: {mode}")
+            return prompt_builder
         else:
             raise ValueError(f"Unsupported dataset for PromptBuilder: {self.dataset}")
 
@@ -195,6 +270,10 @@ class PassAtKTester:
         elif self.dataset == "cupy":
             adapter = CupyAdapter()
             logger.info(f"Created CupyAdapter for dataset: {self.dataset}")
+            return adapter
+        elif self.dataset == "200ops":
+            adapter = Ops200Adapter()
+            logger.info(f"Created Ops200Adapter for dataset: {self.dataset}")
             return adapter
         else:
             raise ValueError(f"Unsupported dataset for Adapter: {self.dataset}")
@@ -244,8 +323,22 @@ class PassAtKTester:
             # 静态加载 - 预定义字典（已经是扁平的）
             self.all_operators = self.operator_loader
 
+        # 指定单个算子模式
+        if self.op_name:
+            if self.op_name in self.all_operators:
+                self.all_operators = {self.op_name: self.all_operators[self.op_name]}
+                logger.info(f"Op-name mode: selected operator {self.op_name}")
+            else:
+                raise ValueError(f"Operator {self.op_name} not found in dataset. Available operators: {list(self.all_operators.keys())[:10]}...")
+        # Single-test模式：随机选1个算子
+        elif self.single_test:
+            import random
+            items = list(self.all_operators.items())
+            chosen = random.choice(items)
+            self.all_operators = {chosen[0]: chosen[1]}
+            logger.info(f"Single-test mode: selected operator {chosen[0]}")
         # Debug模式：限制为前8个算子
-        if self.debug:
+        elif self.debug:
             self.all_operators = dict(list(self.all_operators.items())[:8])
 
         total_ops = len(self.all_operators)
@@ -493,7 +586,7 @@ class PassAtKTester:
             source=[Source(
                 source=kernel_code,
                 function_name=op_name, 
-                namespace="triton" if add_namespace_triton else ""
+                namespace="triton"  # if add_namespace_triton else ""
             )],
             test_func=[test_func] if test_func else None,
         )
@@ -736,7 +829,7 @@ def main():
     parser.add_argument("--name", type=str, default="aten", help="Namespace to test (default: aten)")
     parser.add_argument("--acc-test-func-path", type=str, default="", help="Path to the accuracy test function directory")
     parser.add_argument("--benchmark-func-path", type=str, default="", help="Path to the performance test function directory")
-    parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["pytorch", "gems", "v1", "v2", "v2_1", "qwen_next", "cupy"])
+    parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["pytorch", "gems", "v1", "v2", "v2_1", "qwen_next", "cupy", "200ops"])
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
     parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
     parser.add_argument("--test-type", type=str, default="triton", choices=["accuracy", "performance", "triton"])
@@ -750,7 +843,9 @@ def main():
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--max-tokens", type=int, default=16384)
     parser.add_argument("--num-workers", type=int, default=150)
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode (8 operators)")
+    parser.add_argument("--single-test", action="store_true", help="Single-test mode: randomly pick 1 operator")
+    parser.add_argument("--op-name", type=str, default=None, help="Specify a single operator to test (e.g., vllm13::fused_add_rms_norm)")
     parser.add_argument("--reflection", action="store_true", help="Enable reflection: use previous round's verify results as feedback for next generation")
     parser.add_argument("--use-wiki", action="store_true", help="Use Wiki references for generation")
     parser.add_argument("--custom-test-modules", type=str, nargs="+", default=None, help="Custom test module paths or directories (e.g., src/flagbench/accuracy/test_custom.py or src/flagbench/accuracy/)")
@@ -765,7 +860,13 @@ def main():
         logger.info(f"Resuming from: {output_dir}")
     else:
         postfix = ""
-        if args.debug:
+        if args.op_name:
+            # 清理算子名用于目录名
+            clean_name = args.op_name.replace("::", "_").replace("/", "_")
+            postfix += f"_{clean_name}"
+        elif args.single_test:
+            postfix += "_single"
+        elif args.debug:
             postfix += "_debug"
         if args.reflection:
             postfix += "_reflection"
@@ -834,6 +935,8 @@ def main():
         verify_config=verify_config,
         device_count=args.device_count,
         debug=args.debug,
+        single_test=args.single_test,
+        op_name=args.op_name,
         reflection=args.reflection,
         use_wiki=args.use_wiki,
     )
