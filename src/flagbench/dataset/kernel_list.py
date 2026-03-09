@@ -1043,7 +1043,7 @@ CUPY_OPERATORS = {
 # PYTORCH_OPERATORS = V2_OPERATORS
 
 # ============================================================
-# VLLM13 OPERATORS (50 ops) - 算子名列表，函数延迟加载
+# VLLM OPERATORS (50 ops) - 算子名列表，函数延迟加载
 # ============================================================
 VLLM_OPERATOR_NAMES = [
     'allspark_repack_weight', 'allspark_w8a16_gemm',
@@ -1092,11 +1092,49 @@ CUBLAS_OPERATOR_NAMES = [
 ]
 
 # ============================================================
-# 200 OPS BENCHMARK - 算子名列表 (50 vllm13 + 50 cublas + 100 torch later)
+# TORCH OPERATORS (100 ops) - 从 V2_1 选取的有代表性算子
+# ============================================================
+TORCH_100_OPERATOR_NAMES = [
+    # 基础数学运算
+    'add', 'add_', 'sub', 'mul', 'div', 'div_', 'neg', 'rsub', 'pow', 'square',
+    # 三角/双曲函数
+    'sin', 'cos', 'asin', 'cosh', 'acosh',
+    # 特殊数学函数
+    'erfc', 'i0', 'logit', 'polygamma', 'special_entr', 'log10', 'logaddexp2', 'rsqrt', 'floor', 'floor_divide',
+    # 归约操作
+    'sum', 'mean', 'cumsum', 'argmax', 'amin',
+    # 矩阵运算
+    'mm', 'bmm', 'matmul', 'linear',
+    # 激活函数
+    'softmax', '_softmax', 'silu', 'hardsigmoid', 'mish', 'prelu', 'rrelu_with_noise',
+    # 索引/gather/scatter
+    'gather', 'scatter', 'index', 'index_select', 'index_put_', '_index_put_impl_',
+    # 张量变形
+    'reshape', 'unsqueeze', 'expand', 'cat', 'stack', 'narrow', 'select', 't',
+    # 比较操作
+    'eq', 'gt', 'le', 'fmax', 'heaviside',
+    # 损失函数
+    'huber_loss', 'soft_margin_loss', 'binary_cross_entropy_with_logits', 'margin_ranking_loss',
+    # 反向传播
+    'log_sigmoid_backward', 'mish_backward', 'smooth_l1_loss_backward', 'softplus_backward',
+    'rrelu_with_noise_backward', 'reflection_pad1d_backward', 'select_backward', 'upsample_nearest2d_backward',
+    # inplace/copy 操作
+    'fill_', 'copy_', 'zero_', 'masked_fill_', 'exponential_',
+    # 其他重要操作
+    'embedding', 'sort', 'renorm', 'rot90', 'sgn', 'diff', 'pairwise_distance',
+    'bitwise_not', 'bernoulli', 'poisson', 'scalar_tensor',
+    'arange', 'full', 'zeros', 'zeros_like', 'ones_like', 'new_ones',
+    '_to_copy', 'to', 'im2col', 'affine_grid_generator',
+    'unsafe_split', 'unsafe_split_with_sizes',
+]
+
+# ============================================================
+# 200 OPS BENCHMARK - 算子名列表 (50 vllm13 + 50 cublas + 100 torch)
 # ============================================================
 OPS_200_OPERATOR_NAMES = (
     [f'vllm13::{name}' for name in VLLM_OPERATOR_NAMES] +
-    [f'cublas::{name}' for name in CUBLAS_OPERATOR_NAMES]
+    [f'cublas::{name}' for name in CUBLAS_OPERATOR_NAMES] +
+    [f'aten::{name}' for name in TORCH_100_OPERATOR_NAMES]
 )
 
 
@@ -1112,6 +1150,16 @@ def _load_cublas_operators():
     return {f'cublas::{name}': getattr(cublas, name) for name in CUBLAS_OPERATOR_NAMES}
 
 
+def _load_torch_operators():
+    """加载 torch aten 算子"""
+    ops = {}
+    for name in TORCH_100_OPERATOR_NAMES:
+        op = getattr(torch.ops.aten, name, None)
+        if op is not None:
+            ops[f'aten::{name}'] = op
+    return ops
+
+
 def get_vllm_operators():
     """获取 VLLM_OPERATORS 字典"""
     return _load_vllm_operators()
@@ -1123,11 +1171,13 @@ def get_cublas_operators():
 
 
 def get_ops_200_operators():
-    """获取 OPS_200_OPERATORS 字典 (50 vllm + 50 cublas)"""
+    """获取 OPS_200_OPERATORS 字典 (50 vllm + 50 cublas + 100 torch)"""
     ops = {}
     ops.update(_load_vllm_operators())
     ops.update(_load_cublas_operators())
+    ops.update(_load_torch_operators())
     return ops
+
 
 # if os.environ.get("FLAGBENCH_USE_DYNAMIC_IMPL_INFO", "0") == "1":
 #     dynamic_impl_info = DynamicImplInfo()
