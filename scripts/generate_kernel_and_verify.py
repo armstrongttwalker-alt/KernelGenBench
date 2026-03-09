@@ -664,7 +664,7 @@ class PassAtKTester:
                 kernel_path,
                 test_file_path,
                 op_name, 
-                add_namespace_triton=self.dataset == "cupy"
+                add_namespace_triton=self.dataset == "cupy" or (self.dataset == "200ops" and not op_name.startswith("aten::"))
             )
             verify_requests.append(verify_req)
             op_names.append(op_name)
