@@ -586,7 +586,7 @@ class PassAtKTester:
             source=[Source(
                 source=kernel_code,
                 function_name=op_name, 
-                namespace="triton"  # if add_namespace_triton else ""
+                namespace="triton" if add_namespace_triton else ""
             )],
             test_func=[test_func] if test_func else None,
         )
