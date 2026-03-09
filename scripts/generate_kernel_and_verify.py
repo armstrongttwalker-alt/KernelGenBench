@@ -46,19 +46,23 @@ mock_triton_code = "mock triton code"
 
 
 class Ops200Adapter:
-    """200ops 适配器，根据 op_name 前缀分发到 VllmAdapter 或 CublasAdapter"""
+    """200ops 适配器，根据 op_name 前缀分发到 VllmAdapter、CublasAdapter 或 TorchAdapter"""
 
     def __init__(self):
         from flagbench.framework.vllm_adapter import VllmAdapter
         from flagbench.framework.cublas_adapter import CublasAdapter
+        from flagbench.framework.torch_adapter import TorchAdapter
         self.vllm_adapter = VllmAdapter()
         self.cublas_adapter = CublasAdapter()
+        self.torch_adapter = TorchAdapter()
 
     def _get_adapter(self, op_name: str):
         if op_name.startswith("vllm13::"):
             return self.vllm_adapter
         elif op_name.startswith("cublas::"):
             return self.cublas_adapter
+        elif op_name.startswith("aten::"):
+            return self.torch_adapter
         else:
             raise ValueError(f"Unknown op_name prefix: {op_name}")
 
@@ -69,11 +73,14 @@ class Ops200Adapter:
         return self._get_adapter(op_name).create_generate_args(op_name, func, impl_info)
 
     def get_impl_info(self, kernel_name: str):
-        # 尝试从两个 adapter 获取
-        try:
-            return self.vllm_adapter.get_impl_info(kernel_name)
-        except:
-            return self.cublas_adapter.get_impl_info(kernel_name)
+        # 尝试从三个 adapter 获取，检查 None
+        result = self.vllm_adapter.get_impl_info(kernel_name)
+        if result is not None:
+            return result
+        result = self.cublas_adapter.get_impl_info(kernel_name)
+        if result is not None:
+            return result
+        return self.torch_adapter.get_impl_info(kernel_name)
 
 
 class Ops200PromptBuilder:
@@ -82,15 +89,19 @@ class Ops200PromptBuilder:
     def __init__(self, mode: str = "basic"):
         from generator.vllm_prompt_builder import VllmPromptBuilder
         from generator.cublas_prompt_builder import CublasPromptBuilder
+        from generator.torch_prompt_builder import TorchPromptBuilder
         self.vllm_builder = VllmPromptBuilder(mode=mode)
         self.cublas_builder = CublasPromptBuilder(mode=mode)
+        self.torch_builder = TorchPromptBuilder(mode=mode)
 
     def _get_builder(self, gen_args):
-        from flagbench.framework.generate_args import VllmGenerateArgs, CublasGenerateArgs
+        from flagbench.framework.generate_args import VllmGenerateArgs, CublasGenerateArgs, TritonKernelGenerateArgs
         if isinstance(gen_args, VllmGenerateArgs):
             return self.vllm_builder
         elif isinstance(gen_args, CublasGenerateArgs):
             return self.cublas_builder
+        elif isinstance(gen_args, TritonKernelGenerateArgs):
+            return self.torch_builder
         else:
             raise TypeError(f"Unknown args type: {type(gen_args)}")
 
@@ -280,26 +291,31 @@ class PassAtKTester:
 
     def _create_cupy_generate_args_wrapper(self):
         """
-        创建 cupy 的 generate_args 包装函数
+        创建 cupy/200ops 的 generate_args 包装函数
 
         这个包装函数适配 generate_round() 中的调用方式，
-        将参数转换为 CupyAdapter.create_generate_args 需要的格式
+        将参数转换为对应 Adapter.create_generate_args 需要的格式
 
         Returns:
             包装函数
         """
         def wrapper(torch_op_name: str, torch_op_func_or_namespace: str, impl_info: Any):
             """
-            包装函数，适配 cupy 的调用方式
+            包装函数，适配 cupy/200ops 的调用方式
 
             Args:
-                torch_op_name: kernel 名称（如 "caxpy"）
-                torch_op_func_or_namespace: namespace（如 "cupy"）
+                torch_op_name: kernel 名称（如 "caxpy" 或 "softmax"）
+                torch_op_func_or_namespace: namespace（如 "cupy", "vllm13", "cublas", "aten"）
                 impl_info: 实现信息
 
             Returns:
-                CupyGenerateArgs 实例
+                GenerateArgs 实例
             """
+            # 对于 aten:: 算子，直接使用 create_triton_generate_args（复用 v2_1 逻辑）
+            if torch_op_func_or_namespace == "aten":
+                return create_triton_generate_args(torch_op_name, torch_op_func_or_namespace, impl_info)
+
+            # 对于 vllm/cublas 算子，使用 adapter
             # 构造完整的 op_name（格式：cupy::caxpy）
             op_name = f"{torch_op_func_or_namespace}::{torch_op_name}"
 
