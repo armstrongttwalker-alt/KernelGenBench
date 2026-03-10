@@ -1092,49 +1092,36 @@ CUBLAS_OPERATOR_NAMES = [
 ]
 
 # ============================================================
-# TORCH OPERATORS (100 ops) - 从 V2_1 选取的有代表性算子
+# TORCH OPERATORS (110 ops) - 完整 V2_1 算子列表
 # ============================================================
-TORCH_100_OPERATOR_NAMES = [
-    # 基础数学运算
-    'add', 'add_', 'sub', 'mul', 'div', 'div_', 'neg', 'rsub', 'pow', 'square',
-    # 三角/双曲函数
-    'sin', 'cos', 'asin', 'cosh', 'acosh',
-    # 特殊数学函数
-    'erfc', 'i0', 'logit', 'polygamma', 'special_entr', 'log10', 'logaddexp2', 'rsqrt', 'floor', 'floor_divide',
-    # 归约操作
-    'sum', 'mean', 'cumsum', 'argmax', 'amin',
-    # 矩阵运算
-    'mm', 'bmm', 'matmul', 'linear',
-    # 激活函数
-    'softmax', '_softmax', 'silu', 'hardsigmoid', 'mish', 'prelu', 'rrelu_with_noise',
-    # 索引/gather/scatter
-    'gather', 'scatter', 'index', 'index_select', 'index_put_', '_index_put_impl_',
-    # 张量变形
-    'reshape', 'unsqueeze', 'expand', 'cat', 'stack', 'narrow', 'select', 't',
-    # 比较操作
-    'eq', 'gt', 'le', 'fmax', 'heaviside',
-    # 损失函数
-    'huber_loss', 'soft_margin_loss', 'binary_cross_entropy_with_logits', 'margin_ranking_loss',
-    # 反向传播
-    'log_sigmoid_backward', 'mish_backward', 'smooth_l1_loss_backward', 'softplus_backward',
-    'rrelu_with_noise_backward', 'reflection_pad1d_backward', 'select_backward', 'upsample_nearest2d_backward',
-    # inplace/copy 操作
-    'fill_', 'copy_', 'zero_', 'masked_fill_', 'exponential_',
-    # 其他重要操作
-    'embedding', 'sort', 'renorm', 'rot90', 'sgn', 'diff', 'pairwise_distance',
-    'bitwise_not', 'bernoulli', 'poisson', 'scalar_tensor',
-    'arange', 'full', 'zeros', 'zeros_like', 'ones_like', 'new_ones',
-    '_to_copy', 'to', 'im2col', 'affine_grid_generator',
-    'unsafe_split', 'unsafe_split_with_sizes',
+TORCH_OPERATOR_NAMES = [
+    '_index_put_impl_', '_local_scalar_dense', '_softmax', '_to_copy',
+    'acosh', 'add', 'add_', 'affine_grid_generator', 'amin', 'arange',
+    'argmax', 'as_strided', 'asin', 'bernoulli', 'binary_cross_entropy_with_logits',
+    'bitwise_not', 'bmm', 'cat', 'clone', 'contiguous', 'copy_', 'cos', 'cosh',
+    'cumsum', 'diff', 'div', 'div_', 'embedding', 'empty_strided', 'eq', 'erfc',
+    'expand', 'expand_as', 'exponential_', 'fill_', 'floor', 'floor_divide', 'fmax',
+    'full', 'gather', 'gt', 'hardsigmoid', 'heaviside', 'huber_loss', 'i0', 'im2col',
+    'index', 'index_put_', 'index_select', 'item', 'le', 'linear', 'log10',
+    'log_sigmoid_backward', 'logaddexp2', 'logit', 'margin_ranking_loss', 'masked_fill_',
+    'matmul', 'mean', 'mish', 'mish_backward', 'mm', 'mul', 'narrow', 'neg',
+    'new_empty_strided', 'new_ones', 'ones_like', 'pairwise_distance', 'poisson',
+    'polygamma', 'pow', 'prelu', 'reflection_pad1d_backward', 'renorm', 'reshape',
+    'resolve_conj', 'resolve_neg', 'rot90', 'rrelu_with_noise', 'rrelu_with_noise_backward',
+    'rsqrt', 'rsub', 'scalar_tensor', 'scatter', 'select', 'select_backward', 'sgn',
+    'silu', 'sin', 'smooth_l1_loss_backward', 'soft_margin_loss', 'softmax',
+    'softplus_backward', 'sort', 'special_entr', 'square', 'stack', 'sub', 'sum', 't',
+    'to', 'unsafe_split', 'unsafe_split_with_sizes', 'unsqueeze',
+    'upsample_nearest2d_backward', 'zero_', 'zeros', 'zeros_like',
 ]
 
 # ============================================================
-# 200 OPS BENCHMARK - 算子名列表 (50 vllm13 + 50 cublas + 100 torch)
+# KernelGenBench - 算子名列表 (50 vllm13 + 50 cublas + 110 torch = 210)
 # ============================================================
-OPS_200_OPERATOR_NAMES = (
+KERNELGENBENCH_OPERATOR_NAMES = (
     [f'vllm13::{name}' for name in VLLM_OPERATOR_NAMES] +
     [f'cublas::{name}' for name in CUBLAS_OPERATOR_NAMES] +
-    [f'aten::{name}' for name in TORCH_100_OPERATOR_NAMES]
+    [f'aten::{name}' for name in TORCH_OPERATOR_NAMES]
 )
 
 
@@ -1153,7 +1140,7 @@ def _load_cublas_operators():
 def _load_torch_operators():
     """加载 torch aten 算子"""
     ops = {}
-    for name in TORCH_100_OPERATOR_NAMES:
+    for name in TORCH_OPERATOR_NAMES:
         op = getattr(torch.ops.aten, name, None)
         if op is not None:
             ops[f'aten::{name}'] = op
@@ -1170,8 +1157,8 @@ def get_cublas_operators():
     return _load_cublas_operators()
 
 
-def get_ops_200_operators():
-    """获取 OPS_200_OPERATORS 字典 (50 vllm + 50 cublas + 100 torch)"""
+def get_kernelgenbench_operators():
+    """获取 KernelGenBench 算子字典 (50 vllm + 50 cublas + 110 torch = 210)"""
     ops = {}
     ops.update(_load_vllm_operators())
     ops.update(_load_cublas_operators())
