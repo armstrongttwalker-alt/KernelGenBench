@@ -65,20 +65,24 @@ def test_accuracy_cp_gather_indexer_k_quant_cache(config):
 
     kv_cache_bench = torch.randn(num_blocks, block_size, num_heads, head_size,
                                  device=device, dtype=torch.float16)
-    k_bench = torch.zeros(total_tokens, num_heads, head_size,
-                         device=device, dtype=torch.float16)
-    s_bench = torch.zeros(total_tokens, num_heads,
-                         device=device, dtype=torch.float32)
+    k_baseline = torch.zeros(total_tokens, num_heads, head_size,
+                            device=device, dtype=torch.float16)
+    s_baseline = torch.zeros(total_tokens, num_heads,
+                            device=device, dtype=torch.float32)
+    k_triton = torch.zeros(total_tokens, num_heads, head_size,
+                          device=device, dtype=torch.float16)
+    s_triton = torch.zeros(total_tokens, num_heads,
+                          device=device, dtype=torch.float32)
 
     ms_baseline = triton.testing.do_bench(
         lambda: flagbench.baseline.cp_gather_indexer_k_quant_cache(
-            kv_cache_bench, k_bench.clone(), s_bench.clone(), block_table, cu_seq),
+            kv_cache_bench, k_baseline, s_baseline, block_table, cu_seq),
         warmup=25, rep=100
     )
 
     ms_triton = triton.testing.do_bench(
         lambda: flagbench.triton.cp_gather_indexer_k_quant_cache(
-            kv_cache_bench, k_bench.clone(), s_bench.clone(), block_table, cu_seq),
+            kv_cache_bench, k_triton, s_triton, block_table, cu_seq),
         warmup=25, rep=100
     )
 

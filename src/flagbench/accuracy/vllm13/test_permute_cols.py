@@ -43,16 +43,17 @@ def test_accuracy_permute_cols(shape, perm_pattern, dtype):
         return None
 
     # Prepare fresh data for benchmarking
-    x = torch.randn(rows, cols, device='cuda', dtype=dtype)
+    x_baseline = torch.randn(rows, cols, device='cuda', dtype=dtype)
+    x_triton = x_baseline.clone()
 
     # Benchmark baseline
     ms_baseline = triton.testing.do_bench(
-        lambda: flagbench.baseline.permute_cols(x.clone(), perm),
+        lambda: flagbench.baseline.permute_cols(x_baseline, perm),
         warmup=25, rep=100)
 
     # Benchmark triton
     ms_triton = triton.testing.do_bench(
-        lambda: flagbench.triton.permute_cols(x.clone(), perm),
+        lambda: flagbench.triton.permute_cols(x_triton, perm),
         warmup=25, rep=100)
 
     speedup = ms_baseline / ms_triton if ms_triton > 0 else float('inf')

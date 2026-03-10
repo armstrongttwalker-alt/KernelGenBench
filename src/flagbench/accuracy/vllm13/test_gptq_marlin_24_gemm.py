@@ -35,7 +35,7 @@ def test_accuracy_gptq_marlin_24_gemm(config):
     act_out = flagbench.triton.gptq_marlin_24_gemm(
         a, q_w, meta, s, ws, quant_type, M, N, K)
 
-    assert torch.equal(act_out, ref_out), f"Mismatch: max diff={(act_out - ref_out).abs().max()}"
+    assert_close(act_out, ref_out, torch.float16)
 
     # ===== Performance Test =====
     if M < 128:

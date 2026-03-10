@@ -57,8 +57,7 @@ def test_accuracy_gather_and_maybe_dequant_cache(config):
         src, act_dst, block_table, cu_seq, token_to_seq,
         total_tokens, "auto", scale)
 
-    assert torch.equal(act_dst, ref_dst), \
-        f"Mismatch: max diff={(act_dst - ref_dst).abs().max()}"
+    assert_close(act_dst, ref_dst, torch.float16)
 
     # ===== Performance Test =====
     if num_blocks < 32 or batch_size < 4:

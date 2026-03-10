@@ -60,23 +60,24 @@ def test_accuracy_paged_attention_v2(shape, dtype):
     if max_seq_len < 256:
         return None
 
-    def _make_out():
-        return (
-            torch.empty(num_seqs, num_heads, head_dim, device=device, dtype=dtype),
-            torch.empty(num_seqs, num_heads, num_partitions, device=device, dtype=torch.float32),
-            torch.empty(num_seqs, num_heads, num_partitions, device=device, dtype=torch.float32),
-            torch.empty(num_seqs, num_heads, num_partitions, head_dim, device=device, dtype=dtype),
-        )
+    out_baseline = torch.empty(num_seqs, num_heads, head_dim, device=device, dtype=dtype)
+    exp_baseline = torch.empty(num_seqs, num_heads, num_partitions, device=device, dtype=torch.float32)
+    ml_baseline = torch.empty(num_seqs, num_heads, num_partitions, device=device, dtype=torch.float32)
+    tmp_baseline = torch.empty(num_seqs, num_heads, num_partitions, head_dim, device=device, dtype=dtype)
+    out_triton = torch.empty(num_seqs, num_heads, head_dim, device=device, dtype=dtype)
+    exp_triton = torch.empty(num_seqs, num_heads, num_partitions, device=device, dtype=torch.float32)
+    ml_triton = torch.empty(num_seqs, num_heads, num_partitions, device=device, dtype=torch.float32)
+    tmp_triton = torch.empty(num_seqs, num_heads, num_partitions, head_dim, device=device, dtype=dtype)
 
     ms_baseline = triton.testing.do_bench(
         lambda: flagbench.baseline.paged_attention_v2(
-            *_make_out(), query, key_cache, value_cache,
+            out_baseline, exp_baseline, ml_baseline, tmp_baseline, query, key_cache, value_cache,
             num_kv_heads, scale, block_tables, seq_lens, block_size, max_seq_len,
             None, "auto", k_scale, v_scale),
         warmup=25, rep=100)
     ms_triton = triton.testing.do_bench(
         lambda: flagbench.triton.paged_attention_v2(
-            *_make_out(), query, key_cache, value_cache,
+            out_triton, exp_triton, ml_triton, tmp_triton, query, key_cache, value_cache,
             num_kv_heads, scale, block_tables, seq_lens, block_size, max_seq_len,
             None, "auto", k_scale, v_scale),
         warmup=25, rep=100)

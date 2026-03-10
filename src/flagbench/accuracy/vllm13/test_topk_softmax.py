@@ -43,16 +43,19 @@ def test_accuracy_topk_softmax(num_tokens, num_experts, top_k, renormalize):
     if num_tokens < 1024:
         return None
 
-    def bench_fn(impl):
-        def fn():
-            w = torch.empty(num_tokens, top_k, device='cuda', dtype=torch.float32)
-            i = torch.empty(num_tokens, top_k, device='cuda', dtype=torch.int32)
-            t = torch.empty(num_tokens, top_k, device='cuda', dtype=torch.int32)
-            impl(w, i, t, gating_output, renormalize)
-        return fn
+    w_baseline = torch.empty(num_tokens, top_k, device='cuda', dtype=torch.float32)
+    i_baseline = torch.empty(num_tokens, top_k, device='cuda', dtype=torch.int32)
+    t_baseline = torch.empty(num_tokens, top_k, device='cuda', dtype=torch.int32)
+    w_triton = torch.empty(num_tokens, top_k, device='cuda', dtype=torch.float32)
+    i_triton = torch.empty(num_tokens, top_k, device='cuda', dtype=torch.int32)
+    t_triton = torch.empty(num_tokens, top_k, device='cuda', dtype=torch.int32)
 
-    ms_baseline = triton.testing.do_bench(bench_fn(flagbench.baseline.topk_softmax), warmup=25, rep=100)
-    ms_triton = triton.testing.do_bench(bench_fn(flagbench.triton.topk_softmax), warmup=25, rep=100)
+    ms_baseline = triton.testing.do_bench(
+        lambda: flagbench.baseline.topk_softmax(w_baseline, i_baseline, t_baseline, gating_output, renormalize),
+        warmup=25, rep=100)
+    ms_triton = triton.testing.do_bench(
+        lambda: flagbench.triton.topk_softmax(w_triton, i_triton, t_triton, gating_output, renormalize),
+        warmup=25, rep=100)
 
     speedup = ms_baseline / ms_triton
     return CustomBenchmarkResult(ref_time=ms_baseline, res_time=ms_triton, speedup=speedup)

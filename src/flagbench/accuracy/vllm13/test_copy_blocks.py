@@ -52,16 +52,18 @@ def test_accuracy_copy_blocks(config):
     if num_blocks < 64 or num_mappings < 8:
         return None
 
-    kc_bench = [torch.randn(num_blocks, num_heads, head_size, block_size, device=device, dtype=torch.float16)]
-    vc_bench = [torch.randn(num_blocks, num_heads, head_size, block_size, device=device, dtype=torch.float16)]
+    kc_baseline = [torch.randn(num_blocks, num_heads, head_size, block_size, device=device, dtype=torch.float16)]
+    vc_baseline = [torch.randn(num_blocks, num_heads, head_size, block_size, device=device, dtype=torch.float16)]
+    kc_triton = [k.clone() for k in kc_baseline]
+    vc_triton = [v.clone() for v in vc_baseline]
 
     ms_baseline = triton.testing.do_bench(
-        lambda: flagbench.baseline.copy_blocks([k.clone() for k in kc_bench], [v.clone() for v in vc_bench], block_mapping),
+        lambda: flagbench.baseline.copy_blocks(kc_baseline, vc_baseline, block_mapping),
         warmup=25, rep=100
     )
 
     ms_triton = triton.testing.do_bench(
-        lambda: flagbench.triton.copy_blocks([k.clone() for k in kc_bench], [v.clone() for v in vc_bench], block_mapping),
+        lambda: flagbench.triton.copy_blocks(kc_triton, vc_triton, block_mapping),
         warmup=25, rep=100
     )
 

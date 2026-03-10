@@ -69,18 +69,23 @@ def test_accuracy_moe_lora_align_block_size(config):
     topk_ids_bench = torch.randint(0, num_experts, (num_tokens, topk),
                                    device=device, dtype=torch.int32)
     token_lora_mapping_bench = torch.zeros(num_tokens, device=device, dtype=torch.int32)
-    sorted_bench = torch.zeros(max_num_tokens_padded, device=device, dtype=torch.int32)
-    experts_bench = torch.zeros(max_num_m_blocks, device=device, dtype=torch.int32)
-    ntp_bench = torch.zeros(1, device=device, dtype=torch.int32)
-    adapter_bench = torch.zeros(max_num_m_blocks, device=device, dtype=torch.int32)
-    lora_bench = torch.zeros(max_num_m_blocks, device=device, dtype=torch.int32)
+    sorted_baseline = torch.zeros(max_num_tokens_padded, device=device, dtype=torch.int32)
+    experts_baseline = torch.zeros(max_num_m_blocks, device=device, dtype=torch.int32)
+    ntp_baseline = torch.zeros(1, device=device, dtype=torch.int32)
+    adapter_baseline = torch.zeros(max_num_m_blocks, device=device, dtype=torch.int32)
+    lora_baseline = torch.zeros(max_num_m_blocks, device=device, dtype=torch.int32)
+    sorted_triton = torch.zeros(max_num_tokens_padded, device=device, dtype=torch.int32)
+    experts_triton = torch.zeros(max_num_m_blocks, device=device, dtype=torch.int32)
+    ntp_triton = torch.zeros(1, device=device, dtype=torch.int32)
+    adapter_triton = torch.zeros(max_num_m_blocks, device=device, dtype=torch.int32)
+    lora_triton = torch.zeros(max_num_m_blocks, device=device, dtype=torch.int32)
 
     ms_baseline = triton.testing.do_bench(
         lambda: flagbench.baseline.moe_lora_align_block_size(
             topk_ids_bench, token_lora_mapping_bench, num_experts, block_size,
             max_loras, max_num_tokens_padded, max_num_m_blocks,
-            sorted_bench.clone(), experts_bench.clone(), ntp_bench.clone(),
-            adapter_bench.clone(), lora_bench.clone(), None),
+            sorted_baseline, experts_baseline, ntp_baseline,
+            adapter_baseline, lora_baseline, None),
         warmup=25, rep=100
     )
 
@@ -88,8 +93,8 @@ def test_accuracy_moe_lora_align_block_size(config):
         lambda: flagbench.triton.moe_lora_align_block_size(
             topk_ids_bench, token_lora_mapping_bench, num_experts, block_size,
             max_loras, max_num_tokens_padded, max_num_m_blocks,
-            sorted_bench.clone(), experts_bench.clone(), ntp_bench.clone(),
-            adapter_bench.clone(), lora_bench.clone(), None),
+            sorted_triton, experts_triton, ntp_triton,
+            adapter_triton, lora_triton, None),
         warmup=25, rep=100
     )
 

@@ -47,15 +47,16 @@ def test_accuracy_copy_blocks_mla(config):
     if num_blocks < 64 or num_mappings < 8:
         return None
 
-    kvc_bench = [torch.randn(num_blocks, block_size, kv_dim, device=device, dtype=torch.float16)]
+    kvc_baseline = [torch.randn(num_blocks, block_size, kv_dim, device=device, dtype=torch.float16)]
+    kvc_triton = [k.clone() for k in kvc_baseline]
 
     ms_baseline = triton.testing.do_bench(
-        lambda: flagbench.baseline.copy_blocks_mla([k.clone() for k in kvc_bench], block_mapping),
+        lambda: flagbench.baseline.copy_blocks_mla(kvc_baseline, block_mapping),
         warmup=25, rep=100
     )
 
     ms_triton = triton.testing.do_bench(
-        lambda: flagbench.triton.copy_blocks_mla([k.clone() for k in kvc_bench], block_mapping),
+        lambda: flagbench.triton.copy_blocks_mla(kvc_triton, block_mapping),
         warmup=25, rep=100
     )
 

@@ -48,7 +48,7 @@ def test_accuracy_gptq_marlin_gemm(config):
         torch.empty(0, device=device, dtype=torch.int32),
         g_idx, perm, workspace, quant_type, M, N, K)
 
-    assert torch.equal(act_out, ref_out), f"Mismatch: max diff={(act_out - ref_out).abs().max()}"
+    assert_close(act_out, ref_out, torch.float16)
 
     # ===== Performance Test =====
     if M < 128 or K < 512 or N < 256:

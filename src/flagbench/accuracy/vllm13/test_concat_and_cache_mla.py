@@ -44,17 +44,16 @@ def test_accuracy_concat_and_cache_mla(shape, dtype):
         return None
 
     total_dim = kv_lora_rank + pe_dim
+    cache_baseline = torch.zeros(num_blocks, block_size, total_dim, device=device, dtype=dtype)
+    cache_triton = torch.zeros(num_blocks, block_size, total_dim, device=device, dtype=dtype)
+
     ms_baseline = triton.testing.do_bench(
         lambda: flagbench.baseline.concat_and_cache_mla(
-            kv_c, k_pe,
-            torch.zeros(num_blocks, block_size, total_dim, device=device, dtype=dtype),
-            slot_mapping, "auto", scale),
+            kv_c, k_pe, cache_baseline, slot_mapping, "auto", scale),
         warmup=25, rep=100)
     ms_triton = triton.testing.do_bench(
         lambda: flagbench.triton.concat_and_cache_mla(
-            kv_c, k_pe,
-            torch.zeros(num_blocks, block_size, total_dim, device=device, dtype=dtype),
-            slot_mapping, "auto", scale),
+            kv_c, k_pe, cache_triton, slot_mapping, "auto", scale),
         warmup=25, rep=100)
 
     speedup = ms_baseline / ms_triton if ms_triton > 0 else float("inf")

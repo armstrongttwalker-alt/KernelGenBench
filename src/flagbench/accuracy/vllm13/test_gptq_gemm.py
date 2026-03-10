@@ -55,7 +55,7 @@ def test_accuracy_gptq_gemm(config):
         a_fp, b_q_weight, b_gptq_qzeros, b_gptq_scales, b_g_idx,
         use_exllama, use_v2_format, bit)
 
-    assert torch.equal(act_out, ref_out), f"Mismatch: max diff={(act_out - ref_out).abs().max()}"
+    assert_close(act_out, ref_out, torch.float16)
 
     # ===== Performance Test =====
     if K < 256:

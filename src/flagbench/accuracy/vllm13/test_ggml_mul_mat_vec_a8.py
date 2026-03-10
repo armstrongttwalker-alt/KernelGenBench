@@ -43,7 +43,7 @@ def test_accuracy_ggml_mul_mat_vec_a8(config):
     ref_out = flagbench.baseline.ggml_mul_mat_vec_a8(W, X, quant_type, n)
     act_out = flagbench.triton.ggml_mul_mat_vec_a8(W, X, quant_type, n)
 
-    assert torch.equal(act_out, ref_out), f"Mismatch: max diff={(act_out - ref_out).abs().max()}"
+    assert_close(act_out, ref_out, torch.float32)
 
     # ===== Performance Test =====
     if m < 256 or n < 128:

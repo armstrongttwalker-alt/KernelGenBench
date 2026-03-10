@@ -38,19 +38,17 @@ def test_accuracy_convert_fp8(input, scale, kv_dtype, dtype):
 
     # Prepare fresh data for benchmarking
     x_bench = torch.randn(in_shape, device='cuda', dtype=dtype)
+    out_baseline = torch.empty(in_shape, device='cuda', dtype=torch.uint8)
+    out_triton = torch.empty(in_shape, device='cuda', dtype=torch.uint8)
 
     # Benchmark baseline
     ms_baseline = triton.testing.do_bench(
-        lambda: (
-            lambda out, inp: flagbench.baseline.convert_fp8(out, inp, scale, kv_dtype)
-        )(torch.empty(in_shape, device='cuda', dtype=torch.uint8), x_bench),
+        lambda: flagbench.baseline.convert_fp8(out_baseline, x_bench, scale, kv_dtype),
         warmup=25, rep=100)
 
     # Benchmark triton
     ms_triton = triton.testing.do_bench(
-        lambda: (
-            lambda out, inp: flagbench.triton.convert_fp8(out, inp, scale, kv_dtype)
-        )(torch.empty(in_shape, device='cuda', dtype=torch.uint8), x_bench),
+        lambda: flagbench.triton.convert_fp8(out_triton, x_bench, scale, kv_dtype),
         warmup=25, rep=100)
 
     speedup = ms_baseline / ms_triton

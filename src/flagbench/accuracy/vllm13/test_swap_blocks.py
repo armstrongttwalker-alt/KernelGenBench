@@ -48,14 +48,15 @@ def test_accuracy_swap_blocks(num_blocks, block_shape, dtype, mapping_kind):
         return None
 
     src_perf = torch.randn(num_blocks, block_h, block_w, dtype=dtype, device='cuda')
-    dst_perf = torch.randn(num_blocks, block_h, block_w, dtype=dtype, device='cuda')
+    dst_baseline = torch.randn(num_blocks, block_h, block_w, dtype=dtype, device='cuda')
+    dst_triton = dst_baseline.clone()
 
     ms_baseline = triton.testing.do_bench(
-        lambda: flagbench.baseline.swap_blocks(src_perf, dst_perf.clone(), block_mapping),
+        lambda: flagbench.baseline.swap_blocks(src_perf, dst_baseline, block_mapping),
         warmup=25, rep=100
     )
     ms_triton = triton.testing.do_bench(
-        lambda: flagbench.triton.swap_blocks(src_perf, dst_perf.clone(), block_mapping),
+        lambda: flagbench.triton.swap_blocks(src_perf, dst_triton, block_mapping),
         warmup=25, rep=100
     )
 
