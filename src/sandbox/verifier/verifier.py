@@ -443,6 +443,7 @@ class Verifier:
         print(funcs)
         results = []
         speedup = None
+        first_failure_traceback = None  # Store first failure traceback for reporting
         for func, mark in funcs:
             func_name = func.__name__
             if func is None:
@@ -454,6 +455,8 @@ class Verifier:
                 total += 1
                 success = True
                 tb_str = None
+                speed = None  # Reset speed for each test case to avoid reusing previous value
+                ret = None    # Reset ret for each test case to avoid wrong branch on failure
                 try:
                     # recorded_params = jsonable_encoder(combo, custom_encoder={torch.dtype: str, Callable: lambda x: x.__name__})
                     # recorded_params = {k: default_converter(v) for k, v in combo.items()}
@@ -512,6 +515,8 @@ class Verifier:
                         "traceback": tb_str,
                     })
                 if not success:
+                    if first_failure_traceback is None:
+                        first_failure_traceback = tb_str  # Save first failure traceback
                     if strict_check or ("Tensor-likes are not close" not in tb_str):
                         failed += 1
                     if max_failures != "all" and failed >= max_failures:
@@ -553,10 +558,10 @@ class Verifier:
 
         return VerifyResult(
             op_name=report_name,
-            success=failed == 0, 
-            traceback=tb_str, 
+            success=failed == 0,
+            traceback=first_failure_traceback,  # Use first failure traceback instead of last case's tb_str
             params=recorded_params,
-            speedup=speedup, 
+            speedup=speedup,
             info={
                 "total": total,
                 "failed": failed,
