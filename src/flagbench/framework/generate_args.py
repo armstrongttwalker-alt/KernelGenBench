@@ -94,3 +94,41 @@ class CupyGenerateArgs(BaseGenerateArgs):
     @property
     def framework_name(self) -> str:
         return "cupy"
+
+
+class CublasGenerateArgs(BaseGenerateArgs):
+    """cuBLAS baseline 的生成参数"""
+
+    cublas_kernel_name: str
+    baseline_func: Any
+    baseline_code: str
+    func_desc: str
+    blas_operation_type: str
+    impl_info: Optional[Any] = None
+
+    @property
+    def op_name(self):
+        return self.cublas_kernel_name
+
+    @property
+    def framework_name(self) -> str:
+        return "cublas"
+
+
+class VllmGenerateArgs(BaseGenerateArgs):
+    """vLLM baseline 的生成参数"""
+
+    vllm_kernel_name: str
+    baseline_func: Any
+    baseline_code: str
+    func_desc: str
+    operation_type: str  # attention, quantization, moe, norm, other
+    impl_info: Optional[Any] = None
+
+    @property
+    def op_name(self):
+        return self.vllm_kernel_name
+
+    @property
+    def framework_name(self) -> str:
+        return "vllm"
