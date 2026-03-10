@@ -973,11 +973,15 @@ def is_pytorch_op(name: str, *, namespace: str = "aten") -> bool:
     判断算子是否是 PyTorch 算子
 
     Args:
-        name: 算子名称（可以带或不带 namespace，如 "abs" 或 "aten::abs"）
+        name: 算子名称（可以带 framework 前缀，如 "abs"、"aten::abs"、"vllm13::rms_norm"）
 
     Returns:
         True 如果是 PyTorch 算子，False 否则
     """
+    # 如果带 framework:: 前缀，直接判断是否为 aten
+    if "::" in name:
+        framework = name.split("::")[0]
+        return framework == "aten"
     try:
         return IMPL_INFO.get(name, namespace=namespace) is not None
     except (AssertionError, KeyError):
