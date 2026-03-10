@@ -45,77 +45,8 @@ logger = logging.getLogger(__name__)
 mock_triton_code = "mock triton code"
 
 
-class KernelGenBenchAdapter:
-    """KernelGenBench 适配器，根据 op_name 前缀分发到 VllmAdapter、CublasAdapter 或 TorchAdapter"""
-
-    def __init__(self):
-        from flagbench.framework.vllm_adapter import VllmAdapter
-        from flagbench.framework.cublas_adapter import CublasAdapter
-        from flagbench.framework.torch_adapter import TorchAdapter
-        self.vllm_adapter = VllmAdapter()
-        self.cublas_adapter = CublasAdapter()
-        self.torch_adapter = TorchAdapter()
-
-    def _get_adapter(self, op_name: str):
-        if op_name.startswith("vllm13::"):
-            return self.vllm_adapter
-        elif op_name.startswith("cublas::"):
-            return self.cublas_adapter
-        elif op_name.startswith("aten::"):
-            return self.torch_adapter
-        else:
-            raise ValueError(f"Unknown op_name prefix: {op_name}")
-
-    def get_operator_function(self, op_name: str):
-        return self._get_adapter(op_name).get_operator_function(op_name)
-
-    def create_generate_args(self, op_name: str, func, impl_info):
-        return self._get_adapter(op_name).create_generate_args(op_name, func, impl_info)
-
-    def get_impl_info(self, kernel_name: str):
-        # 尝试从三个 adapter 获取，检查 None
-        result = self.vllm_adapter.get_impl_info(kernel_name)
-        if result is not None:
-            return result
-        result = self.cublas_adapter.get_impl_info(kernel_name)
-        if result is not None:
-            return result
-        return self.torch_adapter.get_impl_info(kernel_name)
-
-
-class KernelGenBenchPromptBuilder:
-    """KernelGenBench prompt builder，根据 args 类型分发"""
-
-    def __init__(self, mode: str = "basic"):
-        from generator.vllm_prompt_builder import VllmPromptBuilder
-        from generator.cublas_prompt_builder import CublasPromptBuilder
-        from generator.torch_prompt_builder import TorchPromptBuilder
-        self.vllm_builder = VllmPromptBuilder(mode=mode)
-        self.cublas_builder = CublasPromptBuilder(mode=mode)
-        self.torch_builder = TorchPromptBuilder(mode=mode)
-
-    def _get_builder(self, gen_args):
-        from flagbench.framework.generate_args import VllmGenerateArgs, CublasGenerateArgs, TritonKernelGenerateArgs
-        if isinstance(gen_args, VllmGenerateArgs):
-            return self.vllm_builder
-        elif isinstance(gen_args, CublasGenerateArgs):
-            return self.cublas_builder
-        elif isinstance(gen_args, TritonKernelGenerateArgs):
-            return self.torch_builder
-        else:
-            raise TypeError(f"Unknown args type: {type(gen_args)}")
-
-    def build(self, gen_args):
-        return self._get_builder(gen_args).build(gen_args)
-
-    def build_new(self, gen_args):
-        return self._get_builder(gen_args).build_new(gen_args)
-
-    def build_fix(self, gen_args):
-        return self._get_builder(gen_args).build_fix(gen_args)
-
-    def build_optimization(self, gen_args):
-        return self._get_builder(gen_args).build_optimization(gen_args)
+from flagbench.framework.kernelgenbench_adapter import KernelGenBenchAdapter
+from generator.kernelgenbench_prompt_builder import KernelGenBenchPromptBuilder
 
 
 class PassAtKTester:
