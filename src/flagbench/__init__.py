@@ -67,6 +67,8 @@ accuracy_modules = [
     "flagbench.accuracy.test_unary_pointwise_ops",
     "flagbench.accuracy.test_non_flaggems_ops",
     "flagbench.accuracy.test_v2_ops",
+    "flagbench.accuracy.test_v2_1_ops",
+    "flagbench.accuracy.test_v2_1_ops_with_benchmark",
     # "flagbench.accuracy.test_non_torch_prelu_ops",  # Temporarily disabled - missing example baseline __init__.py
     "flagbench.accuracy.cupy.test_caxpy_cublas_ops",
     "flagbench.accuracy.cupy.test_cdgmm_cublas_ops",
