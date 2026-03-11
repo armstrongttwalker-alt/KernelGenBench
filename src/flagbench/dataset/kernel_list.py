@@ -973,11 +973,15 @@ def is_pytorch_op(name: str, *, namespace: str = "aten") -> bool:
     判断算子是否是 PyTorch 算子
 
     Args:
-        name: 算子名称（可以带或不带 namespace，如 "abs" 或 "aten::abs"）
+        name: 算子名称（可以带 framework 前缀，如 "abs"、"aten::abs"、"vllm13::rms_norm"）
 
     Returns:
         True 如果是 PyTorch 算子，False 否则
     """
+    # 如果带 framework:: 前缀，直接判断是否为 aten
+    if "::" in name:
+        framework = name.split("::")[0]
+        return framework == "aten"
     try:
         return IMPL_INFO.get(name, namespace=namespace) is not None
     except (AssertionError, KeyError):
@@ -1039,7 +1043,7 @@ CUPY_OPERATORS = {
 # PYTORCH_OPERATORS = V2_OPERATORS
 
 # ============================================================
-# VLLM13 OPERATORS (50 ops) - 算子名列表，函数延迟加载
+# VLLM OPERATORS (50 ops) - 算子名列表，函数延迟加载
 # ============================================================
 VLLM_OPERATOR_NAMES = [
     'allspark_repack_weight', 'allspark_w8a16_gemm',
@@ -1088,11 +1092,36 @@ CUBLAS_OPERATOR_NAMES = [
 ]
 
 # ============================================================
-# 200 OPS BENCHMARK - 算子名列表 (50 vllm13 + 50 cublas + 100 torch later)
+# TORCH OPERATORS (110 ops) - 完整 V2_1 算子列表
 # ============================================================
-OPS_200_OPERATOR_NAMES = (
+TORCH_OPERATOR_NAMES = [
+    '_index_put_impl_', '_local_scalar_dense', '_softmax', '_to_copy',
+    'acosh', 'add', 'add_', 'affine_grid_generator', 'amin', 'arange',
+    'argmax', 'as_strided', 'asin', 'bernoulli', 'binary_cross_entropy_with_logits',
+    'bitwise_not', 'bmm', 'cat', 'clone', 'contiguous', 'copy_', 'cos', 'cosh',
+    'cumsum', 'diff', 'div', 'div_', 'embedding', 'empty_strided', 'eq', 'erfc',
+    'expand', 'expand_as', 'exponential_', 'fill_', 'floor', 'floor_divide', 'fmax',
+    'full', 'gather', 'gt', 'hardsigmoid', 'heaviside', 'huber_loss', 'i0', 'im2col',
+    'index', 'index_put_', 'index_select', 'item', 'le', 'linear', 'log10',
+    'log_sigmoid_backward', 'logaddexp2', 'logit', 'margin_ranking_loss', 'masked_fill_',
+    'matmul', 'mean', 'mish', 'mish_backward', 'mm', 'mul', 'narrow', 'neg',
+    'new_empty_strided', 'new_ones', 'ones_like', 'pairwise_distance', 'poisson',
+    'polygamma', 'pow', 'prelu', 'reflection_pad1d_backward', 'renorm', 'reshape',
+    'resolve_conj', 'resolve_neg', 'rot90', 'rrelu_with_noise', 'rrelu_with_noise_backward',
+    'rsqrt', 'rsub', 'scalar_tensor', 'scatter', 'select', 'select_backward', 'sgn',
+    'silu', 'sin', 'smooth_l1_loss_backward', 'soft_margin_loss', 'softmax',
+    'softplus_backward', 'sort', 'special_entr', 'square', 'stack', 'sub', 'sum', 't',
+    'to', 'unsafe_split', 'unsafe_split_with_sizes', 'unsqueeze',
+    'upsample_nearest2d_backward', 'zero_', 'zeros', 'zeros_like',
+]
+
+# ============================================================
+# KernelGenBench - 算子名列表 (50 vllm13 + 50 cublas + 110 torch = 210)
+# ============================================================
+KERNELGENBENCH_OPERATOR_NAMES = (
     [f'vllm13::{name}' for name in VLLM_OPERATOR_NAMES] +
-    [f'cublas::{name}' for name in CUBLAS_OPERATOR_NAMES]
+    [f'cublas::{name}' for name in CUBLAS_OPERATOR_NAMES] +
+    [f'aten::{name}' for name in TORCH_OPERATOR_NAMES]
 )
 
 
@@ -1108,6 +1137,16 @@ def _load_cublas_operators():
     return {f'cublas::{name}': getattr(cublas, name) for name in CUBLAS_OPERATOR_NAMES}
 
 
+def _load_torch_operators():
+    """加载 torch aten 算子"""
+    ops = {}
+    for name in TORCH_OPERATOR_NAMES:
+        op = getattr(torch.ops.aten, name, None)
+        if op is not None:
+            ops[f'aten::{name}'] = op
+    return ops
+
+
 def get_vllm_operators():
     """获取 VLLM_OPERATORS 字典"""
     return _load_vllm_operators()
@@ -1118,12 +1157,14 @@ def get_cublas_operators():
     return _load_cublas_operators()
 
 
-def get_ops_200_operators():
-    """获取 OPS_200_OPERATORS 字典 (50 vllm + 50 cublas)"""
+def get_kernelgenbench_operators():
+    """获取 KernelGenBench 算子字典 (50 vllm + 50 cublas + 110 torch = 210)"""
     ops = {}
     ops.update(_load_vllm_operators())
     ops.update(_load_cublas_operators())
+    ops.update(_load_torch_operators())
     return ops
+
 
 # if os.environ.get("FLAGBENCH_USE_DYNAMIC_IMPL_INFO", "0") == "1":
 #     dynamic_impl_info = DynamicImplInfo()

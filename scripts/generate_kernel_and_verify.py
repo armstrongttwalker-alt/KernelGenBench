@@ -45,66 +45,8 @@ logger = logging.getLogger(__name__)
 mock_triton_code = "mock triton code"
 
 
-class Ops200Adapter:
-    """200ops 适配器，根据 op_name 前缀分发到 VllmAdapter 或 CublasAdapter"""
-
-    def __init__(self):
-        from flagbench.framework.vllm_adapter import VllmAdapter
-        from flagbench.framework.cublas_adapter import CublasAdapter
-        self.vllm_adapter = VllmAdapter()
-        self.cublas_adapter = CublasAdapter()
-
-    def _get_adapter(self, op_name: str):
-        if op_name.startswith("vllm13::"):
-            return self.vllm_adapter
-        elif op_name.startswith("cublas::"):
-            return self.cublas_adapter
-        else:
-            raise ValueError(f"Unknown op_name prefix: {op_name}")
-
-    def get_operator_function(self, op_name: str):
-        return self._get_adapter(op_name).get_operator_function(op_name)
-
-    def create_generate_args(self, op_name: str, func, impl_info):
-        return self._get_adapter(op_name).create_generate_args(op_name, func, impl_info)
-
-    def get_impl_info(self, kernel_name: str):
-        # 尝试从两个 adapter 获取
-        try:
-            return self.vllm_adapter.get_impl_info(kernel_name)
-        except:
-            return self.cublas_adapter.get_impl_info(kernel_name)
-
-
-class Ops200PromptBuilder:
-    """200ops prompt builder，根据 args 类型分发"""
-
-    def __init__(self, mode: str = "basic"):
-        from generator.vllm_prompt_builder import VllmPromptBuilder
-        from generator.cublas_prompt_builder import CublasPromptBuilder
-        self.vllm_builder = VllmPromptBuilder(mode=mode)
-        self.cublas_builder = CublasPromptBuilder(mode=mode)
-
-    def _get_builder(self, gen_args):
-        from flagbench.framework.generate_args import VllmGenerateArgs, CublasGenerateArgs
-        if isinstance(gen_args, VllmGenerateArgs):
-            return self.vllm_builder
-        elif isinstance(gen_args, CublasGenerateArgs):
-            return self.cublas_builder
-        else:
-            raise TypeError(f"Unknown args type: {type(gen_args)}")
-
-    def build(self, gen_args):
-        return self._get_builder(gen_args).build(gen_args)
-
-    def build_new(self, gen_args):
-        return self._get_builder(gen_args).build_new(gen_args)
-
-    def build_fix(self, gen_args):
-        return self._get_builder(gen_args).build_fix(gen_args)
-
-    def build_optimization(self, gen_args):
-        return self._get_builder(gen_args).build_optimization(gen_args)
+from flagbench.framework.kernelgenbench_adapter import KernelGenBenchAdapter
+from generator.kernelgenbench_prompt_builder import KernelGenBenchPromptBuilder
 
 
 class PassAtKTester:
@@ -194,9 +136,9 @@ class PassAtKTester:
                 case "cupy":
                     from flagbench.dataset import CUPY_OPERATORS
                     self.operator_loader = CUPY_OPERATORS  # Already in flat format
-                case "200ops":
-                    from flagbench.dataset import get_ops_200_operators
-                    self.operator_loader = get_ops_200_operators()  # 50 vllm + 50 cublas
+                case "KernelGenBench":
+                    from flagbench.dataset import get_kernelgenbench_operators
+                    self.operator_loader = get_kernelgenbench_operators()  # 50 vllm + 50 cublas + 110 torch
                 case _:
                     raise ValueError(f"Unsupported dataset: {self.dataset}")
 
@@ -205,8 +147,8 @@ class PassAtKTester:
             self.adapter = self._create_adapter()
 
             # 根据 dataset 设置 create_generate_args 方法
-            if self.dataset in ["cupy", "200ops"]:
-                # 对于 cupy/200ops dataset，使用 adapter 的方法
+            if self.dataset in ["cupy", "KernelGenBench"]:
+                # 对于 cupy/KernelGenBench dataset，使用 adapter 的方法
                 self.create_generate_args = self._create_cupy_generate_args_wrapper()
             else:
                 # 对于 torch 相关的 dataset，使用现有的函数
@@ -243,11 +185,11 @@ class PassAtKTester:
             prompt_builder = CupyPromptBuilder(mode=mode)
             logger.info(f"Created CupyPromptBuilder with mode: {mode}")
             return prompt_builder
-        elif self.dataset == "200ops":
-            # 200ops 使用 Ops200PromptBuilder 根据 args 类型分发
+        elif self.dataset == "KernelGenBench":
+            # KernelGenBench 使用 KernelGenBenchPromptBuilder 根据 args 类型分发
             mode = "with_wiki" if self.use_wiki else "basic"
-            prompt_builder = Ops200PromptBuilder(mode=mode)
-            logger.info(f"Created Ops200PromptBuilder for 200ops with mode: {mode}")
+            prompt_builder = KernelGenBenchPromptBuilder(mode=mode)
+            logger.info(f"Created KernelGenBenchPromptBuilder for KernelGenBench with mode: {mode}")
             return prompt_builder
         else:
             raise ValueError(f"Unsupported dataset for PromptBuilder: {self.dataset}")
@@ -271,35 +213,40 @@ class PassAtKTester:
             adapter = CupyAdapter()
             logger.info(f"Created CupyAdapter for dataset: {self.dataset}")
             return adapter
-        elif self.dataset == "200ops":
-            adapter = Ops200Adapter()
-            logger.info(f"Created Ops200Adapter for dataset: {self.dataset}")
+        elif self.dataset == "KernelGenBench":
+            adapter = KernelGenBenchAdapter()
+            logger.info(f"Created KernelGenBenchAdapter for dataset: {self.dataset}")
             return adapter
         else:
             raise ValueError(f"Unsupported dataset for Adapter: {self.dataset}")
 
     def _create_cupy_generate_args_wrapper(self):
         """
-        创建 cupy 的 generate_args 包装函数
+        创建 cupy/KernelGenBench 的 generate_args 包装函数
 
         这个包装函数适配 generate_round() 中的调用方式，
-        将参数转换为 CupyAdapter.create_generate_args 需要的格式
+        将参数转换为对应 Adapter.create_generate_args 需要的格式
 
         Returns:
             包装函数
         """
         def wrapper(torch_op_name: str, torch_op_func_or_namespace: str, impl_info: Any):
             """
-            包装函数，适配 cupy 的调用方式
+            包装函数，适配 cupy/KernelGenBench 的调用方式
 
             Args:
-                torch_op_name: kernel 名称（如 "caxpy"）
-                torch_op_func_or_namespace: namespace（如 "cupy"）
+                torch_op_name: kernel 名称（如 "caxpy" 或 "softmax"）
+                torch_op_func_or_namespace: namespace（如 "cupy", "vllm13", "cublas", "aten"）
                 impl_info: 实现信息
 
             Returns:
-                CupyGenerateArgs 实例
+                GenerateArgs 实例
             """
+            # 对于 aten:: 算子，直接使用 create_triton_generate_args（复用 v2_1 逻辑）
+            if torch_op_func_or_namespace == "aten":
+                return create_triton_generate_args(torch_op_name, torch_op_func_or_namespace, impl_info)
+
+            # 对于 vllm/cublas 算子，使用 adapter
             # 构造完整的 op_name（格式：cupy::caxpy）
             op_name = f"{torch_op_func_or_namespace}::{torch_op_name}"
 
@@ -664,7 +611,7 @@ class PassAtKTester:
                 kernel_path,
                 test_file_path,
                 op_name, 
-                add_namespace_triton=self.dataset == "cupy" or (self.dataset == "200ops" and not op_name.startswith("aten::"))
+                add_namespace_triton=self.dataset == "cupy" or (self.dataset == "KernelGenBench" and not op_name.startswith("aten::"))
             )
             verify_requests.append(verify_req)
             op_names.append(op_name)
@@ -829,7 +776,7 @@ def main():
     parser.add_argument("--name", type=str, default="aten", help="Namespace to test (default: aten)")
     parser.add_argument("--acc-test-func-path", type=str, default="", help="Path to the accuracy test function directory")
     parser.add_argument("--benchmark-func-path", type=str, default="", help="Path to the performance test function directory")
-    parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["pytorch", "gems", "v1", "v2", "v2_1", "qwen_next", "cupy", "200ops"])
+    parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["pytorch", "gems", "v1", "v2", "v2_1", "qwen_next", "cupy", "KernelGenBench"])
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
     parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
     parser.add_argument("--test-type", type=str, default="triton", choices=["accuracy", "performance", "triton"])

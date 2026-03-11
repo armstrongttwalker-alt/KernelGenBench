@@ -440,6 +440,13 @@ class Verifier:
         failed = 0
         ret = None
         funcs = get_funcs_by_label(name)
+        # 当算子名带前缀（如 vllm13::rms_norm）时，过滤掉不属于该前缀的 test function，
+        # 避免同名算子（如 aten 和 vllm13 都有 rms_norm）匹配到错误的 test
+        if "::" in report_name:
+            prefix = report_name.split("::")[0]  # e.g. "vllm13", "cublas"
+            filtered = [(f, m) for f, m in funcs if prefix in f.__module__]
+            if filtered:
+                funcs = filtered
         print(funcs)
         results = []
         speedup = None
