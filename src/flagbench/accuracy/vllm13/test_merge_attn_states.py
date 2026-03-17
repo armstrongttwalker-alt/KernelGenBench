@@ -36,18 +36,19 @@ def test_accuracy_merge_attn_states(shape, dtype):
     bm_plse = (torch.rand(num_seqs, num_heads, device=device, dtype=torch.float32) - 0.5) * 4.0
     bm_slse = (torch.rand(num_seqs, num_heads, device=device, dtype=torch.float32) - 0.5) * 4.0
 
+    out_baseline = torch.empty(num_seqs, num_heads, head_dim, device=device, dtype=dtype)
+    out_triton = torch.empty(num_seqs, num_heads, head_dim, device=device, dtype=dtype)
+
     ms_baseline = triton.testing.do_bench(
         lambda: flagbench.baseline.merge_attn_states(
-            torch.empty(num_seqs, num_heads, head_dim, device=device, dtype=dtype),
-            bm_prefix, bm_plse, bm_suffix, bm_slse,
+            out_baseline, bm_prefix, bm_plse, bm_suffix, bm_slse,
         ),
         warmup=25, rep=100,
     )
 
     ms_triton = triton.testing.do_bench(
         lambda: flagbench.triton.merge_attn_states(
-            torch.empty(num_seqs, num_heads, head_dim, device=device, dtype=dtype),
-            bm_prefix, bm_plse, bm_suffix, bm_slse,
+            out_triton, bm_prefix, bm_plse, bm_suffix, bm_slse,
         ),
         warmup=25, rep=100,
     )

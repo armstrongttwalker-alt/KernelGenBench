@@ -55,22 +55,23 @@ def test_accuracy_gptq_shuffle(q_weight_bit):
         return None
 
     # Prepare fresh data for benchmarking
-    q_weight_bench_src = torch.randint(
+    q_weight_baseline = torch.randint(
         low=0, high=2**31 - 1,
         size=(rows, packed_cols),
         device=device, dtype=dtype,
     )
+    q_weight_triton = q_weight_baseline.clone()
     q_perm_bench = torch.randperm(cols, device=device).to(torch.int32)
 
     # Benchmark baseline
     ms_baseline = triton.testing.do_bench(
-        lambda: flagbench.baseline.gptq_shuffle(q_weight_bench_src.clone(), q_perm_bench, bit),
+        lambda: flagbench.baseline.gptq_shuffle(q_weight_baseline, q_perm_bench, bit),
         warmup=25, rep=100
     )
 
     # Benchmark triton
     ms_triton = triton.testing.do_bench(
-        lambda: flagbench.triton.gptq_shuffle(q_weight_bench_src.clone(), q_perm_bench, bit),
+        lambda: flagbench.triton.gptq_shuffle(q_weight_triton, q_perm_bench, bit),
         warmup=25, rep=100
     )
 

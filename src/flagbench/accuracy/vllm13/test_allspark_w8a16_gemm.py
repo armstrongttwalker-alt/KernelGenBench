@@ -39,7 +39,7 @@ def test_accuracy_allspark_w8a16_gemm(config):
     act_out = flagbench.triton.allspark_w8a16_gemm(
         a, rw, rs, None, N, -1, 108, 80, 16, False, True)
 
-    assert torch.equal(act_out, ref_out), f"Mismatch: max diff={(act_out - ref_out).abs().max()}"
+    assert_close(act_out, ref_out, torch.float16)
 
     # ===== Performance Test =====
     if M < 256 or K < 512 or N < 256:

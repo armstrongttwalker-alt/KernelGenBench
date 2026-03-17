@@ -22,11 +22,14 @@ def test_accuracy_moe_sum(num_tokens, hidden_size, topk, dtype):
     if num_tokens * hidden_size < (1 << 20):
         return None
     inp_b = torch.randn(num_tokens * topk, hidden_size, device='cuda', dtype=dtype)
+    out_baseline = torch.zeros(num_tokens, hidden_size, device='cuda', dtype=dtype)
+    out_triton = torch.zeros(num_tokens, hidden_size, device='cuda', dtype=dtype)
+
     ms_base = triton.testing.do_bench(
-        lambda: flagbench.baseline.moe_sum(inp_b, torch.zeros(num_tokens, hidden_size, device='cuda', dtype=dtype)),
+        lambda: flagbench.baseline.moe_sum(inp_b, out_baseline),
         warmup=25, rep=100)
     ms_tri = triton.testing.do_bench(
-        lambda: flagbench.triton.moe_sum(inp_b, torch.zeros(num_tokens, hidden_size, device='cuda', dtype=dtype)),
+        lambda: flagbench.triton.moe_sum(inp_b, out_triton),
         warmup=25, rep=100)
     return CustomBenchmarkResult(ref_time=ms_base, res_time=ms_tri,
                                  speedup=ms_base / ms_tri if ms_tri > 0 else float("inf"))

@@ -47,19 +47,18 @@ def test_accuracy_reshape_and_cache(shape, dtype):
     if T < 128:
         return None
 
+    kc_baseline = torch.zeros(num_blocks, H, D // x, block_size, x, device=device, dtype=dtype)
+    vc_baseline = torch.zeros(num_blocks, H, D, block_size, device=device, dtype=dtype)
+    kc_triton = torch.zeros(num_blocks, H, D // x, block_size, x, device=device, dtype=dtype)
+    vc_triton = torch.zeros(num_blocks, H, D, block_size, device=device, dtype=dtype)
+
     ms_baseline = triton.testing.do_bench(
         lambda: flagbench.baseline.reshape_and_cache(
-            key, value,
-            torch.zeros(num_blocks, H, D // x, block_size, x, device=device, dtype=dtype),
-            torch.zeros(num_blocks, H, D, block_size, device=device, dtype=dtype),
-            slot_mapping, "auto", k_scale, v_scale),
+            key, value, kc_baseline, vc_baseline, slot_mapping, "auto", k_scale, v_scale),
         warmup=25, rep=100)
     ms_triton = triton.testing.do_bench(
         lambda: flagbench.triton.reshape_and_cache(
-            key, value,
-            torch.zeros(num_blocks, H, D // x, block_size, x, device=device, dtype=dtype),
-            torch.zeros(num_blocks, H, D, block_size, device=device, dtype=dtype),
-            slot_mapping, "auto", k_scale, v_scale),
+            key, value, kc_triton, vc_triton, slot_mapping, "auto", k_scale, v_scale),
         warmup=25, rep=100)
 
     speedup = ms_baseline / ms_triton if ms_triton > 0 else float("inf")

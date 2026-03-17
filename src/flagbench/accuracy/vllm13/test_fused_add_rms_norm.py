@@ -41,18 +41,20 @@ def test_accuracy_fused_add_rms_norm(num_tokens, hidden_size, dtype, epsilon):
         return None
 
     # Prepare fresh data for benchmarking
-    base_input = torch.randn(m, n, device='cuda', dtype=dtype)
-    base_residual = torch.randn(m, n, device='cuda', dtype=dtype)
+    input_baseline = torch.randn(m, n, device='cuda', dtype=dtype)
+    residual_baseline = torch.randn(m, n, device='cuda', dtype=dtype)
+    input_triton = input_baseline.clone()
+    residual_triton = residual_baseline.clone()
     base_weight = torch.randn(n, device='cuda', dtype=dtype)
 
     # For in-place ops, ensure each call gets fresh tensors
     ms_baseline = triton.testing.do_bench(
-        lambda: flagbench.baseline.fused_add_rms_norm(base_input.clone(), base_residual.clone(), base_weight, float(epsilon)),
+        lambda: flagbench.baseline.fused_add_rms_norm(input_baseline, residual_baseline, base_weight, float(epsilon)),
         warmup=25, rep=100
     )
 
     ms_triton = triton.testing.do_bench(
-        lambda: flagbench.triton.fused_add_rms_norm(base_input.clone(), base_residual.clone(), base_weight, float(epsilon)),
+        lambda: flagbench.triton.fused_add_rms_norm(input_triton, residual_triton, base_weight, float(epsilon)),
         warmup=25, rep=100
     )
 

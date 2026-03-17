@@ -27,15 +27,16 @@ def test_accuracy_hadacore_transform(shape, inplace, dtype):
     if numel < (1 << 18):
         return None
 
-    x_master = torch.randn(shape, device=device, dtype=dtype)
+    x_baseline = torch.randn(shape, device=device, dtype=dtype)
+    x_triton = x_baseline.clone()
 
     ms_baseline = triton.testing.do_bench(
-        lambda: flagbench.baseline.hadacore_transform(x_master.clone(), inplace=inplace),
+        lambda: flagbench.baseline.hadacore_transform(x_baseline, inplace=inplace),
         warmup=25, rep=100
     )
 
     ms_triton = triton.testing.do_bench(
-        lambda: flagbench.triton.hadacore_transform(x_master.clone(), inplace=inplace),
+        lambda: flagbench.triton.hadacore_transform(x_triton, inplace=inplace),
         warmup=25, rep=100
     )
 

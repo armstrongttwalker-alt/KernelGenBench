@@ -1046,9 +1046,9 @@ CUPY_OPERATORS = {
 # VLLM OPERATORS (50 ops) - 算子名列表，函数延迟加载
 # ============================================================
 VLLM_OPERATOR_NAMES = [
-    'allspark_repack_weight', 'allspark_w8a16_gemm',
-    'apply_repetition_penalties', 'apply_repetition_penalties_cuda',
-    'awq_marlin_moe_repack', 'awq_marlin_repack',
+    'allspark_w8a16_gemm',
+    'apply_repetition_penalties_cuda',
+    'awq_gemm', 'awq_marlin_moe_repack',
     'batched_moe_align_block_size', 'concat_and_cache_mla',
     'convert_fp8', 'convert_vertical_slash_indexes',
     'copy_blocks', 'copy_blocks_mla',
@@ -1056,9 +1056,10 @@ VLLM_OPERATOR_NAMES = [
     'cutlass_pack_scale_fp8', 'cutlass_scaled_mm', 'cutlass_scaled_mm_azp',
     'fused_add_rms_norm', 'fused_qk_norm_rope',
     'gather_and_maybe_dequant_cache',
+    'ggml_dequantize', 'ggml_moe_a8', 'ggml_moe_a8_vec',
     'ggml_mul_mat_a8', 'ggml_mul_mat_vec_a8',
     'gptq_gemm', 'gptq_marlin_24_gemm', 'gptq_marlin_gemm',
-    'gptq_marlin_moe_repack', 'gptq_marlin_repack', 'gptq_shuffle',
+    'gptq_marlin_moe_repack', 'gptq_shuffle',
     'grouped_topk', 'hadacore_transform',
     'marlin_int4_fp8_preprocess', 'merge_attn_states',
     'moe_align_block_size', 'moe_lora_align_block_size', 'moe_sum',

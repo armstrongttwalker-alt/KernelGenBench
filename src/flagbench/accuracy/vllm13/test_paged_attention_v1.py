@@ -81,14 +81,15 @@ def test_accuracy_paged_attention_v1(num_seqs, context_len, num_heads, head_size
     if num_seqs * max_seq_len < 4096:
         return None
 
-    def bench_fn(impl):
-        def fn():
-            out = torch.empty_like(query)
-            impl(out, query, key_cache, value_cache, **common)
-        return fn
+    out_baseline = torch.empty_like(query)
+    out_triton = torch.empty_like(query)
 
-    ms_baseline = triton.testing.do_bench(bench_fn(flagbench.baseline.paged_attention_v1), warmup=25, rep=100)
-    ms_triton = triton.testing.do_bench(bench_fn(flagbench.triton.paged_attention_v1), warmup=25, rep=100)
+    ms_baseline = triton.testing.do_bench(
+        lambda: flagbench.baseline.paged_attention_v1(out_baseline, query, key_cache, value_cache, **common),
+        warmup=25, rep=100)
+    ms_triton = triton.testing.do_bench(
+        lambda: flagbench.triton.paged_attention_v1(out_triton, query, key_cache, value_cache, **common),
+        warmup=25, rep=100)
 
     speedup = ms_baseline / ms_triton
     return CustomBenchmarkResult(ref_time=ms_baseline, res_time=ms_triton, speedup=speedup)

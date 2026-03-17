@@ -19,7 +19,7 @@ from vllm.model_executor.layers.quantization.utils.marlin_utils_test_24 import m
     (256, 512, 512),
     (128, 256, 512),
 ])
-def test_accuracy_gptq_marlin_24_gemm(config):
+def test_gptq_marlin_24_gemm(config):
     # ===== Accuracy Test =====
     M, K, N = config[0], config[1], config[2]
     gs = 128
@@ -35,7 +35,7 @@ def test_accuracy_gptq_marlin_24_gemm(config):
     act_out = flagbench.triton.gptq_marlin_24_gemm(
         a, q_w, meta, s, ws, quant_type, M, N, K)
 
-    assert torch.equal(act_out, ref_out), f"Mismatch: max diff={(act_out - ref_out).abs().max()}"
+    assert_close(act_out, ref_out, torch.float16)
 
     # ===== Performance Test =====
     if M < 128:

@@ -27,16 +27,17 @@ def test_accuracy_apply_repetition_penalties_cuda(shape, dtype):
     if batch * vocab < 1024 * 32000:
         return None
 
-    logits_b = torch.randn(batch, vocab, device=device, dtype=dtype)
+    logits_baseline = torch.randn(batch, vocab, device=device, dtype=dtype)
+    logits_triton = logits_baseline.clone()
     pm = torch.randint(0, 2, (batch, vocab), dtype=torch.bool, device=device)
     om = torch.randint(0, 2, (batch, vocab), dtype=torch.bool, device=device)
     pen = torch.ones(batch, device=device, dtype=dtype) * 1.1
 
     ms_baseline = triton.testing.do_bench(
-        lambda: flagbench.baseline.apply_repetition_penalties_cuda(logits_b.clone(), pm, om, pen),
+        lambda: flagbench.baseline.apply_repetition_penalties_cuda(logits_baseline, pm, om, pen),
         warmup=25, rep=100)
     ms_triton = triton.testing.do_bench(
-        lambda: flagbench.triton.apply_repetition_penalties_cuda(logits_b.clone(), pm, om, pen),
+        lambda: flagbench.triton.apply_repetition_penalties_cuda(logits_triton, pm, om, pen),
         warmup=25, rep=100)
 
     speedup = ms_baseline / ms_triton if ms_triton > 0 else float("inf")

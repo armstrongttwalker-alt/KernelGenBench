@@ -67,6 +67,8 @@ accuracy_modules = [
     "flagbench.accuracy.test_unary_pointwise_ops",
     "flagbench.accuracy.test_non_flaggems_ops",
     "flagbench.accuracy.test_v2_ops",
+    "flagbench.accuracy.test_v2_1_ops",
+    "flagbench.accuracy.test_v2_1_ops_with_benchmark",
     # "flagbench.accuracy.test_non_torch_prelu_ops",  # Temporarily disabled - missing example baseline __init__.py
     "flagbench.accuracy.cupy.test_caxpy_cublas_ops",
     "flagbench.accuracy.cupy.test_cdgmm_cublas_ops",
@@ -192,7 +194,6 @@ accuracy_modules = [
     "flagbench.accuracy.vllm13.test_rms_norm",
     "flagbench.accuracy.vllm13.test_rms_norm_dynamic_per_token_quant",
     "flagbench.accuracy.vllm13.test_moe_sum",
-    "flagbench.accuracy.vllm13.test_apply_repetition_penalties",
     "flagbench.accuracy.vllm13.test_permute_cols",
     "flagbench.accuracy.vllm13.test_shuffle_rows",
     "flagbench.accuracy.vllm13.test_convert_fp8",
@@ -212,9 +213,6 @@ accuracy_modules = [
     "flagbench.accuracy.vllm13.test_gptq_marlin_24_gemm",
     "flagbench.accuracy.vllm13.test_copy_blocks",
     "flagbench.accuracy.vllm13.test_copy_blocks_mla",
-    "flagbench.accuracy.vllm13.test_gptq_marlin_repack",
-    "flagbench.accuracy.vllm13.test_awq_marlin_repack",
-    "flagbench.accuracy.vllm13.test_allspark_repack_weight",
     "flagbench.accuracy.vllm13.test_allspark_w8a16_gemm",
     "flagbench.accuracy.vllm13.test_gather_and_maybe_dequant_cache",
     "flagbench.accuracy.vllm13.test_convert_vertical_slash_indexes",
@@ -229,6 +227,10 @@ accuracy_modules = [
     "flagbench.accuracy.vllm13.test_moe_lora_align_block_size",
     "flagbench.accuracy.vllm13.test_batched_moe_align_block_size",
     "flagbench.accuracy.vllm13.test_apply_repetition_penalties_cuda",
+    "flagbench.accuracy.vllm13.test_awq_gemm",
+    "flagbench.accuracy.vllm13.test_ggml_dequantize",
+    "flagbench.accuracy.vllm13.test_ggml_moe_a8",
+    "flagbench.accuracy.vllm13.test_ggml_moe_a8_vec",
 ]
 perf_modules = [
     "flagbench.perfermance.test_attention_perf",

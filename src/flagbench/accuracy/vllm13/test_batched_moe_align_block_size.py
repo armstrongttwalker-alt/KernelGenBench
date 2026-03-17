@@ -18,7 +18,7 @@ import triton
     (64, 16, 256),
     (128, 16, 256),
 ])
-def test_accuracy_batched_moe_align_block_size(config):
+def test_batched_moe_align_block_size(config):
     num_experts = config[0]
     block_size = config[1]
     max_tokens = config[2]
@@ -58,21 +58,25 @@ def test_accuracy_batched_moe_align_block_size(config):
 
     expert_num_tokens_bench = torch.randint(1, max_tokens // 2,
                                             (num_experts,), device=device, dtype=torch.int32)
-    sorted_bench = torch.zeros(sorted_ids_size, device=device, dtype=torch.int32)
-    experts_bench = torch.zeros(num_blocks, device=device, dtype=torch.int32)
-    ntp_bench = torch.zeros(1, device=device, dtype=torch.int32)
+    sorted_baseline = torch.zeros(sorted_ids_size, device=device, dtype=torch.int32)
+    experts_baseline = torch.zeros(num_blocks, device=device, dtype=torch.int32)
+    ntp_baseline = torch.zeros(1, device=device, dtype=torch.int32)
+
+    sorted_triton = torch.zeros(sorted_ids_size, device=device, dtype=torch.int32)
+    experts_triton = torch.zeros(num_blocks, device=device, dtype=torch.int32)
+    ntp_triton = torch.zeros(1, device=device, dtype=torch.int32)
 
     ms_baseline = triton.testing.do_bench(
         lambda: flagbench.baseline.batched_moe_align_block_size(
             max_tokens, block_size, expert_num_tokens_bench,
-            sorted_bench.clone(), experts_bench.clone(), ntp_bench.clone()),
+            sorted_baseline, experts_baseline, ntp_baseline),
         warmup=25, rep=100
     )
 
     ms_triton = triton.testing.do_bench(
         lambda: flagbench.triton.batched_moe_align_block_size(
             max_tokens, block_size, expert_num_tokens_bench,
-            sorted_bench.clone(), experts_bench.clone(), ntp_bench.clone()),
+            sorted_triton, experts_triton, ntp_triton),
         warmup=25, rep=100
     )
 

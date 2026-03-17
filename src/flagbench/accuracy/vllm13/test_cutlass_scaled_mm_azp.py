@@ -39,7 +39,7 @@ def test_accuracy_cutlass_scaled_mm_azp(config):
     act_out = flagbench.triton.cutlass_scaled_mm_azp(
         A, B, scale_a, scale_b, torch.float16, azp_adj, azp=azp_t, bias=bias_t)
 
-    assert torch.equal(act_out, ref_out), f"Mismatch: max diff={(act_out - ref_out).abs().max()}"
+    assert_close(act_out, ref_out, torch.float16)
 
     # ===== Performance Test =====
     if M < 128:

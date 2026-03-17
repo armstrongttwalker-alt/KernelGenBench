@@ -54,17 +54,19 @@ def test_accuracy_cp_gather_cache(config):
 
     src_cache_bench = torch.randn(num_blocks, block_size, num_heads, head_size,
                                   device=device, dtype=torch.float16)
-    dst_bench = torch.zeros(total_tokens, num_heads, head_size,
+    dst_baseline = torch.zeros(total_tokens, num_heads, head_size,
+                           device=device, dtype=torch.float16)
+    dst_triton = torch.zeros(total_tokens, num_heads, head_size,
                            device=device, dtype=torch.float16)
 
     ms_baseline = triton.testing.do_bench(
-        lambda: flagbench.baseline.cp_gather_cache(src_cache_bench, dst_bench.clone(), block_table,
+        lambda: flagbench.baseline.cp_gather_cache(src_cache_bench, dst_baseline, block_table,
                                                    cu_seq_lens, batch_size),
         warmup=25, rep=100
     )
 
     ms_triton = triton.testing.do_bench(
-        lambda: flagbench.triton.cp_gather_cache(src_cache_bench, dst_bench.clone(), block_table,
+        lambda: flagbench.triton.cp_gather_cache(src_cache_bench, dst_triton, block_table,
                                                  cu_seq_lens, batch_size),
         warmup=25, rep=100
     )

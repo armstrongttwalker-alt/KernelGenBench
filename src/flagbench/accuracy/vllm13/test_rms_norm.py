@@ -46,15 +46,16 @@ def test_accuracy_rms_norm(shape, dtype, epsilon, weight_mode):
     else:
         w_bench = torch.randn(N, device='cuda', dtype=dtype)
 
-    # Benchmark baseline: for in-place ops, allocate fresh output inside lambda
+    out_baseline = torch.empty_like(x_bench)
+    out_triton = torch.empty_like(x_bench)
+
     ms_baseline = triton.testing.do_bench(
-        lambda: flagbench.baseline.rms_norm(torch.empty_like(x_bench), x_bench, w_bench, float(epsilon)),
+        lambda: flagbench.baseline.rms_norm(out_baseline, x_bench, w_bench, float(epsilon)),
         warmup=25, rep=100
     )
 
-    # Benchmark triton: allocate fresh output inside lambda
     ms_triton = triton.testing.do_bench(
-        lambda: flagbench.triton.rms_norm(torch.empty_like(x_bench), x_bench, w_bench, float(epsilon)),
+        lambda: flagbench.triton.rms_norm(out_triton, x_bench, w_bench, float(epsilon)),
         warmup=25, rep=100
     )
 
