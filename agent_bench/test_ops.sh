@@ -163,13 +163,13 @@ fi
 
 python run.py "${RUN_ARGS[@]}"
 
-# Get the latest run directory
-LATEST_RUN=$(ls -td runs/${METHOD}_${DATASET}_* 2>/dev/null | head -1)
-if [[ -z "$LATEST_RUN" ]]; then
-    echo "Error: No run directory found"
+# Get the run directory from .last_run marker
+if [[ -f runs/.last_run ]]; then
+    RUN_NAME=$(cat runs/.last_run)
+else
+    echo "Error: No run directory found (runs/.last_run missing)"
     exit 1
 fi
-RUN_NAME=$(basename "$LATEST_RUN")
 
 echo ""
 echo "Run completed: $RUN_NAME"
