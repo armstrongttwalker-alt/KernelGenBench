@@ -239,6 +239,7 @@ def run(args):
         run_name = f"{method.name}_{dataset}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         run_dir = runs_dir / run_name
         run_dir.mkdir(parents=True, exist_ok=True)
+        (runs_dir / ".last_run").write_text(run_name)
 
     kernels_dir = run_dir / "kernels"
     kernels_dir.mkdir(parents=True, exist_ok=True)
