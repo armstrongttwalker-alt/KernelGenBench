@@ -1,31 +1,31 @@
 """
-TorchPromptBuilder - Torch 框架的 Prompt 构造器
+TorchPromptBuilder - Prompt builder for the Torch framework
 
-从 TritonKernelGenerator 迁移 prompt 生成逻辑
+Migrated prompt generation logic from TritonKernelGenerator
 """
 
 from typing import TYPE_CHECKING
 
 from .prompt_builder import PromptBuilder
-from flagbench.framework.generate_args import BaseGenerateArgs, TritonKernelGenerateArgs
+from kernelgenbench.framework.generate_args import BaseGenerateArgs, TritonKernelGenerateArgs
 
 if TYPE_CHECKING:
     from sandbox.utils.accuracy_utils import VerifyResult
 
 
 class TorchPromptBuilder(PromptBuilder):
-    """Torch 框架的 Prompt 构造器 - 用于生成 Triton kernel 的 prompt"""
+    """Prompt builder for the Torch framework - generates Triton kernel prompts"""
 
     def build_new(self, gen_args: BaseGenerateArgs) -> str:
         """
-        生成新 Triton kernel 的 prompt
+        Generate prompt for a new Triton kernel
 
-        从 TritonKernelGenerator.generate_prompt_for_new 迁移
+        Migrated from TritonKernelGenerator.generate_prompt_for_new
 
         Args:
-            gen_args: 生成参数，实际应为 TritonKernelGenerateArgs 实例
+            gen_args: Generation arguments, should be a TritonKernelGenerateArgs instance
         """
-        # 类型转换：确保 gen_args 是 TritonKernelGenerateArgs
+        # Type check: ensure gen_args is TritonKernelGenerateArgs
         if not isinstance(gen_args, TritonKernelGenerateArgs):
             raise TypeError(f"TorchPromptBuilder requires TritonKernelGenerateArgs, got {type(gen_args)}")
 
@@ -95,7 +95,7 @@ class TorchPromptBuilder(PromptBuilder):
         prompt += f"\nThe input and output args of the function are as follows:\n"
         prompt += f"Input and output Args: \n"
 
-        # 检查 input_args 是否存在
+        # Check if input_args exists
         if info.input_args:
             for overload, args in info.input_args.items():
                 if overload:
@@ -155,20 +155,20 @@ class TorchPromptBuilder(PromptBuilder):
 
     def build_fix(self, gen_args: BaseGenerateArgs) -> str:
         """
-        生成修复 Triton kernel 的 prompt
+        Generate prompt for fixing a Triton kernel
 
-        从 TritonKernelGenerator.generate_prompt_for_fix 迁移
+        Migrated from TritonKernelGenerator.generate_prompt_for_fix
 
         Args:
-            gen_args: 生成参数，实际应为 TritonKernelGenerateArgs 实例
+            gen_args: Generation arguments, should be a TritonKernelGenerateArgs instance
         """
-        # 类型转换：确保 gen_args 是 TritonKernelGenerateArgs
+        # Type check: ensure gen_args is TritonKernelGenerateArgs
         if not isinstance(gen_args, TritonKernelGenerateArgs):
             raise TypeError(f"TorchPromptBuilder requires TritonKernelGenerateArgs, got {type(gen_args)}")
 
         info: TritonKernelGenerateArgs = gen_args
 
-        # 类型注解和断言：确保 check_result 不为 None
+        # Type annotation and assertion: ensure check_result is not None
         check_result: 'VerifyResult' = info.check_result  # type: ignore
         assert check_result is not None, "check_result is required for build_fix"
 
@@ -266,14 +266,14 @@ class TorchPromptBuilder(PromptBuilder):
 
     def build_optimization(self, gen_args: BaseGenerateArgs) -> str:
         """
-        生成优化 Triton kernel 的 prompt
+        Generate prompt for optimizing a Triton kernel
 
-        从 TritonKernelGenerator.generate_prompt_for_optimization 迁移
+        Migrated from TritonKernelGenerator.generate_prompt_for_optimization
 
         Args:
-            gen_args: 生成参数，实际应为 TritonKernelGenerateArgs 实例
+            gen_args: Generation arguments, should be a TritonKernelGenerateArgs instance
         """
-        # 类型转换：确保 gen_args 是 TritonKernelGenerateArgs
+        # Type check: ensure gen_args is TritonKernelGenerateArgs
         if not isinstance(gen_args, TritonKernelGenerateArgs):
             raise TypeError(f"TorchPromptBuilder requires TritonKernelGenerateArgs, got {type(gen_args)}")
 

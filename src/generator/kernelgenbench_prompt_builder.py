@@ -1,14 +1,14 @@
 """
 KernelGenBench prompt builder
 
-根据 generate_args 类型路由到对应的 prompt builder。
+Routes to the corresponding prompt builder based on generate_args type.
 """
 
 from typing import Any
 
 
 class KernelGenBenchPromptBuilder:
-    """KernelGenBench prompt builder，根据 args 类型分发"""
+    """KernelGenBench prompt builder - dispatches based on args type"""
 
     def __init__(self, mode: str = "basic"):
         from .vllm_prompt_builder import VllmPromptBuilder
@@ -19,7 +19,7 @@ class KernelGenBenchPromptBuilder:
         self.torch_builder = TorchPromptBuilder(mode=mode)
 
     def _get_builder(self, gen_args: Any):
-        from flagbench.framework.generate_args import VllmGenerateArgs, CublasGenerateArgs, TritonKernelGenerateArgs
+        from kernelgenbench.framework.generate_args import VllmGenerateArgs, CublasGenerateArgs, TritonKernelGenerateArgs
         if isinstance(gen_args, VllmGenerateArgs):
             return self.vllm_builder
         elif isinstance(gen_args, CublasGenerateArgs):

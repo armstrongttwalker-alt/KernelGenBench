@@ -22,15 +22,15 @@ from .utils import (
     prompt_generate_test_func_from_prompt_template
 )
 
-# 导入新的基类和 TritonKernelGenerateArgs
-from flagbench.framework.generate_args import (
+# Import new base class and TritonKernelGenerateArgs
+from kernelgenbench.framework.generate_args import (
     BaseGenerateArgs as _NewBaseGenerateArgs,
     TritonKernelGenerateArgs as _NewTritonKernelGenerateArgs,
     InputArg as _NewInputArg,
     OutputArg as _NewOutputArg,
 )
 
-# 向后兼容别名
+# Backward compatibility aliases
 BaseGenerateArgs = _NewBaseGenerateArgs
 TritonKernelGenerateArgs = _NewTritonKernelGenerateArgs
 InputArg = _NewInputArg
@@ -90,8 +90,8 @@ class ConstructDataArgs(BaseModel):
     def op_name(self):
         return self.problem_name
 
-# TorchKernelGenerateArgs, TestFuncGenerateArgs, BenchmarkFuncGenerateArgs 保留在这里
-# 因为它们还没有迁移到 framework 模块
+# TorchKernelGenerateArgs, TestFuncGenerateArgs, BenchmarkFuncGenerateArgs are kept here
+# because they have not yet been migrated to the framework module
 class TorchKernelGenerateArgs(BaseGenerateArgs):
     torch_kernel_name: str
     func_desc: str

@@ -24,17 +24,17 @@ def add_register_decorator(code: str, operator: str, namespace: str = None, api:
     return code
 
 def expand_params(slots):
-    # 每个 slot 的值是 [(v1,...), (v2,...)] 这样的绑定值
-    # 单参数 slot 会存成 [v1, v2]，所以我们转换成元组保证一致
+    # Each slot's values are bindings like [(v1,...), (v2,...)]
+    # Single-parameter slots are stored as [v1, v2], so convert to tuples for consistency
     slot_values = []
     for slot in slots:
         names = slot["names"]
         vals = slot["values"]
         if len(names) == 1:
-            vals = [(v,) for v in vals]  # 单值转成元组
+            vals = [(v,) for v in vals]  # convert single value to tuple
         slot_values.append((names, vals))
 
-    # slot 间笛卡尔积
+    # Cartesian product across slots
     results = []
     for combo in itertools.product(*[vals for _, vals in slot_values]):
         merged = {}
@@ -44,19 +44,19 @@ def expand_params(slots):
 
     return results
 
-def generate_speedup_html(speedup_data, title="性能对比结果", language="zh_CN"):
+def generate_speedup_html(speedup_data, title="Performance Comparison Results", language="zh_CN"):
     console = Console(record=True)
     print(speedup_data)
     speedup_str = "Speedup"
     match language:
         case "zh_CN":
-            speedup_str = "加速比"
+            speedup_str = "Speedup"
         case "en_US":
             speedup_str = "Speedup"
         case _:
             speedup_str = "Speedup"
 
-    # 创建主表格
+    # Create main table
     table = Table(
         title="",
         show_header=True,
@@ -65,58 +65,58 @@ def generate_speedup_html(speedup_data, title="性能对比结果", language="zh
         title_style="bold bright_cyan"
     )
 
-    # 动态分析参数结构，获取所有参数键
+    # Dynamically analyze parameter structure and get all parameter keys
     all_param_keys = set()
     for item in speedup_data:
         if item.get("params") != "avg" and isinstance(item.get("params"), dict):
             all_param_keys.update(item["params"].keys())
 
-    # 排序参数键，确保显示顺序一致
+    # Sort parameter keys to ensure consistent display order
     param_keys = sorted(list(all_param_keys))
 
-    # 添加列：加速比 + 参数列 + 时间列
+    # Add columns: speedup + parameter columns + time columns
     table.add_column(speedup_str, style="bold bright_white", justify="right", width=10)
     
-    # 为每个参数键添加一列
+    # Add one column per parameter key
     for key in param_keys:
         table.add_column(key, style="bold bright_yellow", width=10)
     
     table.add_column("PyTorch (ms)", style="bold bright_green", justify="right", width=14)
     table.add_column("Triton (ms)", style="bold bright_green", justify="right", width=14)
 
-    # 添加数据行
+    # Add data rows
     for item in speedup_data:
         if item.get("params") == "avg":
-            continue  # 跳过平均值，稍后单独处理
+            continue  # skip average row, handle separately later
 
         params = item.get("params", {})
         
-        # 转换时间为毫秒
+        # Convert time to milliseconds
         ref_time_ms = item["ref_time"] * 1000
         res_time_ms = item["res_time"] * 1000
         speedup = item["speedup"]
 
-        # 根据加速比设置颜色
+        # Set color based on speedup value
         if speedup > 1:
             speedup_color = "bold bright_green"
         else:
             speedup_color = "bold bright_red"
 
-        # 构建行数据
-        row_data = [Text(f"{speedup:.3f}", style=speedup_color)]  # 加速比
+        # Build row data
+        row_data = [Text(f"{speedup:.3f}", style=speedup_color)]  # speedup
 
-        # 添加参数值
+        # Add parameter values
         for key in param_keys:
             if isinstance(params, dict):
                 value = params.get(key, "—")
-                # 处理torch类型显示
+                # Handle torch type display
                 if "torch." in str(value):
                     value = str(value).replace("torch.", "")
                 row_data.append(str(value))
             else:
                 row_data.append("—")
 
-        # 添加时间数据
+        # Add time data
         row_data.extend([
             f"{ref_time_ms:.3f}",
             f"{res_time_ms:.3f}",
@@ -124,10 +124,10 @@ def generate_speedup_html(speedup_data, title="性能对比结果", language="zh
 
         table.add_row(*row_data)
 
-    # 添加平均值行
+    # Add average row
     avg_data = next((item for item in speedup_data if item.get("params") == "avg"), None)
     if avg_data:
-        table.add_section()  # 添加分隔线
+        table.add_section()  # add separator line
         avg_speedup = avg_data["speedup"]
         avg_ref_time_ms = avg_data["ref_time"] * 1000
         avg_res_time_ms = avg_data["res_time"] * 1000
@@ -137,9 +137,9 @@ def generate_speedup_html(speedup_data, title="性能对比结果", language="zh
         else:
             avg_color = "bold bright_red"
 
-        # 构建平均值行
-        avg_row = [Text(f"{avg_speedup:.3f}", style=avg_color)]  # 加速比
-        avg_row.extend([Text("—", style="dim")] * len(param_keys))  # 参数列用破折号填充
+        # Build average row
+        avg_row = [Text(f"{avg_speedup:.3f}", style=avg_color)]  # speedup
+        avg_row.extend([Text("—", style="dim")] * len(param_keys))  # fill parameter columns with dashes
         avg_row.extend([
             f"{avg_ref_time_ms:.3f}",
             f"{avg_res_time_ms:.3f}",
@@ -147,14 +147,14 @@ def generate_speedup_html(speedup_data, title="性能对比结果", language="zh
 
         table.add_row(*avg_row)
 
-    # 用 console 记录表格
+    # Record table with console
     console.print(table)
 
-    # 导出 HTML
+    # Export HTML
     html_content = console.export_html(inline_styles=True, clear=False)
 
 
-    # 包装成完整 HTML
+    # Wrap into a complete HTML page
     html_page = f"""
     <!DOCTYPE html>
     <html>
@@ -177,7 +177,7 @@ def generate_speedup_html(speedup_data, title="性能对比结果", language="zh
                 box-shadow: 0 4px 8px rgba(0,0,0,0.3);
                 border: 1px solid #333;
             }}
-            /* 增强颜色对比度 */
+            /* Enhance color contrast */
             .ansi-bright-green-fg {{ color: #00ff00 !important; }}
             .ansi-bright-red-fg {{ color: #ff4444 !important; }}
             .ansi-bright-cyan-fg {{ color: #44ffff !important; }}

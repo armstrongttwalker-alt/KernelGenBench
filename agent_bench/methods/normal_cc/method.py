@@ -122,7 +122,7 @@ class NormalCCMethod(BaseMethod):
             base_prompt = f.read()
 
         # Get dataset from config
-        dataset = config.get("dataset", "v2_1")
+        dataset = config.get("dataset", "KernelGenBench")
 
         # Build enhanced prompt with verification instructions
         prompt = self._build_enhanced_prompt(

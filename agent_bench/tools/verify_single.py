@@ -36,9 +36,7 @@ logger = logging.getLogger(__name__)
 
 # Default test module paths - can be overridden via config
 DEFAULT_TEST_MODULES = {
-    "v2": "src/flagbench/accuracy/test_v2_ops.py",
-    "v2_1": "src/flagbench/accuracy/test_v2_1_ops_with_benchmark.py",
-    "cupy": "src/flagbench/accuracy/cublas/test_cublas_ops.py",
+    "KernelGenBench": "src/kernelgenbench/accuracy/test_v2_1_ops_with_benchmark.py",
 }
 
 
@@ -195,7 +193,7 @@ def verify_single_kernel(
         verifier.set_modules(modules=[test_module], mode="accuracy")
 
         # Determine namespace based on dataset
-        namespace = "cupy" if dataset == "cupy" else "aten"
+        namespace = "aten"
         full_name = f"{namespace}::{operator}"
 
         # Prepare verification request
@@ -310,8 +308,8 @@ Examples:
     parser.add_argument(
         "--dataset", "-d",
         type=str,
-        default="v2_1",
-        help="Dataset name (default: v2_1)"
+        default="KernelGenBench",
+        help="Dataset name (default: KernelGenBench)"
     )
     parser.add_argument(
         "--timeout", "-t",

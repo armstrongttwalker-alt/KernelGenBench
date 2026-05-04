@@ -17,12 +17,13 @@ import importlib
 from pydantic import BaseModel
 from copy import deepcopy
 from dataclasses import dataclass, asdict
-from flagbench.perfermance.attri_util import BenchmarkResult
+from kernelgenbench.perfermance.attri_util import BenchmarkResult
 from sandbox.utils.accuracy_utils import CustomBenchmarkResult
 
 
-from flagbench.dataset import is_pytorch_op, IMPL_INFO
-from runtime import get_visible_devices_env
+from kernelgenbench.dataset import is_pytorch_op, IMPL_INFO
+def get_visible_devices_env():
+    return "CUDA_VISIBLE_DEVICES"
 
 
 def set_seed(seed):
@@ -132,15 +133,15 @@ class Verifier:
 
     def _import_module_or_path(self, module_or_path: str):
         """
-        动态导入模块或文件路径
-        - 如果是目录路径，导入目录下所有.py文件
-        - 如果是文件路径(.py结尾或路径分隔符),则从文件加载
-        - 否则作为模块名导入
+        Dynamically import a module or file path.
+        - If it is a directory path, import all .py files in the directory.
+        - If it is a file path (ending in .py or containing a path separator), load from file.
+        - Otherwise treat as a module name and import.
         """
         import sys
         import importlib.util
 
-        # 判断是否是目录
+        # Check if it is a directory
         if os.path.isdir(module_or_path):
             logger.info(f"Loading all test modules from directory: {module_or_path}")
             for filename in sorted(os.listdir(module_or_path)):
@@ -149,16 +150,16 @@ class Verifier:
                     self._import_module_or_path(file_path)
             return
 
-        # 判断是否是文件路径
+        # Check if it is a file path
         if os.path.exists(module_or_path) or module_or_path.endswith('.py') or os.path.sep in module_or_path:
-            # 作为文件路径处理
+            # Handle as file path
             if not os.path.exists(module_or_path):
                 raise FileNotFoundError(f"Module file not found: {module_or_path}")
             
-            # 生成模块名 (从文件名提取)
+            # Generate module name (extracted from filename)
             module_name = os.path.splitext(os.path.basename(module_or_path))[0]
             
-            # 使用 importlib.util 从文件加载
+            # Use importlib.util to load from file
             spec = importlib.util.spec_from_file_location(module_name, module_or_path)
             if spec is None or spec.loader is None:
                 raise ImportError(f"Cannot load module from {module_or_path}")
@@ -168,7 +169,7 @@ class Verifier:
             spec.loader.exec_module(module)
             logger.info(f"Loaded module from file: {module_or_path}")
         else:
-            # 作为模块名处理
+            # Handle as module name
             importlib.import_module(module_or_path)
             logger.info(f"Imported module: {module_or_path}")
 
@@ -179,11 +180,8 @@ class Verifier:
             logger.info("Skipping both accuracy and performance test imports due to FLAGBENCH_SKIP_BOTH_TEST=1")
             return
         if not self.accuracy_modules:
-            from flagbench import accuracy_modules
+            from kernelgenbench import accuracy_modules
             self.accuracy_modules = accuracy_modules
-        if not self.perf_modules:
-            from flagbench import perf_modules
-            self.perf_modules = perf_modules
         if mode == "accuracy":
             modules = self.accuracy_modules
         elif mode == "performance":
@@ -239,18 +237,18 @@ class Verifier:
         return summary, info
 
     def _auto_load_baseline(self, op_name: str) -> Optional[str]:
-        """自动加载 baseline 实现
+        """Auto-load baseline implementation.
 
-        尝试顺序：
-        1. 根据命名约定：cublas::gemm -> baseline/cublas/gemm.py
-        2. custom目录：baseline/custom/<op_name>.py
-        3. example目录（测试用）：baseline/example/baseline_<op_name>.py
+        Attempt order:
+        1. By naming convention: cublas::gemm -> baseline/cublas/gemm.py
+        2. custom directory: baseline/custom/<op_name>.py
+        3. example directory (for testing): baseline/example/baseline_<op_name>.py
         """
         from pathlib import Path
 
-        baseline_root = Path(REPO_TOP_DIR).parent / "flagbench" / "dataset" / "baseline"
+        baseline_root = Path(REPO_TOP_DIR).parent / "kernelgenbench" / "dataset" / "baseline"
 
-        # 尝试 1：解析命名约定 (category::opname)
+        # Attempt 1: parse naming convention (category::opname)
         if "::" in op_name:
             parts = op_name.split("::", 1)
             category, name = parts[0], parts[1]
@@ -259,14 +257,14 @@ class Verifier:
                 logger.info(f"Auto-loading baseline from {baseline_path}")
                 return baseline_path.read_text()
 
-        # 尝试 2：custom 目录
+        # Attempt 2: custom directory
         baseline_path = baseline_root / "custom" / f"{op_name}.py"
         if baseline_path.exists():
             logger.info(f"Auto-loading baseline from {baseline_path}")
             return baseline_path.read_text()
 
-        # 尝试 3：example 目录（测试用）
-        # 对于 non_torch_prelu，尝试 baseline_prelu.py
+        # Attempt 3: example directory (for testing)
+        # For non_torch_prelu, try baseline_prelu.py
         if op_name.startswith("non_torch_"):
             simple_name = op_name.replace("non_torch_", "")
             baseline_path = baseline_root / "example" / f"baseline_{simple_name}.py"
@@ -282,38 +280,38 @@ class Verifier:
             return None
         def ensure_import_torch(code: str) -> str:
             package_list = ["torch", "triton"]
-            # 检查字符串中是否包含 "torch"
+            # Check whether the string contains the package name
             for package in package_list:
                 if package in code:
-                    # 如果包含 "torch"，检查是否已经有 "import torch"
+                    # If the package is present, check whether "import <package>" already exists
                     if f"import {package}" not in code:
-                        # 如果没有 "import torch"，在字符串前面加上
+                        # If not, prepend the import statement
                         code = f"import {package}\n" + code
             if "tl." in code:
                 if "import triton.language as tl" not in code:
                     code = "import triton.language as tl\n" + code
             return code
         
-        # 保存原始的完整名称（用于判断是否是 PyTorch 算子）
+        # Save the original full name (used to determine whether it is a PyTorch operator)
         original_name = name
 
         name = name.split("::")[-1] if "::" in name else name
         name = name.split(".")[-1]
         compile(code, name, "exec")
 
-        # 步骤 2.1.1：添加算子类型判断
-        # 使用原始名称（带 namespace）来判断，避免默认使用 aten namespace
+        # Step 2.1.1: add operator type check
+        # Use the original name (with namespace) to avoid defaulting to aten namespace
         _is_torch_op = is_pytorch_op(original_name)
 
         if _is_torch_op:
-            # PyTorch 算子：检查所有 overload 变体
+            # PyTorch operator: check all overload variants
             impl_info = IMPL_INFO.get(name)
             ops = [op for op, _ in impl_info]
         else:
-            # 非 PyTorch 算子：只检查主函数名
+            # Non-PyTorch operator: only check the main function name
             ops = [name]
 
-        # 统一检查函数定义
+        # Uniformly check function definitions
         for op in ops:
             op_func_name = op.replace(".", "_")
             if f"def {op_func_name}(" not in code:
@@ -323,9 +321,9 @@ class Verifier:
         # check package import
         code = ensure_import_torch(code)
         if "@register" not in code:
-            code = "from flagbench import register\n" + code
+            code = "from kernelgenbench import register\n" + code
 
-            # 直接使用传入的 namespace，不进行重映射
+            # Use the passed-in namespace directly without remapping
             actual_namespace = namespace
 
             for op in ops:
@@ -401,7 +399,7 @@ class Verifier:
             task_chunks[i % device_count].append(name_source_map)
         result_queue = mp.Queue()
 
-        # 每个gpu一个进程
+        # One process per GPU
         processes: List[mp.Process] = []
         for i, chunk in enumerate(task_chunks):
             p = mp.Process(target=self._verify_with_one_device, args=(chunk, i, result_queue))
@@ -413,7 +411,7 @@ class Verifier:
             total = 0
             success = 0
             while finished < total_tasks:
-                result = result_queue.get()  # 等子进程消息
+                result = result_queue.get()  # wait for child process message
                 s = result.success == True
                 success += s
                 check_result.append(result)
@@ -441,8 +439,9 @@ class Verifier:
         failed = 0
         ret = None
         funcs = get_funcs_by_label(name)
-        # 当算子名带前缀（如 vllm13::rms_norm）时，过滤掉不属于该前缀的 test function，
-        # 避免同名算子（如 aten 和 vllm13 都有 rms_norm）匹配到错误的 test
+        # When the operator name has a prefix (e.g. vllm13::rms_norm), filter out test functions
+        # that do not belong to that prefix, to avoid matching the wrong test when operators with
+        # the same name exist in different namespaces (e.g. aten and vllm13 both have rms_norm)
         if "::" in report_name:
             prefix = report_name.split("::")[0]  # e.g. "vllm13", "cublas"
             filtered = [(f, m) for f, m in funcs if prefix in f.__module__]
@@ -620,7 +619,7 @@ class Verifier:
         else:
             log_dir = None
 
-        # === 处理 JSON 保存路径 ===
+        # === Handle JSON save path ===
         if log_dir:
             os.makedirs(log_dir, exist_ok=True)
             json_path = os.path.join(log_dir, f"test_report_{op_mark}.json")
@@ -659,21 +658,21 @@ class Verifier:
         source = [s if not s or not os.path.isfile(s) else read_file(s) for s in source]
 
         try:
-            self._init_test_func()    # 对于外部的triton kernel开发者，没有必要初始化 flaggems 的测试函数，如果用作benchmark，可以用这一行
+            self._init_test_func()    # For external Triton kernel developers, there is no need to initialize flaggems test functions; use this line if running as a benchmark
         except Exception as e:
             logger.error(f"Init test functions failed: {e}")
             raise e
         try:
-            # 步骤 2.3：处理 DISPATCH_TORCH_LIB 环境变量
+            # Step 2.3: handle DISPATCH_TORCH_LIB environment variable
             _is_torch_op = is_pytorch_op(function_name[0])
 
-            # 自动加载 baseline（方案1+方案4）
+            # Auto-load baseline (approach 1 + approach 4)
             if not _is_torch_op:
-                # 检查是否已提供 baseline
+                # Check whether a baseline has already been provided
                 has_baseline = any(ns == "baseline" for ns in namespace)
 
                 if not has_baseline:
-                    # 尝试自动加载 baseline
+                    # Try to auto-load baseline
                     baseline_code = self._auto_load_baseline(function_name[0])
                     if baseline_code:
                         source.insert(0, baseline_code)
@@ -682,34 +681,34 @@ class Verifier:
                         logger.info(f"Auto-loaded baseline for {function_name[0]}")
 
             if _is_torch_op:
-                # PyTorch 算子：保持原有逻辑
+                # PyTorch operator: keep original logic
                 if DISPATCH_TORCH_LIB:
                     checked_source = [self._check_code(s, fn_name, ns) for s, fn_name, ns in zip(source, function_name, namespace)]
             else:
-                # 非 PyTorch 算子：处理 baseline 和 triton 注册
+                # Non-PyTorch operator: handle baseline and triton registration
                 filtered_sources = []
                 filtered_function_names = []
                 filtered_namespaces = []
 
                 for s, fn_name, ns in zip(source, function_name, namespace):
                     if ns == "baseline":
-                        # 总是注册 baseline 到 "baseline" 命名空间
+                        # Always register baseline to the "baseline" namespace
                         filtered_sources.append(s)
                         filtered_function_names.append(fn_name)
                         filtered_namespaces.append("baseline")
 
                         if not DISPATCH_TORCH_LIB:
-                            # DISPATCH_TORCH_LIB=0: 也注册 baseline 到 "triton" 命名空间
+                            # DISPATCH_TORCH_LIB=0: also register baseline to the "triton" namespace
                             filtered_sources.append(s)
                             filtered_function_names.append(fn_name)
                             filtered_namespaces.append("triton")
                     elif ns == "triton" and DISPATCH_TORCH_LIB:
-                        # DISPATCH_TORCH_LIB=1: 注册 triton 到 "triton" 命名空间
+                        # DISPATCH_TORCH_LIB=1: register triton to the "triton" namespace
                         filtered_sources.append(s)
                         filtered_function_names.append(fn_name)
                         filtered_namespaces.append("triton")
 
-                # 确保 _check_code() 总是被调用
+                # Ensure _check_code() is always called
                 checked_source = [self._check_code(s, fn_name, ns) for s, fn_name, ns in zip(filtered_sources, filtered_function_names, filtered_namespaces)]
 
             # TODO
@@ -787,14 +786,14 @@ class Verifier:
         os.environ["FLAGBENCH_UPCAST"] = "0"
         
         # First, do the simple replacement
-        mocked_test_func_code = test_func_code.replace("flagbench.triton.", "flagbench.")
+        mocked_test_func_code = test_func_code.replace("kernelgenbench.triton.", "kernelgenbench.")
         
         # Then, handle more complex patterns like bench.triton.{torch_kernel_name}
         # This regex finds lines containing bench.triton.{torch_kernel_name} and replaces the entire line
         # pattern = rf'(\s*.*?)bench\.triton\.{re.escape(torch_kernel_name)}(.*?)(\n|$)'
         # replacement = rf'\1bench.{torch_kernel_name}\2\3'
         # mocked_test_func_code = re.sub(pattern, replacement, mocked_test_func_code, flags=re.MULTILINE)
-        # mocked_test_func_code = test_func_code.replace(f"flagbench.{torch_kernel_name}", f"torch.{torch_kernel_name}")
+        # mocked_test_func_code = test_func_code.replace(f"kernelgenbench.{torch_kernel_name}", f"torch.{torch_kernel_name}")
         
         results_with_mocked_test_func = self.only_verify(
             # name_source_map={
@@ -889,6 +888,6 @@ class Verifier:
         if benchmark_result.speedup is None:
             return benchmark_result
         speedup_info = [su.model_dump() for su in benchmark_result.speedup]
-        benchmark_result.info["html"] = generate_speedup_html(speedup_info, title="性能对比结果", language=language)
+        benchmark_result.info["html"] = generate_speedup_html(speedup_info, title="Performance Comparison Results", language=language)
 
         return benchmark_result

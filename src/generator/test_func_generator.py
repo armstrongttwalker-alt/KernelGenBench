@@ -140,13 +140,13 @@ class TestFuncGenerator(BaseGenerator):
         # for test
         prompt = "You are a test function generation expert proficient in PyTorch and Triton. Your task is to create a test python script that includes one or more test functions comparing the outputs of a PyTorch function and its Triton implementation. You must strictly adhere to the following specifications:\n\n"
         
-        # 基本信息
+        # Basic information
         prompt += f"## Operator Information\n"
         prompt += f"- Operator name: {info.kernel_name}\n"
         prompt += f"- PyTorch API call: torch.ops.{info.ops_namespace}.{info.kernel_name}(...)\n"
-        prompt += f"- Triton implementation call: Use the same API within `flagbench.use_gems()` context\n\n"
+        prompt += f"- Triton implementation call: Use the same API within `kernelgenbench.use_gems()` context\n\n"
         
-        # 算子的schema信息
+        # Operator schema information
         if info.operators:
             prompt += f"## Available Operator Schemas\n"
             prompt += f"The operator `{info.kernel_name}` has the following variants:\n"
@@ -156,7 +156,7 @@ class TestFuncGenerator(BaseGenerator):
             prompt += "\n```\n"
             prompt += "You MUST test ALL these variants. Each schema represents a different overload.\n\n"
         
-        # 测试函数要求
+        # Test function requirements
         prompt += "## Test Function Requirements\n\n"
         prompt += "### 1. Function Structure\n"
         prompt += "Each test function must:\n"
@@ -171,7 +171,7 @@ class TestFuncGenerator(BaseGenerator):
         prompt += f"# PyTorch reference implementation\n"
         prompt += f"ref_out = torch.ops.{info.ops_namespace}.{info.kernel_name}(...)\n\n"
         prompt += f"# Triton implementation\n"
-        prompt += f"with flagbench.use_gems(REGISTERED_OPS):\n"
+        prompt += f"with kernelgenbench.use_gems(REGISTERED_OPS):\n"
         prompt += f"    act_out = torch.ops.{info.ops_namespace}.{info.kernel_name}(...)\n\n"
         prompt += f"# Compare results\n"
         prompt += f"assert_close(act_out, ref_out)\n"
@@ -199,15 +199,15 @@ class TestFuncGenerator(BaseGenerator):
         prompt += "    \n"
         prompt += f"    ref_out = torch.ops.{info.ops_namespace}.{info.kernel_name}(ref_input, ref_other)\n"
         prompt += "    \n"
-        prompt += "    with flagbench.use_gems(REGISTERED_OPS):\n"
+        prompt += "    with kernelgenbench.use_gems(REGISTERED_OPS):\n"
         prompt += f"        act_out = torch.ops.{info.ops_namespace}.{info.kernel_name}(input_tensor, other_tensor)\n"
         prompt += "    \n"
         prompt += "    assert_close(act_out, ref_out, dtype=dtype)\n"
         prompt += "```\n\n"
         
         prompt += "## Important Constraints\n"
-        prompt += "- DO NOT import `label`, `parametrize`, `assert_close`, or `flagbench` - these will be auto-imported\n"
-        prompt += "- DO NOT include any explanations, comments (除了必要的代码注释), or unrelated code\n"
+        prompt += "- DO NOT import `label`, `parametrize`, `assert_close`, or `kernelgenbench` - these will be auto-imported\n"
+        prompt += "- DO NOT include any explanations, comments (except necessary code comments), or unrelated code\n"
         prompt += "- Only output the test function code, ready to run\n"
         prompt += "- Wrap your output in ```python ``` code blocks\n"
         prompt += "- Use sensible, realistic values for test parameters (avoid extreme edge cases unless necessary)\n"
@@ -258,7 +258,7 @@ class TestFuncGenerator(BaseGenerator):
         results = self._post_process(results)
         if not self.from_mcp:
             test_func_prefix = """
-import flagbench
+import kernelgenbench
 from sandbox.config import DEVICE as device
 from sandbox.verifier.test_parametrize import parametrize, label
 from sandbox.utils.accuracy_utils import gems_assert_close as assert_close

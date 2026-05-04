@@ -327,7 +327,7 @@ def _convert_single_test_func(code: str) -> str:
             indent + ')',
             '',
             indent + '# Benchmark triton implementation',
-            indent + 'with flagbench.use_gems(REGISTERED_OPS):',
+            indent + 'with kernelgenbench.use_gems(REGISTERED_OPS):',
             indent + '    ms_triton, _, _ = triton.testing.do_bench(',
             indent + f'        lambda: {act_call},',
             indent + '        rep=100,',
@@ -388,21 +388,21 @@ def load_right_kernel_code_from_acc_verify_result_path(path: Path, get_success: 
 
 def get_function_signature(func: Callable) -> Dict[str, Any]:
     """
-    获取函数的入参和出参信息。
-    
-    支持两种类型：
-    1. 普通 Python 函数：使用 inspect 模块
-    2. torch.ops 算子：使用 _schema 属性
-    
+    Get the input and output parameter information of a function.
+
+    Supports two types:
+    1. Regular Python functions: uses the inspect module
+    2. torch.ops operators: uses the _schema attribute
+
     Args:
-        func: 可调用对象
-        
+        func: Callable object
+
     Returns:
-        包含入参和出参信息的字典，格式：
+        Dictionary containing input and output parameter information, format:
         {
             "input_args": [InputArg, ...],
             "output_args": [OutputArg, ...],
-            "signature": "完整的函数签名字符串"
+            "signature": "complete function signature string"
         }
     """
     result = {
@@ -411,55 +411,55 @@ def get_function_signature(func: Callable) -> Dict[str, Any]:
         "signature": ""
     }
     
-    # 情况1: torch.ops 算子，使用 _schemas 属性
+    # Case 1: torch.ops operator, use _schemas attribute
     if hasattr(func, '_schemas'):
         schema = func._schemas
         result["signature"] = str(schema)
         
         input_output_info = {k: str(v) for k, v in schema.items()}
         return {"input_args": input_output_info}
-        # # 解析 schema
-        # # 格式示例: "aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor"
+        # # Parse schema
+        # # Format example: "aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor"
         # schema_str = str(schema)
-        
-        # # 提取输入参数部分
+
+        # # Extract input parameters section
         # input_match = re.search(r'\((.*?)\)', schema_str)
         # if input_match:
         #     params_str = input_match.group(1)
-            
-        #     # 分割参数（处理 * 分隔符）
+
+        #     # Split parameters (handle * separator)
         #     params_parts = params_str.split('*')
         #     all_params = []
-            
+
         #     for part in params_parts:
         #         for param in part.split(','):
         #             param = param.strip()
         #             if param and param != '*':
         #                 all_params.append(param)
-            
-        #     # 解析每个参数
+
+        #     # Parse each parameter
         #     for param in all_params:
         #         param = param.strip()
         #         if not param:
         #             continue
-                
-        #         # 解析参数：格式 "Type name" 或 "Type name=default"
+
+        #         # Parse parameter: format "Type name" or "Type name=default"
         #         has_default = '=' in param
         #         if has_default:
         #             param_no_default, default_value = param.split('=', 1)
         #         else:
         #             param_no_default = param
         #             default_value = None
-                
+
         #         parts = param_no_default.strip().split()
         #         if len(parts) >= 2:
         #             param_type = parts[0]
         #             param_name = parts[1]
-                    
-        #             # 处理类型中的修饰符 (如 Tensor(a!))
+
+        #             # Handle type modifiers (e.g. Tensor(a!))
         #             param_type = re.sub(r'\(.*?\)', '', param_type)
-                    
-        #             # 创建 InputArg 对象
+
+        #             # Create InputArg object
         #             input_arg = InputArg(
         #                 arg_name=param_name,
         #                 arg_type=param_type,
@@ -468,17 +468,17 @@ def get_function_signature(func: Callable) -> Dict[str, Any]:
         #                 arg_desc=""
         #             )
         #             result["input_args"].append(input_arg)
-        
-        # # 提取输出参数
+
+        # # Extract output parameters
         # output_match = re.search(r'->\s*(.+)$', schema_str)
         # if output_match:
         #     output_type = output_match.group(1).strip()
-            
-        #     # 处理多个返回值 (如 "(Tensor, Tensor)")
+
+        #     # Handle multiple return value types (e.g. "(Tensor, Tensor)")
         #     if output_type.startswith('(') and output_type.endswith(')'):
         #         output_types = [t.strip() for t in output_type[1:-1].split(',')]
         #         for out_type in output_types:
-        #             # 清理类型修饰符
+        #             # Clean up type modifiers
         #             out_type = re.sub(r'\(.*?\)', '', out_type)
         #             output_arg = OutputArg(
         #                 arg_type=out_type,
@@ -487,7 +487,7 @@ def get_function_signature(func: Callable) -> Dict[str, Any]:
         #             )
         #             result["output_args"].append(output_arg)
         #     else:
-        #         # 单个返回值
+        #         # Single return value
         #         output_type = re.sub(r'\(.*?\)', '', output_type)
         #         output_arg = OutputArg(
         #             arg_type=output_type,
@@ -496,33 +496,33 @@ def get_function_signature(func: Callable) -> Dict[str, Any]:
         #         )
         #         result["output_args"].append(output_arg)
     
-    # 情况2: 普通 Python 函数，使用 inspect
+    # Case 2: regular Python function, use inspect
     else:
         try:
             sig = inspect.signature(func)
             result["signature"] = str(sig)
             
-            # 解析输入参数
+            # Parse input parameters
             for param_name, param in sig.parameters.items():
-                # 获取类型注解
+                # Get type annotation
                 param_type = (
                     str(param.annotation) 
                     if param.annotation != inspect.Parameter.empty 
                     else "Any"
                 )
                 
-                # 清理类型字符串（移除 <class '...'> 包装）
+                # Clean up type string (remove <class '...'> wrapper)
                 if param_type.startswith("<class '") and param_type.endswith("'>"):
                     param_type = param_type[8:-2]
                 
-                # 获取默认值
+                # Get default value
                 param_default = (
                     param.default 
                     if param.default != inspect.Parameter.empty 
                     else None
                 )
                 
-                # 创建 InputArg 对象
+                # Create InputArg object
                 input_arg = InputArg(
                     arg_name=param_name,
                     arg_type=param_type,
@@ -532,24 +532,23 @@ def get_function_signature(func: Callable) -> Dict[str, Any]:
                 )
                 result["input_args"].append(input_arg)
             
-            # 解析返回类型
+            # Parse return type
             if sig.return_annotation != inspect.Signature.empty:
                 return_type = str(sig.return_annotation)
                 
-                # 清理类型字符串
+                # Clean up type string
                 if return_type.startswith("<class '") and return_type.endswith("'>"):
                     return_type = return_type[8:-2]
                 
-                # 处理多返回值类型 (如 Tuple[int, str])
-                # 简单处理：如果是 Tuple/tuple，就作为单个返回类型
+                # Handle multiple return value types (e.g. Tuple[int, str])
+                # Simple handling: if it's Tuple/tuple, treat as a single return type
                 output_arg = OutputArg(
                     arg_type=return_type,
                     arg_value=None,
                     arg_desc=""
                 )
                 result["output_args"].append(output_arg)
-            else:
-                # 没有类型注解时
+            # When no type annotation is available
                 output_arg = OutputArg(
                     arg_type="Any",
                     arg_value=None,
@@ -558,7 +557,7 @@ def get_function_signature(func: Callable) -> Dict[str, Any]:
                 result["output_args"].append(output_arg)
                 
         except (ValueError, TypeError) as e:
-            # 无法获取签名时，返回空结果
+            # Unable to get signature, return empty result
             result["signature"] = f"<Unable to get signature: {e}>"
     
     return result
@@ -566,13 +565,13 @@ def get_function_signature(func: Callable) -> Dict[str, Any]:
 
 def get_function_signature_simple(func: Callable) -> tuple[List[InputArg], List[OutputArg]]:
     """
-    简化版本：直接返回 InputArg 和 OutputArg 列表。
-    
+    Simplified version: directly returns InputArg and OutputArg lists.
+
     Args:
-        func: 可调用对象
-        
+        func: Callable object
+
     Returns:
-        (InputArg 列表, OutputArg 列表)
+        (InputArg list, OutputArg list)
     """
     sig_info = get_function_signature(func)
     return sig_info["input_args"], sig_info["output_args"]
@@ -598,14 +597,14 @@ def query_operator_wiki(operator_name: str) -> str:
         "messages": [{
             "role": "user",
             "content": (
-                f"请仅返回一个 JSON 字符串，该字符串是一个列表，形如 "
-                f'[{{\"link\": \"算子文件路径\", \"code\": \"代码\"}}, ...]。'
-                f"每个对象必须包含 link（算子文件路径）和 code（算子代码，无省略、无额外注释）。"
-                f"总结果最多返回 5 条，优先返回 python 和 triton 算子，如果没有的话可以返回其他算子（比如 .h 文件）。"
-                f"不要返回任何解释、前后缀、Markdown 或自然语言。"
-                f"代码内容禁止包含行号、'第几行'、'36-63' 等描述，更不要出现额外括号或非 JSON 符号。"
-                f"相关任务要求是：用 triton 实现 {operator_name} 这个算子。"
-            ), 
+                f"Return ONLY a JSON string that is a list in the format "
+                f'[{{"link": "operator file path", "code": "code"}}, ...].'
+                f"Each object must contain link (operator file path) and code (operator code, no omissions, no extra comments)."
+                f"Return at most 5 results, prioritize python and triton operators; if none available, return other operators (e.g. .h files)."
+                f"Do not return any explanations, prefixes/suffixes, Markdown, or natural language."
+                f"Code content must not contain line numbers, 'line N', '36-63' style descriptions, extra brackets, or non-JSON symbols."
+                f"The related task requirement is: implement the {operator_name} operator using triton."
+            ),
         }],
         "provider": "openai",
         "model": "gpt-4.1",

@@ -1,30 +1,31 @@
 # Agent Benchmark Configuration
 
-# Agent 配置
+# Agent configuration
 agent:
   type: claude           # claude / cursor / custom
-  bin: claude            # 可执行文件路径
-  timeout: 1800          # 单算子超时 (秒)
-  max_retries: 3         # 失败重试次数
-  budget: 50.0           # 单算子预算 (USD, 仅 claude)
+  bin: claude            # path to executable
+  timeout: 1800          # per-operator timeout (seconds)
+  max_retries: 3         # max retries on failure
+  budget: 50.0           # per-operator budget (USD, claude only)
 
-# 设备配置
+# Device configuration
 device:
-  gpu_ids: null          # null=自动检测, 或 [0,1,2,3]
+  gpu_ids: null          # null=auto-detect, or [0,1,2,3]
   lock_dir: /tmp/agent_bench_gpu_locks
 
-# 路径配置 (相对于 agent_bench/ 目录)
+# Path configuration (relative to agent_bench/ directory)
 paths:
   prompts: prompts
   runs: runs
   templates: templates
-  python: python         # Python 解释器路径
+  python: python         # Python interpreter path - set to your conda env, e.g. /path/to/conda/envs/myenv/bin/python
 
-# Dataset 到测试模块的映射 (相对于 flagbench/ 根目录)
+# Dataset to test module mapping (relative to project root)
 test_modules:
-  v2: src/flagbench/accuracy/test_v2_ops.py
-  v2_1: src/flagbench/accuracy/test_v2_1_ops_with_benchmark.py
-  cupy: src/flagbench/accuracy/cublas/test_cublas_ops.py
+  KernelGenBench:
+    - src/kernelgenbench/accuracy/test_v2_1_ops_with_benchmark.py
+    - src/kernelgenbench/accuracy/vllm13/
+    - src/kernelgenbench/accuracy/cublas/
 
-# 轮询间隔 (秒)
+# Poll interval (seconds)
 poll_interval: 10

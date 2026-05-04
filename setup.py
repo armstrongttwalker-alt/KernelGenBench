@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="test_verifier",
-    version="0.1",  # 与 __init__.py 中的版本一致
+    version="0.1",  # Keep consistent with the version in __init__.py
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     python_requires=">=3.8.0",

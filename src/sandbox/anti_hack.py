@@ -1,5 +1,5 @@
 """
-Anti-hack detection module for flagbench.
+Anti-hack detection module for kernelgenbench.
 
 Three layers of defense:
 1. Static AST scan: detect forbidden imports/calls before execution

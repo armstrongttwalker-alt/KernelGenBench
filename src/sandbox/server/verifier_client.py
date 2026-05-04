@@ -52,7 +52,7 @@ class VerifierClient:
         operator_name: str,
         kernel_code: str,
         test_module: str = "",
-        test_set: str = "v2_1",
+        test_set: str = "KernelGenBench",
         timeout: int = 300
     ) -> dict:
         """Submit a test request to the server.
@@ -61,7 +61,7 @@ class VerifierClient:
             operator_name: Name of the operator to test
             kernel_code: Source code of the kernel
             test_module: Optional test module name (takes priority over test_set)
-            test_set: Test set to use: v2, v2_1, cupy (default: v2_1)
+            test_set: Test set to use: KernelGenBench (default: KernelGenBench)
             timeout: Timeout in seconds (default: 300)
 
         Returns:
@@ -107,7 +107,7 @@ class VerifierClient:
         self,
         kernel_file: str,
         test_module: str = "",
-        test_set: str = "v2_1",
+        test_set: str = "KernelGenBench",
         timeout: int = 300,
         output_file: Optional[str] = None
     ) -> dict:
@@ -116,7 +116,7 @@ class VerifierClient:
         Args:
             kernel_file: Path to the kernel file
             test_module: Optional test module name (takes priority over test_set)
-            test_set: Test set to use: v2, v2_1, cupy (default: v2_1)
+            test_set: Test set to use: KernelGenBench (default: KernelGenBench)
             timeout: Timeout in seconds (default: 300)
             output_file: Optional path to save the result
 
@@ -212,9 +212,9 @@ Examples:
     parser.add_argument(
         "--test-set",
         type=str,
-        choices=["v2", "v2_1", "cupy"],
-        default="v2_1",
-        help="Test set to use (default: v2_1)"
+        choices=["KernelGenBench"],
+        default="KernelGenBench",
+        help="Test set to use (default: KernelGenBench)"
     )
     parser.add_argument(
         "--timeout",

@@ -15,9 +15,19 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+CONFIG="${CONFIG:-config.yaml}"
+_CFG_PYTHON=$(python3 -c "
+import yaml, sys
+try:
+    cfg = yaml.safe_load(open('$CONFIG'))
+    print(cfg.get('paths', {}).get('python', ''))
+except: print('')
+" 2>/dev/null)
+PYTHON="${PYTHON:-${_CFG_PYTHON:-$(which python3)}}"
+
 # Default values
-DATASET="v2_1"
-METHOD="naive_cc"
+DATASET="KernelGenBench"
+METHOD="normal_cc"
 DEVICE_COUNT=8
 TIMEOUT=600
 SKIP_GEN=false
@@ -79,21 +89,16 @@ while [[ $# -gt 0 ]]; do
             echo "                      Available: naive_cc, normal_cc, iterative_optimizer"
             echo "  --device-count      Number of GPUs for verification (default: 8)"
             echo "  --timeout           Timeout per operator in seconds (default: 600)"
-            echo "  --max-optimize-calls  Max CC calls for iterative_optimizer (default: 10)"
-            echo "  --target-speedup    Target speedup for iterative_optimizer (default: 1.0)"
             echo "  --skip-gen          Skip prompt generation step"
             echo "  --skip-verify       Skip verification step (only generate)"
             echo "  -v, --verbose       Enable verbose output"
             echo "  -h, --help          Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0 -d v2_1                       # Test entire v2_1 dataset"
-            echo "  $0 -d v2                         # Test entire v2 dataset"
+            echo "  $0                               # Test entire KernelGenBench dataset"
             echo "  $0 add                           # Test add operator"
-            echo "  $0 add,softmax -d v2_1           # Test multiple operators"
-            echo "  $0 --skip-gen -d v2_1            # Skip regenerating prompts"
-            echo "  $0 -m iterative_optimizer add    # Use iterative optimizer method"
-            echo "  $0 -m iterative_optimizer add --max-optimize-calls 5  # Limit CC calls"
+            echo "  $0 add,softmax                   # Test multiple operators"
+            echo "  $0 --skip-gen                    # Skip regenerating prompts"
             exit 0
             ;;
         -*)
@@ -133,9 +138,9 @@ if [[ "$SKIP_GEN" == "false" ]]; then
     echo ""
     echo "[Step 1/3] Generating prompts..."
     if [[ -n "$OPERATORS" ]]; then
-        python generate_prompts.py --dataset "$DATASET" --op "$OPERATORS" --force
+        $PYTHON generate_prompts.py --dataset "$DATASET" --op "$OPERATORS" --force
     else
-        python generate_prompts.py --dataset "$DATASET" --force
+        $PYTHON generate_prompts.py --dataset "$DATASET" --force
     fi
 else
     echo ""
@@ -161,7 +166,7 @@ if [[ -n "$TARGET_SPEEDUP" ]]; then
     RUN_ARGS+=(--target-speedup "$TARGET_SPEEDUP")
 fi
 
-python run.py "${RUN_ARGS[@]}"
+$PYTHON run.py "${RUN_ARGS[@]}"
 
 # Get the run directory from .last_run marker
 if [[ -f runs/.last_run ]]; then
@@ -178,7 +183,7 @@ echo "Run completed: $RUN_NAME"
 if [[ "$SKIP_VERIFY" == "false" ]]; then
     echo ""
     echo "[Step 3/3] Verifying generated kernels..."
-    python verify.py --run "$RUN_NAME" $OP_ARG --device-count "$DEVICE_COUNT" --timeout "$TIMEOUT" $VERBOSE
+    $PYTHON verify.py --run "$RUN_NAME" $OP_ARG --device-count "$DEVICE_COUNT" --timeout "$TIMEOUT" $VERBOSE
 else
     echo ""
     echo "[Step 3/3] Skipping verification (--skip-verify)"

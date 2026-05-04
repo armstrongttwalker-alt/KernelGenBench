@@ -1,685 +1,106 @@
-# FlagBench
+# KernelGenBench
 
-FlagBench 是一个用于 Triton kernel 生成和验证的基准测试框架，支持自动生成测试用例、验证准确性和性能测试。
+A benchmark framework for evaluating LLM and agent-based Triton kernel generation on NVIDIA GPUs.
 
-## 目录
+## Overview
 
-- [安装](#安装)
-- [项目结构](#项目结构)
-- [Scripts 目录说明](#scripts-目录说明)
-- [Verifier Server](#verifier-server)
-- [Test 目录说明](#test-目录说明)
-- [使用指南](#使用指南)
+KernelGenBench provides two evaluation tracks:
 
-## 安装
+1. **LLM Track** (`scripts/generate_kernel_and_verify.py`): Evaluates LLMs on generating Triton kernels via Pass@K testing.
+2. **Agent Track** (`agent_bench/test_ops.sh`): Evaluates coding agents on iteratively generating and verifying Triton kernels.
+
+The benchmark covers 210 operators across three categories:
+- **PyTorch ATen operators** (v2.1 subset, 110 ops)
+- **vLLM operators** (50 ops)
+- **cuBLAS operators** (50 ops)
+
+## Requirements
+
+- Python 3.10+
+- PyTorch 2.x
+- Triton
+- NVIDIA GPU
 
 ```bash
 pip install -r requirements.txt
-pip install .
+pip install -e .
 ```
 
-## 项目结构
+## LLM Track
 
-```
-flag-bench/
-├── src/                          # 源代码目录
-│   ├── flagbench/               # 核心 benchmark 功能
-│   ├── generator/               # 代码生成器
-│   └── sandbox/                 # 沙箱验证器
-│       └── server/              # Verifier Server（多后端验证服务）
-├── scripts/                      # 工具脚本（详见下文）
-├── test/                         # 测试文件（详见下文）
-├── FlagGems/                     # FlagGems 子模块
-├── output/                       # Triton kernel 生成输出
-├── output_ut/                    # 单元测试生成输出
-├── runs/                         # 验证运行结果
-├── cache/                        # 缓存目录
-└── README.md                     # 本文件
-```
+Generate and verify Triton kernels using Pass@K:
 
-## Scripts 目录说明
-
-### 核心脚本
-
-#### 1. `generate_kernel_and_verify.py`
-**功能**: 统一的 kernel/测试生成和验证脚本，支持 Pass@K 迭代测试
-
-**核心特性**:
-- 支持三种测试类型：`triton`（kernel 生成）、`accuracy`（测试生成）、`performance`（性能测试生成）
-- Pass@K 测试流程，可配置迭代轮数
-- 自定义测试模块支持（支持文件路径或目录路径）
-- 反射模式：使用上一轮验证结果作为下一轮生成的反馈
-- Wiki 参考集成，提供算子文档支持
-- 多数据集支持：`gems`、`v1`、`v2`、`qwen_next`
-- 按测试类型自动分离输出目录
-
-**基础用法**:
-
-生成并验证 Triton kernels（默认模式）:
-```bash
-FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 python scripts/generate_kernel_and_verify.py \
-    --name aten \
-    --dataset v2 \
-    --max-rounds 10 \
-    --device-count 8
-```
-
-生成并验证准确性测试:
 ```bash
 python scripts/generate_kernel_and_verify.py \
-    --name aten \
-    --test-type accuracy \
-    --max-rounds 5 \
-    --device-count 8
-```
-
-**高级功能**:
-
-使用自定义测试模块（支持目录）:
-```bash
-python scripts/generate_kernel_and_verify.py \
-    --name aten \
-    --test-type accuracy \
-    --custom-test-modules src/flagbench/accuracy/test_qwen_next_ops.py \
-    --max-rounds 10
-```
-
-启用反射模式（使用上一轮失败结果作为反馈）:
-```bash
-python scripts/generate_kernel_and_verify.py \
-    --name aten \
+    --dataset KernelGenBench \
     --test-type triton \
-    --reflection \
-    --max-rounds 10
-```
-
-使用 Wiki 参考:
-```bash
-python scripts/generate_kernel_and_verify.py \
-    --name aten \
-    --use-wiki \
-    --max-rounds 10
-```
-
-针对 Qwen Next 算子:
-```bash
-FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 python scripts/generate_kernel_and_verify.py \
-    --name aten \
-    --dataset qwen_next \
-    --custom-test-modules src/flagbench/accuracy/test_qwen_next_ops.py \
     --max-rounds 10 \
+    --model-name gpt-4o \
     --device-count 8
 ```
 
-**重要参数**:
-- `--test-type`: 测试类型，可选 `triton`（默认）、`accuracy`、`performance`
-- `--dataset`: 数据集版本，可选 `v2`（默认）、`gems`、`v1`、`qwen_next`
-- `--max-rounds`: Pass@K 轮数（默认: 10）
-- `--custom-test-modules`: 自定义测试模块路径或目录（支持多个）
-- `--reflection`: 启用反射模式，用于迭代改进
-- `--use-wiki`: 在生成提示中包含 Wiki 参考
-- `--device-count`: 并行测试的 GPU 数量（默认: 8）
-- `--timeout`: 每个测试的超时时间（秒，默认: 300）
-- `--model-name`: 使用的 LLM 模型（默认: gpt-4o-mini）
-- `--temperature`: 采样温度（默认: 0.8）
-- `--debug`: 启用调试模式（仅测试前 8 个算子）
+Key arguments:
+- `--dataset`: `KernelGenBench` (default, covers all 210 ops)
+- `--max-rounds`: number of attempts per operator (Pass@K)
+- `--model-name`: LLM model to use
+- `--server-type`: API server type
+- `--op-name`: test a single operator (e.g. `aten::add`)
 
-**输出目录结构**:
-```
-output/pass_at_k/                    # triton 模式输出
-├── pass_at_10_gpt-4o-mini_triton_2024-01-15/
-│   ├── round_0/                     # 第一轮生成
-│   │   ├── aten::add.py            # 生成的 kernel
-│   │   ├── aten::mul.py
-│   │   └── generation_summary.json
-│   ├── round_1/                     # 第二轮（失败算子重试）
-│   ├── verification/
-│   │   ├── log_0/
-│   │   │   └── result.json         # 验证结果
-│   │   └── log_1/
-│   └── pass_at_k_results.json      # Pass@K 总体统计
+## Agent Track
 
-output/pass_at_k_accuracy/           # accuracy 模式输出
-└── pass_at_5_gpt-4o-mini_accuracy_2024-01-15/
-    └── (结构同上)
-```
-
-**与其他脚本的区别**:
-- 相比 `generate_ut_and_verify.py`：支持 Triton kernel 生成和准确性测试生成（统一）
-- 支持自定义测试模块，可加载目录路径
-- 支持多种数据集，包括 Qwen Next 算子
-- 按测试类型自动分离输出目录
-- 更灵活的配置选项（反射、Wiki 等）
-
-#### 2. `generate_ut_and_verify.py`
-**功能**: Pass@K 测试的完整流程，包括生成单元测试和验证
-
-**用法**:
-```bash
-python scripts/generate_ut_and_verify.py \
-    --name <operator_name> \
-    --output-dir <output_directory> \
-    --test-type accuracy \
-    --max-rounds 10
-```
-
-**参数**:
-- `--name`: 算子命名空间（默认: `aten`）
-- `--output-dir`: 输出目录（默认: `output_ut/pass_at_k`）
-- `--test-type`: 测试类型（`accuracy` 或 `performance`）
-- `--max-rounds`: 最大轮数（默认: 10）
-
-#### 3. `convert_flaggems_tests.py`
-**功能**: 将 FlagGems 测试函数转换为 flagbench 格式
-
-**用法**:
-```bash
-python scripts/convert_flaggems_tests.py \
-    --operator <operator_name> \
-    --output-dir <output_directory>
-```
-
-**特性**:
-- 自动处理装饰器转换
-- 智能导入语句管理
-- 支持多行函数签名
-- 自动添加必要的常量定义
-
-#### 4. `generate_sample.py`
-**功能**: 为已验证的准确性测试函数生成 Triton kernel 代码
-
-**用法**:
-```bash
-FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 python scripts/generate_sample.py \
-    --test-func-result-path <result_path>
-```
-
-#### 5. `generate_ut_sample.py`
-**功能**: 生成准确性测试函数
-
-**用法**:
-```bash
-python scripts/generate_ut_sample.py
-```
-
-### 评估脚本
-
-#### 6. `eval_from_path_with_test_func.py`
-**功能**: 使用测试函数验证生成的 Triton 代码
-
-**用法**:
-```bash
-FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 FLAGBENCH_SKIP_BOTH_TEST=1 \
-python scripts/eval_from_path_with_test_func.py \
-    --path <triton_code_dir> \
-    --num-samples <k> \
-    --device-count 8 \
-    --timeout 300 \
-    --test-func-path <test_func_path>
-```
-
-#### 7. `eval_from_path_with_perf_test_func.py`
-**功能**: 使用性能测试函数评估生成的代码
-
-#### 8. `eval_performance_from_acc_results.py`
-**功能**: 从准确性结果评估性能
-
-#### 9. `test_updated_accuracy_ut.py`
-**功能**: 测试更新的准确性单元测试
-
-**用法**:
-```bash
-python scripts/test_updated_accuracy_ut.py \
-    --path <path_from_generation> \
-    --device-count <gpu_counts>
-```
-
-### 其他工具
-
-#### 10. `generate_test_from_gems.py`
-**功能**: 从 FlagGems 生成测试用例
-
-#### 11. `utils.py`
-**功能**: 提供通用工具函数
-
-### 分析和验证工具
-
-#### 12. `verify_existing_kernels.py`
-**功能**: 重新验证已生成的 Triton kernel，无需重新生成
-
-**用法**:
-```bash
-python scripts/verify_existing_kernels.py \
-    --data-dir <pass_at_k_output_dir> \
-    --rounds all \
-    --device-count 8 \
-    --timeout 300
-```
-
-**参数**:
-- `--data-dir`: Pass@K 实验的输出目录（必需）
-- `--rounds`: 要验证的轮次，如 `0,1,2` 或 `all`（默认: `all`）
-- `--verify-output-dir`: 验证结果输出目录名（默认: `verification_rerun`）
-- `--device-count`: 使用的 GPU 数量（默认: 8）
-- `--timeout`: 每个测试的超时时间（秒）（默认: 300）
-- `--skip-verified`: 跳过已验证的轮次（默认: True）
-- `--no-skip-verified`: 不跳过已验证的轮次
-
-**使用场景**:
-- Pass@K 实验完成后重新验证
-- 验证环境变量或配置更改后的影响
-- 补充验证之前跳过的轮次
-
-#### 13. `analyze/analyze_speedup.py`
-**功能**: 从验证结果中分析 speedup 数据，生成统计摘要
-
-**用法**:
-```bash
-python scripts/analyze/analyze_speedup.py <verification_dir>
-```
-
-**示例**:
-```bash
-python scripts/analyze/analyze_speedup.py \
-    output/pass_at_k/pass_at_10_gpt-5_triton_reflection_20251226-184155/verification_rerun
-```
-
-**输出**:
-- `speedup_summary.json`: JSON 格式的统计数据
-- `speedup_summary.md`: Markdown 表格格式的摘要
-- 按平均 speedup 降序排列的算子列表
-
-**功能特点**:
-- 提取所有成功算子的 speedup 数据
-- 计算每个算子的统计信息（mean, median, min, max）
-- 跨轮次汇总数据
-
-#### 14. `analyze/analyze_speedup_detailed.py`
-**功能**: 详细分析 speedup 模式，识别高性能和低性能算子
-
-**用法**:
-```bash
-python scripts/analyze/analyze_speedup_detailed.py
-```
-
-**注意**: 此脚本硬编码了数据路径，需要修改脚本中的 `speedup_file` 变量
-
-**输出分类**:
-- **高 speedup 算子** (>1.3x): 性能提升的算子
-- **正常 speedup 算子** (0.1x-1.3x): 正常性能范围
-- **低 speedup 算子** (<0.1x): 严重性能下降的算子
-
-**功能特点**:
-- 按 speedup 范围分类算子
-- 分析跨轮次的性能一致性
-- 识别需要优化的问题算子
-
-#### 15. `analyze/analyze_speedup_txt.py`
-**功能**: 从单个 txt 文件中分析 speedup 数据
-
-**用法**:
-```bash
-python scripts/analyze/analyze_speedup_txt.py <speedup_txt_file>
-```
-
-**示例**:
-```bash
-python scripts/analyze/analyze_speedup_txt.py \
-    output/fixed_operators/test_results/qwen_next_sort_test/log_0/test_report_aten::sort_speedup.txt
-```
-
-**输出**:
-- 整体统计信息（mean, median, min, max）
-- 按数据类型（dtype）分组的统计信息
-
-**功能特点**:
-- 解析 txt 文件中的 Python 字典格式数据
-- 支持按 dtype 分组分析
-- 适合分析单个算子的详细性能数据
-
-## Verifier Server
-
-Verifier Server 是一个支持多后端设备的 HTTP 验证服务，提供 Server/Client 架构用于分布式算子验证。
-
-### 功能特性
-
-- **多后端支持**: 支持 CUDA (NVIDIA GPU)、NPU (Ascend)、MUSA (Moore Threads) 设备
-- **设备管理**: DeviceStatesManager 自动检测和管理设备状态（idle/busy）
-- **任务队列**: TasksManager 管理任务队列，自动将任务分配到空闲设备
-- **HTTP API**: 提供 RESTful API 接口，支持远程提交验证任务
-
-### 目录结构
-
-```
-src/sandbox/server/
-├── __init__.py              # 模块导出
-├── verifier_server.py       # Server 实现
-├── verifier_client.py       # Client 实现
-└── test_single_operator.py  # 单算子测试脚本
-```
-
-### 启动 Server
+Run the agent benchmark:
 
 ```bash
-# 默认端口 8888
-python -m sandbox.server.verifier_server
+cd agent_bench
 
-# 指定端口和输出目录
-python -m sandbox.server.verifier_server --port 8888 --output-dir ./test_results
+# Test all operators
+./test_ops.sh -d KernelGenBench
 
-# 完整参数
-python -m sandbox.server.verifier_server \
-    --host 0.0.0.0 \
-    --port 8888 \
-    --output-dir ./test_results \
-    --test-script /path/to/custom_test_script.py
+# Test a single operator
+./test_ops.sh aten__add -d KernelGenBench
+
+# Use a specific agent method
+./test_ops.sh -d KernelGenBench -m naive_cc
 ```
 
-**Server 参数**:
-- `--host`: 监听地址（默认: `0.0.0.0`）
-- `--port`: 监听端口（默认: `8888`）
-- `--output-dir`: 测试结果输出目录
-- `--test-script`: 自定义测试脚本路径
+### Configuration
 
-### 使用 Client
-
-#### 提交测试文件
+Copy and edit the config file:
 
 ```bash
-# 基本用法
-python -m sandbox.server.verifier_client path/to/aten_softmax.py
-
-# 指定服务器地址和输出文件
-python -m sandbox.server.verifier_client path/to/kernel.py \
-    --server http://localhost:8888 \
-    --output-file result.json
-
-# 指定测试集和超时
-python -m sandbox.server.verifier_client path/to/kernel.py \
-    --test-set v2_1 \
-    --timeout 300
+cp config.example.yaml config.yaml
 ```
 
-#### 健康检查
+Key fields in `config.yaml`:
+- `agent.bin`: path to the Claude Code executable (`claude`)
+- `agent.budget`: per-operator token budget (USD)
+- `device.gpu_ids`: list of GPU IDs to use, or `null` for auto-detect
 
-```bash
-python -m sandbox.server.verifier_client --health
+### Agent Methods
+
+- `naive_cc`: single-shot generation with Claude Code (default)
+- `normal_cc`: generation with tool use and verification feedback
+
+## Results
+
+Results are saved to `agent_bench/runs/<run_name>/`:
+- `result.json`: per-operator pass/fail with error traces
+- `kernels/`: generated Triton kernel files
+
+## Project Structure
+
 ```
-
-#### 状态查询
-
-```bash
-python -m sandbox.server.verifier_client --status
+scripts/                    # LLM track scripts
+  generate_kernel_and_verify.py
+agent_bench/                # Agent track
+  test_ops.sh               # Entry point
+  run.py                    # Agent runner
+  verify.py                 # Kernel verifier
+  methods/                  # Agent methods
+src/
+  kernelgenbench/                # Benchmark dataset and test cases
+    accuracy/               # Test functions
+    dataset/                # Operator lists
+  generator/                # LLM prompt builders and generators
+  sandbox/                  # Kernel execution and verification
 ```
-
-**Client 参数**:
-- `kernel_file`: Kernel 文件路径
-- `--server`: 服务器地址（默认: `http://localhost:8888`）
-- `--output-file`: 结果输出文件路径
-- `--test-module`: 测试模块名（优先于 `--test-set`）
-- `--test-set`: 测试集（`v2`, `v2_1`, `cupy`，默认: `v2_1`）
-- `--timeout`: 超时时间（秒，默认: `300`）
-- `--status`: 查询服务器状态
-- `--health`: 健康检查
-
-### API 端点
-
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/test` | POST | 提交测试请求，同步等待结果返回 |
-| `/status` | GET | 获取服务器和设备状态 |
-| `/health` | GET | 健康检查 |
-
-**POST /test 请求参数**:
-```json
-{
-    "operator_name": "softmax",
-    "kernel_code": "...",
-    "test_module": "",
-    "test_set": "v2_1",
-    "timeout": 300
-}
-```
-
-**响应示例**:
-```json
-{
-    "success": true,
-    "operator": "softmax",
-    "device_id": 0,
-    "error": null,
-    "traceback": null
-}
-```
-
-### 测试集说明
-
-| 测试集 | 算子数量 | 说明 |
-|--------|----------|------|
-| `v2` | 50 | V2 PyTorch 算子 |
-| `v2_1` | 111 | V2.1 PyTorch 算子（默认） |
-| `cupy` | 47 | cuBLAS 算子（通过 cupy） |
-
-### 环境变量
-
-- `TEST_DEVICE_COUNT`: 覆盖自动检测的设备数量
-
-### 单算子测试脚本
-
-`test_single_operator.py` 提供独立的单算子测试功能:
-
-```bash
-# 基本用法
-python src/sandbox/server/test_single_operator.py path/to/aten_softmax.py
-
-# 指定测试集
-python src/sandbox/server/test_single_operator.py path/to/kernel.py --test-set v2_1
-
-# 指定测试模块（优先于测试集）
-python src/sandbox/server/test_single_operator.py path/to/kernel.py \
-    --test-module flagbench.accuracy.test_v2_1_ops_with_benchmark
-
-# 指定设备
-CUDA_VISIBLE_DEVICES=7 python src/sandbox/server/test_single_operator.py \
-    path/to/kernel.py --device-count 1 --timeout 300
-```
-
-### Python API 使用
-
-```python
-from sandbox.server import VerifierClient
-
-# 创建 Client
-client = VerifierClient(server="http://localhost:8888")
-
-# 健康检查
-health = client.health_check()
-print(health)  # {"status": "healthy", "device_type": "cuda", ...}
-
-# 获取状态
-status = client.get_status()
-print(status)  # {"device": {"device_type": "cuda", "total": 8, "idle": 8, ...}, ...}
-
-# 提交测试
-result = client.submit_test(
-    operator_name="softmax",
-    kernel_code="...",
-    test_set="v2_1",
-    timeout=300
-)
-
-# 提交文件
-result = client.submit_file(
-    kernel_file="path/to/aten_softmax.py",
-    test_set="v2_1",
-    timeout=300,
-    output_file="result.json"
-)
-```
-
-## Test 目录说明
-
-### 单元测试
-
-#### 1. `test_accuracy_ut.py`
-**功能**: 测试函数验证工具，用于验证某个算子对应的**测试函数本身**是否能够正常运行通过
-
-> **注意**: 此脚本不是用来测试算子实现是否正确，而是验证测试函数（accuracy test functions）的正确性。它使用 mock triton code 来运行测试函数，确保测试基础设施正常工作。
-
-**支持的测试集**:
-| 测试集 | 算子数量 | 说明 |
-|--------|----------|------|
-| `v2` | 50 | V2 PyTorch 算子 |
-| `v2_1` | 111 | V2.1 PyTorch 算子 |
-| `cupy` | 47 | cuBLAS 算子（通过 cupy） |
-
-**用法**:
-```bash
-# 列出所有可用测试集
-python test/test_accuracy_ut.py --list-sets
-
-# 列出指定测试集的算子
-python test/test_accuracy_ut.py --list-ops v2
-
-# 测试 V2 测试集的单个算子
-python test/test_accuracy_ut.py --test-set v2 --name abs
-
-# 测试 V2.1 测试集的多个算子
-python test/test_accuracy_ut.py --test-set v2_1 --name add,mul,softmax
-
-# 测试 cupy 测试集的所有算子
-python test/test_accuracy_ut.py --test-set cupy --name all
-
-# 指定设备数量和超时
-python test/test_accuracy_ut.py --test-set v2 --name abs --device-count 8 --timeout 300
-
-# 使用自定义测试文件（覆盖默认模块）
-python test/test_accuracy_ut.py --name abs --test-file flagbench.accuracy.test_v2_ops
-```
-
-**参数**:
-- `--test-set`: 测试集名称（`v2`, `v2_1`, `cupy`，默认: `v2`）
-- `--name`: 算子名称（支持逗号分隔的多个算子或 `all`）
-- `--device-count`: GPU 数量（默认: 1）
-- `--timeout`: 超时时间（秒，默认: 300）
-- `--test-file`: 自定义测试文件路径（可选，覆盖 `--test-set` 的默认模块）
-- `--list-sets`: 列出所有可用测试集
-- `--list-ops`: 列出指定测试集的所有算子
-
-#### 2. `test_verifier_operator.py`
-**功能**: 验证器算子测试
-
-#### 3. `test_verifier_benchmark.py`
-**功能**: 验证器基准性能测试
-
-#### 4. `test_verifier_test_func.py`
-**功能**: 验证器测试函数功能测试
-
-#### 5. `test_fused_operator.py`
-**功能**: 融合算子测试
-
-#### 6. `test_verifier_server.py`
-**功能**: Verifier Server 集成测试
-
-**用法**:
-```bash
-pytest test/test_verifier_server.py -v
-```
-
-**测试内容**:
-- Server 健康检查 (`/health`)
-- 状态查询 (`/status`)
-- Kernel 提交和验证 (`/test`)
-
-**注意**: 测试会自动启动和关闭 Server，需要在有 GPU 的机器上运行。
-
-### 结构测试
-
-#### 7. `test_imports.py`
-**功能**: 测试模块导入是否正常
-
-#### 8. `test_module_structure.py`
-**功能**: 测试模块结构完整性
-
-## 使用指南
-
-### 快速开始
-
-#### 1. 生成并验证准确性测试函数
-
-```bash
-python scripts/generate_ut_sample.py
-python scripts/test_updated_accuracy_ut.py --path <generated_path> --device-count 8
-```
-
-#### 2. 生成 Triton kernel 代码
-
-```bash
-FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 python scripts/generate_sample.py \
-    --test-func-result-path <result_path_from_step1>
-```
-
-#### 3. 验证生成的 Triton 代码
-
-```bash
-FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 FLAGBENCH_SKIP_BOTH_TEST=1 \
-python scripts/eval_from_path_with_test_func.py \
-    --path <triton_code_dir> \
-    --num-samples 10 \
-    --device-count 8 \
-    --timeout 300 \
-    --test-func-path <test_func_path>
-```
-
-### 完整示例
-
-```bash
-# 示例：评估生成的 Triton 代码
-FLAGBENCH_USE_DYNAMIC_IMPL_INFO=1 FLAGBENCH_SKIP_BOTH_TEST=1 \
-python scripts/eval_from_path_with_test_func.py \
-    --path /share/project/tj/workspace/flag-bench/output/gpt-5-2025-08-07_num_samples_10_temp_1.6_max_tokens_16384_20251125-161139 \
-    --num-samples 10 \
-    --device-count 8 \
-    --timeout 300 \
-    --test-func-path /share/project/tj/workspace/flag-bench/cache/runs/ut_gpt-5-2025-08-07_num_samples_1_temp_0.0_max_tokens_16384_20251124-152104_accuracy_test_20251201-110330/log_0
-```
-
-### 从 FlagGems 转换测试
-
-```bash
-# 转换 FlagGems 测试到 flagbench 格式
-python scripts/convert_flaggems_tests.py \
-    --operator <operator_name> \
-    --output-dir <output_directory>
-```
-
-### Pass@K 测试
-
-```bash
-# 运行 Pass@K 测试
-python scripts/generate_ut_and_verify.py \
-    --name aten \
-    --test-type accuracy \
-    --max-rounds 10
-```
-
-## 环境变量
-
-- `FLAGBENCH_USE_DYNAMIC_IMPL_INFO`: 启用动态实现信息（设置为 `1`）
-- `FLAGBENCH_SKIP_BOTH_TEST`: 跳过双重测试（设置为 `1`）
-- `DISPATCH_TORCH_LIB`: 控制 Torch 库调度（设置为 `0`）
-- `FLAGBENCH_UPCAST`: 控制类型提升（设置为 `0`）
-
-## 输出目录
-
-- `output/`: Triton kernel 生成结果
-- `output_ut/`: 单元测试生成结果
-- `runs/`: 验证运行日志和结果
-- `cache/`: 缓存的中间结果
-
-## 注意事项
-
-1. 确保有足够的 GPU 资源用于测试
-2. 某些测试可能需要较长时间，建议适当设置 `--timeout` 参数
-3. 使用 `--device-count` 参数控制并行测试的 GPU 数量
-4. 生成的结果会保存在对应的输出目录中，便于后续分析

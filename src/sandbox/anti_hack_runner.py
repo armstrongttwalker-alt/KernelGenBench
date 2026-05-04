@@ -20,7 +20,7 @@ class AntiHackRunner:
         """Initialize anti-hack runner.
 
         Args:
-            dataset: Dataset name (e.g., "v2_1", "KernelGenBench", "cupy")
+            dataset: Dataset name (e.g., "KernelGenBench")
             verify_config: Base verify config for Layer 2/3 checks
             custom_test_modules: Test modules to load (avoids test case bloat)
         """
@@ -54,8 +54,6 @@ class AntiHackRunner:
         Returns:
             True if namespace='triton' is needed
         """
-        if self.dataset == "cupy":
-            return True
         if self.dataset == "KernelGenBench" and not op_name.startswith("aten::"):
             return True
         return False

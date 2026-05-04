@@ -37,13 +37,14 @@ def get_test_module(dataset: str, config: dict) -> str:
     """Get test module path for dataset."""
     test_modules = config.get("test_modules", {})
     if dataset in test_modules:
-        return str(PROJECT_ROOT / test_modules[dataset])
+        val = test_modules[dataset]
+        if isinstance(val, list):
+            return [str(PROJECT_ROOT / v) for v in val]
+        return str(PROJECT_ROOT / val)
 
     # Defaults
     defaults = {
-        "v2": "src/flagbench/accuracy/test_v2_ops.py",
-        "v2_1": "src/flagbench/accuracy/test_v2_1_ops_with_benchmark.py",
-        "cupy": "src/flagbench/accuracy/cublas/test_cublas_ops.py",
+        "KernelGenBench": "src/kernelgenbench/accuracy/test_v2_1_ops_with_benchmark.py",
     }
     if dataset in defaults:
         return str(PROJECT_ROOT / defaults[dataset])
@@ -80,8 +81,10 @@ def verify_kernels(
 
     # Get test module
     test_module = get_test_module(dataset, config)
-    if not Path(test_module).exists():
-        raise ValueError(f"Test module not found: {test_module}")
+    modules = test_module if isinstance(test_module, list) else [test_module]
+    for m in modules:
+        if not Path(m).exists():
+            raise ValueError(f"Test module not found: {m}")
 
     # Setup environment
     os.environ["DISPATCH_TORCH_LIB"] = "1"
@@ -101,7 +104,7 @@ def verify_kernels(
     )
 
     verifier = Verifier(verify_config)
-    verifier.set_modules(modules=[test_module], mode="accuracy")
+    verifier.set_modules(modules=modules, mode="accuracy")
 
     # Collect kernels to verify
     kernel_files = list(kernels_dir.glob("*.py"))
@@ -115,8 +118,7 @@ def verify_kernels(
     verify_requests = []
     op_names = []
 
-    # Determine namespace based on dataset
-    namespace = "cupy" if dataset == "cupy" else "aten"
+    namespace = "aten"
 
     for kernel_file in sorted(kernel_files):
         op_name = kernel_file.stem
@@ -289,7 +291,7 @@ def main():
     # Infer dataset from run name if needed
     if not dataset:
         run_name = args.run
-        for ds in ["v2_1", "v2", "cupy"]:
+        for ds in ["KernelGenBench"]:
             if ds in run_name:
                 dataset = ds
                 break

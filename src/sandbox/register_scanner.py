@@ -8,8 +8,8 @@ import types
 
 def scan_registrations(file_path: str) -> List[Dict]:
     """
-    扫描Python文件并提取所有@register装饰的函数信息
-    返回格式：[{"name": 注册名, "func_name": 函数名, "args": 装饰器参数}, ...]
+    Scan a Python file and extract info for all functions decorated with @register.
+    Return format: [{"name": registration_name, "func_name": function_name, "args": decorator_args}, ...]
     """
     with open(file_path, 'r') as f:
         tree = ast.parse(f.read())
@@ -25,7 +25,7 @@ def scan_registrations(file_path: str) -> List[Dict]:
                 continue
                 
             if getattr(decorator.func, 'id', None) == 'register':
-                # 解析装饰器参数
+                # Parse decorator arguments
                 args = []
                 for arg in decorator.args:
                     if isinstance(arg, ast.Constant):
@@ -43,35 +43,35 @@ def scan_registrations(file_path: str) -> List[Dict]:
 
 def auto_register_module(module_path_or_source: str):
     # """
-    # 自动注册模块中所有带@register装饰的函数
+    # Auto-register all functions decorated with @register in the module
     # """
-    # # 动态导入模块
+    # # Dynamically import module
     # spec = importlib.util.spec_from_file_location("temp_module", module_path)
     # module = importlib.util.module_from_spec(spec)
     # sys.modules["temp_module"] = module
     # spec.loader.exec_module(module)
     """
-    自动注册模块中所有带 @register 装饰的函数。
-    支持传入模块的文件路径或源码字符串。
+    Auto-register all functions decorated with @register in the module.
+    Supports passing a module file path or source code string.
     """
     module_name = "temp_module"
     if os.path.isfile(module_path_or_source):
-        # 从文件路径导入模块
+        # Import module from file path
         spec = importlib.util.spec_from_file_location(module_name, module_path_or_source)
         module = importlib.util.module_from_spec(spec)
         sys.modules[module_name] = module
         spec.loader.exec_module(module)
 
     else:
-        # 处理源码字符串：创建一个新的 module 对象并执行源码
+        # Handle source code string: create a new module object and execute the source
         module = types.ModuleType(module_name)
         sys.modules[module_name] = module
         exec(module_path_or_source, module.__dict__)
     
-    # 扫描注册信息
+    # Scan registration info
     # registrations = scan_registrations(module_path)
-    
-    # 执行注册
+
+    # Execute registration
     # for reg in registrations:
     #     func = getattr(module, reg['func_name'])
     #     register(reg['name'], *reg['args'])(func)

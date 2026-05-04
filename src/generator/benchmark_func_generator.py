@@ -254,8 +254,8 @@ class BenchmarkFuncGenerator(BaseGenerator):
         results = self._post_process(results)
         if not self.from_mcp:
             test_func_prefix = """
-import flagbench
-from flagbench.perfermance.performance_utils import GenericBenchmark
+import kernelgenbench
+from kernelgenbench.perfermance.performance_utils import GenericBenchmark
 from sandbox.config import DEVICE as device
 from sandbox.verifier.test_parametrize import parametrize, label
 from sandbox.utils.accuracy_utils import gems_assert_close as assert_close

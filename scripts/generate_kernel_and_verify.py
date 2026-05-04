@@ -8,8 +8,8 @@ from typing import Dict, Set, List, Optional, Any
 import sys
 from datetime import datetime
 
-from flagbench.dataset import TorchOpsLoader, APIInfo
-from flagbench.dataset import IMPL_INFO
+from kernelgenbench.dataset import TorchOpsLoader, APIInfo
+from kernelgenbench.dataset import IMPL_INFO
 from sandbox.verifier import Verifier, VerifyConfig, VerifyRequest, Source
 from utils import (
     today, 
@@ -33,7 +33,7 @@ from generator.sampler.generate_samples import (
 )
 
 def check_args_validity(args):
-    assert args.test_type in ["accuracy", "performance", "triton"], "Invalid test type, must be one of accuracy, performance, triton."
+    assert args.test_type in ["triton"], "Invalid test type, must be triton."
 
 # Configure logging
 logging.basicConfig(
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 mock_triton_code = "mock triton code"
 
 
-from flagbench.framework.kernelgenbench_adapter import KernelGenBenchAdapter
+from kernelgenbench.framework.kernelgenbench_adapter import KernelGenBenchAdapter
 from generator.kernelgenbench_prompt_builder import KernelGenBenchPromptBuilder
 
 
@@ -58,7 +58,7 @@ class PassAtKTester:
         verify_config: VerifyConfig,
         acc_test_func_path: str = "",
         bench_test_func_path: str = "",
-        dataset: str = "v2",
+        dataset: str = "KernelGenBench",
         custom_test_modules: Optional[List[str]] = None,
         device_count: int = 8,
         debug: bool = False,
@@ -80,7 +80,7 @@ class PassAtKTester:
         self.impl_info = IMPL_INFO
         self.create_generate_args = _placeholder
         self.create_verify_args = _placeholder
-        self.adapter = None  # Framework adapter (TorchAdapter or CupyAdapter)
+        self.adapter = None  # Framework adapter
 
         self.debug = debug
         self.single_test = single_test
@@ -106,185 +106,100 @@ class PassAtKTester:
     def setup(self):
         """Setup the os environment variables."""
         os.environ["FLAGBENCH_UPCAST"] = "0"
-        if self.test_type in ["accuracy", "performance"]:
-            os.environ["DISPATCH_TORCH_LIB"] = "0"
-            os.environ["FLAGBENCH_SKIP_BOTH_TEST"] = "1"
         if self.test_type == "triton":
             self.create_verify_args = self.create_triton_kernel_verify_args
-            # 导入转换函数
-            from flagbench.dataset.kernel_list import flatten_operator_dict
 
             match self.dataset:
-                case "pytorch":
-                    self.operator_loader = TorchOpsLoader()
-                case "gems":
-                    from flagbench.dataset import PYTORCH_OPERATORS
-                    self.operator_loader = flatten_operator_dict(PYTORCH_OPERATORS, "aten")
-                case "v1":
-                    from flagbench.dataset import V1_OPERATORS
-                    self.operator_loader = flatten_operator_dict(V1_OPERATORS, "aten")
-                case "v2":
-                    from flagbench.dataset import V2_OPERATORS
-                    self.operator_loader = flatten_operator_dict(V2_OPERATORS, "aten")
-                case "v2_1":
-                    from flagbench.dataset import V2_1_OPERATORS
-                    self.operator_loader = flatten_operator_dict(V2_1_OPERATORS, "aten")
-                case "qwen_next":
-                    from flagbench.dataset import QWEN_NEXT_OPERATORS
-                    self.operator_loader = flatten_operator_dict(QWEN_NEXT_OPERATORS, "aten")
-                    self.qwen_next = True
-                case "cupy":
-                    from flagbench.dataset import CUPY_OPERATORS
-                    self.operator_loader = CUPY_OPERATORS  # Already in flat format
                 case "KernelGenBench":
-                    from flagbench.dataset import get_kernelgenbench_operators
-                    self.operator_loader = get_kernelgenbench_operators()  # 50 vllm + 50 cublas + 110 torch
+                    from kernelgenbench.dataset import get_kernelgenbench_operators
+                    self.operator_loader = get_kernelgenbench_operators()
                 case _:
                     raise ValueError(f"Unsupported dataset: {self.dataset}")
 
-            # 根据 dataset 创建对应的 PromptBuilder 和 Adapter
+            # Create corresponding PromptBuilder and Adapter based on dataset
             self.prompt_builder = self._create_prompt_builder()
             self.adapter = self._create_adapter()
 
-            # 根据 dataset 设置 create_generate_args 方法
-            if self.dataset in ["cupy", "KernelGenBench"]:
-                # 对于 cupy/KernelGenBench dataset，使用 adapter 的方法
-                self.create_generate_args = self._create_cupy_generate_args_wrapper()
-            else:
-                # 对于 torch 相关的 dataset，使用现有的函数
-                self.create_generate_args = create_triton_generate_args
-        elif self.test_type == "accuracy":
-            self.create_verify_args = self.create_acc_test_verify_args
-            self.create_generate_args = self.create_ut_generate_args
-        elif self.test_type == "performance":
-            raise NotImplementedError("Performance test type is not supported yet.")
+            self.create_generate_args = self._create_cupy_generate_args_wrapper()
         else:
             raise ValueError(f"Unsupported test type: {self.test_type}")
 
     def _create_prompt_builder(self):
-        """
-        根据 dataset 创建对应的 PromptBuilder
-
-        Returns:
-            PromptBuilder 实例
-        """
-        from generator.torch_prompt_builder import TorchPromptBuilder
-        from generator.cupy_prompt_builder import CupyPromptBuilder
-
-        # 根据 dataset 选择 PromptBuilder
-        # 目前所有 torch 相关的 dataset 都使用 TorchPromptBuilder
-        if self.dataset in ["pytorch", "gems", "v1", "v2", "v2_1", "qwen_next"]:
-            # 根据 use_wiki 参数选择 mode
-            mode = "with_wiki" if self.use_wiki else "basic"
-            prompt_builder = TorchPromptBuilder(mode=mode)
-            logger.info(f"Created TorchPromptBuilder with mode: {mode}")
-            return prompt_builder
-        elif self.dataset == "cupy":
-            # 使用 CupyPromptBuilder
-            mode = "with_wiki" if self.use_wiki else "basic"
-            prompt_builder = CupyPromptBuilder(mode=mode)
-            logger.info(f"Created CupyPromptBuilder with mode: {mode}")
-            return prompt_builder
-        elif self.dataset == "KernelGenBench":
-            # KernelGenBench 使用 KernelGenBenchPromptBuilder 根据 args 类型分发
-            mode = "with_wiki" if self.use_wiki else "basic"
-            prompt_builder = KernelGenBenchPromptBuilder(mode=mode)
-            logger.info(f"Created KernelGenBenchPromptBuilder for KernelGenBench with mode: {mode}")
-            return prompt_builder
-        else:
-            raise ValueError(f"Unsupported dataset for PromptBuilder: {self.dataset}")
+        mode = "with_wiki" if self.use_wiki else "basic"
+        prompt_builder = KernelGenBenchPromptBuilder(mode=mode)
+        logger.info(f"Created KernelGenBenchPromptBuilder with mode: {mode}")
+        return prompt_builder
 
     def _create_adapter(self):
-        """
-        根据 dataset 创建对应的 FrameworkAdapter
-
-        Returns:
-            FrameworkAdapter 实例
-        """
-        from flagbench.framework.torch_adapter import TorchAdapter
-        from flagbench.framework.cupy_adapter import CupyAdapter
-
-        # 根据 dataset 选择 Adapter
-        if self.dataset in ["pytorch", "gems", "v1", "v2", "v2_1", "qwen_next"]:
-            adapter = TorchAdapter()
-            logger.info(f"Created TorchAdapter for dataset: {self.dataset}")
-            return adapter
-        elif self.dataset == "cupy":
-            adapter = CupyAdapter()
-            logger.info(f"Created CupyAdapter for dataset: {self.dataset}")
-            return adapter
-        elif self.dataset == "KernelGenBench":
-            adapter = KernelGenBenchAdapter()
-            logger.info(f"Created KernelGenBenchAdapter for dataset: {self.dataset}")
-            return adapter
-        else:
-            raise ValueError(f"Unsupported dataset for Adapter: {self.dataset}")
+        adapter = KernelGenBenchAdapter()
+        logger.info("Created KernelGenBenchAdapter")
+        return adapter
 
     def _create_cupy_generate_args_wrapper(self):
         """
-        创建 cupy/KernelGenBench 的 generate_args 包装函数
+        Create a generate_args wrapper function for cupy/KernelGenBench
 
-        这个包装函数适配 generate_round() 中的调用方式，
-        将参数转换为对应 Adapter.create_generate_args 需要的格式
+        This wrapper adapts the calling convention in generate_round(),
+        converting arguments to the format required by Adapter.create_generate_args
 
         Returns:
-            包装函数
+            Wrapper function
         """
         def wrapper(torch_op_name: str, torch_op_func_or_namespace: str, impl_info: Any):
             """
-            包装函数，适配 cupy/KernelGenBench 的调用方式
+            Wrapper function, adapts the calling convention for cupy/KernelGenBench
 
             Args:
-                torch_op_name: kernel 名称（如 "caxpy" 或 "softmax"）
-                torch_op_func_or_namespace: namespace（如 "cupy", "vllm13", "cublas", "aten"）
-                impl_info: 实现信息
+                torch_op_name: kernel name (e.g. "caxpy" or "softmax")
+                torch_op_func_or_namespace: namespace (e.g. "vllm13", "cublas", "aten")
+                impl_info: implementation info
 
             Returns:
-                GenerateArgs 实例
+                GenerateArgs instance
             """
-            # 对于 aten:: 算子，直接使用 create_triton_generate_args（复用 v2_1 逻辑）
+            # For aten:: operators, use create_triton_generate_args directly (reuse v2_1 logic)
             if torch_op_func_or_namespace == "aten":
                 return create_triton_generate_args(torch_op_name, torch_op_func_or_namespace, impl_info)
 
-            # 对于 vllm/cublas 算子，使用 adapter
-            # 构造完整的 op_name（格式：cupy::caxpy）
+            # For vllm/cublas operators, use adapter
+            # Construct full op_name (format: cupy::caxpy)
             op_name = f"{torch_op_func_or_namespace}::{torch_op_name}"
 
-            # 从 adapter 获取函数对象
+            # Get function object from adapter
             func = self.adapter.get_operator_function(op_name)
 
-            # 调用 adapter 的 create_generate_args 方法
+            # Call adapter's create_generate_args method
             return self.adapter.create_generate_args(op_name, func, impl_info)
 
         return wrapper
 
     def initialize_operators(self, namespace: str = "all") -> None:
-        """初始化算子列表，返回扁平结构 {op_name: value}"""
+        """Initialize operator list, returns flat structure {op_name: value}"""
         if not isinstance(self.operator_loader, dict):
-            # 动态加载 - TorchOpsLoader（已返回扁平结构）
+            # Dynamic loading - TorchOpsLoader (already returns flat structure)
             if namespace.lower() == "all":
                 self.all_operators = self.operator_loader.load_all()
             else:
                 self.all_operators = self.operator_loader.load_namespace(namespace)
         else:
-            # 静态加载 - 预定义字典（已经是扁平的）
+            # Static loading - predefined dict (already flat)
             self.all_operators = self.operator_loader
 
-        # 指定单个算子模式
+        # Single operator mode
         if self.op_name:
             if self.op_name in self.all_operators:
                 self.all_operators = {self.op_name: self.all_operators[self.op_name]}
                 logger.info(f"Op-name mode: selected operator {self.op_name}")
             else:
                 raise ValueError(f"Operator {self.op_name} not found in dataset. Available operators: {list(self.all_operators.keys())[:10]}...")
-        # Single-test模式：随机选1个算子
+        # Single-test mode: randomly pick 1 operator
         elif self.single_test:
             import random
             items = list(self.all_operators.items())
             chosen = random.choice(items)
             self.all_operators = {chosen[0]: chosen[1]}
             logger.info(f"Single-test mode: selected operator {chosen[0]}")
-        # Debug模式：限制为前8个算子
+        # Debug mode: limit to first 8 operators
         elif self.debug:
             self.all_operators = dict(list(self.all_operators.items())[:8])
 
@@ -292,7 +207,7 @@ class PassAtKTester:
         logger.info(f"Initialized {total_ops} operators")
     
     def get_remaining_operators(self) -> Dict[str, APIInfo]:
-        """获取尚未通过的算子"""
+        """Get operators that have not yet passed"""
         remaining = {}
         for op_name, api_info in self.all_operators.items():
             if op_name not in self.passed_operators:
@@ -360,7 +275,7 @@ class PassAtKTester:
         gen_args = []
         api_names = []
         for op_name, api_info in remaining_operators.items():
-            # op_name 格式: "aten::add"
+            # op_name format: "aten::add"
             namespace, kernel_name = op_name.split("::", 1)
             file_name = f"test_accuracy_{op_name}.py"
 
@@ -422,7 +337,7 @@ class PassAtKTester:
 
         # Generate tests
         self.gen_config.sample_id = round_idx
-        # 根据 test_type 创建 Generator，triton 类型需要传递 PromptBuilder
+        # Create Generator based on test_type; triton type needs PromptBuilder
         if self.test_type == "triton":
             generator = GENERATOR[self.test_type](self.gen_config, prompt_builder=self.prompt_builder)
         else:
@@ -515,13 +430,13 @@ class PassAtKTester:
         return round_dir
     
     def create_triton_kernel_verify_args(
-            self, 
-            kernel_path: Path, 
-            test_path: Path, 
-            op_name: str, 
+            self,
+            kernel_path: Path,
+            test_path: Path,
+            op_name: str,
             add_namespace_triton: bool = False
         ) -> VerifyRequest:
-        """Create verification request. op_name 格式: aten::add"""
+        """Create verification request. op_name format: aten::add"""
         test_func = None
         if test_path.is_file() and test_path.exists():
             with open(test_path, "r") as f:
@@ -539,7 +454,7 @@ class PassAtKTester:
         )
     
     def create_acc_test_verify_args(self, test_path: Path, op_name: str) -> VerifyRequest:
-        """Create verification request. op_name 格式: aten::add"""
+        """Create verification request. op_name format: aten::add"""
         with open(test_path, "r") as f:
             test_func = f.read()
         return VerifyRequest(
@@ -611,7 +526,7 @@ class PassAtKTester:
                 kernel_path,
                 test_file_path,
                 op_name, 
-                add_namespace_triton=self.dataset == "cupy" or (self.dataset == "KernelGenBench" and not op_name.startswith("aten::"))
+                add_namespace_triton=not op_name.startswith("aten::")
             )
             verify_requests.append(verify_req)
             op_names.append(op_name)
@@ -822,7 +737,7 @@ def main():
     parser.add_argument("--name", type=str, default="aten", help="Namespace to test (default: aten)")
     parser.add_argument("--acc-test-func-path", type=str, default="", help="Path to the accuracy test function directory")
     parser.add_argument("--benchmark-func-path", type=str, default="", help="Path to the performance test function directory")
-    parser.add_argument("--dataset", type=str, default="v2", help="Dataset version to use (default: v2)", choices=["pytorch", "gems", "v1", "v2", "v2_1", "qwen_next", "cupy", "KernelGenBench"])
+    parser.add_argument("--dataset", type=str, default="KernelGenBench", help="Dataset version to use (default: KernelGenBench)", choices=["KernelGenBench"])
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
     parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
     parser.add_argument("--test-type", type=str, default="triton", choices=["accuracy", "performance", "triton"])
@@ -841,7 +756,7 @@ def main():
     parser.add_argument("--op-name", type=str, default=None, help="Specify a single operator to test (e.g., vllm13::fused_add_rms_norm)")
     parser.add_argument("--reflection", action="store_true", help="Enable reflection: use previous round's verify results as feedback for next generation")
     parser.add_argument("--use-wiki", action="store_true", help="Use Wiki references for generation")
-    parser.add_argument("--custom-test-modules", type=str, nargs="+", default=None, help="Custom test module paths or directories (e.g., src/flagbench/accuracy/test_custom.py or src/flagbench/accuracy/)")
+    parser.add_argument("--custom-test-modules", type=str, nargs="+", default=None, help="Custom test module paths or directories (e.g., src/kernelgenbench/accuracy/test_custom.py or src/kernelgenbench/accuracy/)")
 
     args = parser.parse_args()
 
@@ -854,7 +769,7 @@ def main():
     else:
         postfix = ""
         if args.op_name:
-            # 清理算子名用于目录名
+            # Clean up operator name for use in directory name
             clean_name = args.op_name.replace("::", "_").replace("/", "_")
             postfix += f"_{clean_name}"
         elif args.single_test:

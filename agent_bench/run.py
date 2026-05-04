@@ -60,15 +60,19 @@ def load_ops_from_prompts(prompts_dir: Path, namespace: str) -> list[str]:
 
     Args:
         prompts_dir: Directory containing prompt .md files
-        namespace: Operator namespace (e.g., "aten" or "cupy")
+        namespace: Operator namespace (e.g., "aten")
 
     Returns:
         List of full operator names (e.g., ["aten::add", "aten::softmax"])
     """
     ops = []
     for f in sorted(prompts_dir.glob("*.md")):
-        op_name = f.stem  # e.g., "softmax" from "softmax.md"
-        ops.append(f"{namespace}::{op_name}")
+        stem = f.stem  # e.g., "aten__add" or "vllm13__fused_add_rms_norm"
+        if "__" in stem:
+            ns, op = stem.split("__", 1)
+            ops.append(f"{ns}::{op}")
+        else:
+            ops.append(f"{namespace}::{stem}")
     return ops
 
 
@@ -215,7 +219,7 @@ def run(args):
     dataset_prompts_dir = prompts_dir / dataset
 
     # Load operators from prompt files
-    namespace = "cupy" if dataset == "cupy" else "aten"
+    namespace = "aten"
     ops = load_ops_from_prompts(dataset_prompts_dir, namespace)
     if not ops:
         print(f"Error: No prompt files found in {dataset_prompts_dir}")
@@ -323,7 +327,8 @@ def run(args):
                 break
 
             full_name, op_name, attempt = queue.popleft()
-            prompt_path = dataset_prompts_dir / f"{op_name}.md"
+            prompt_file = full_name.replace("::", "__") + ".md"
+            prompt_path = dataset_prompts_dir / prompt_file
 
             if not prompt_path.exists():
                 logger.warning(f"Prompt not found: {prompt_path}")
@@ -460,8 +465,8 @@ def main():
     parser.add_argument(
         "--dataset", "-d",
         type=str,
-        default="v2_1",
-        help="Dataset to run (default: v2_1)"
+        default="KernelGenBench",
+        help="Dataset to run (default: KernelGenBench)"
     )
     parser.add_argument(
         "--op", "-o",

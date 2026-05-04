@@ -1,46 +1,38 @@
 """
-PromptBuilder 层
+PromptBuilder layer
 
-负责构造用于 LLM 生成 Triton kernel 的 prompt。
+Responsible for constructing prompts used by the LLM to generate Triton kernels.
 """
 
 from abc import ABC, abstractmethod
-from flagbench.framework.generate_args import BaseGenerateArgs
-from runtime import get_device_constraints
-
-
+from kernelgenbench.framework.generate_args import BaseGenerateArgs
 class PromptBuilder(ABC):
-    """Prompt 构造器基类"""
+    """Base class for prompt builders"""
 
     def __init__(self, mode: str = "basic"):
-        """
-        Args:
-            mode: prompt 模式 - "basic", "reflection", "with_wiki"
-        """
         self.mode = mode
 
     def _get_device_constraints(self) -> str:
-        """获取当前设备的 Prompt 约束"""
-        return get_device_constraints()
+        return ""
 
     @abstractmethod
     def build_new(self, gen_args: BaseGenerateArgs) -> str:
-        """构造生成新 kernel 的 prompt"""
+        """Build prompt for generating a new kernel"""
         pass
 
     @abstractmethod
     def build_fix(self, gen_args: BaseGenerateArgs) -> str:
-        """构造修复 kernel 的 prompt"""
+        """Build prompt for fixing a kernel"""
         pass
 
     @abstractmethod
     def build_optimization(self, gen_args: BaseGenerateArgs) -> str:
-        """构造优化 kernel 的 prompt"""
+        """Build prompt for optimizing a kernel"""
         pass
 
     def build(self, gen_args: BaseGenerateArgs) -> str:
         """
-        根据 gen_args 的状态选择合适的 prompt 构造方法
+        Select the appropriate prompt construction method based on gen_args state
         """
         if gen_args.check_result is not None and not gen_args.check_result.success:
             if gen_args.old_code and gen_args.check_result.code and \

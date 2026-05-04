@@ -5,7 +5,7 @@ Test a single operator file - useful for debugging TLE optimization results
 This script:
 1. Takes a generated kernel file path as input
 2. Reads the kernel code from the file
-3. Uses flagbench's test framework to verify the operator
+3. Uses kernelgenbench's test framework to verify the operator
 
 Usage:
     # Basic usage
@@ -13,11 +13,11 @@ Usage:
 
     # With custom test module
     python src/sandbox/server/test_single_operator.py path/to/aten_softmax.py \
-        --test-module flagbench.accuracy.test_v2_1_ops_with_benchmark
+        --test-module kernelgenbench.accuracy.test_v2_1_ops_with_benchmark
 
     # With test set (auto-selects module)
     python src/sandbox/server/test_single_operator.py path/to/aten_softmax.py \
-        --test-set v2_1
+        --test-set KernelGenBench
 
     # Specify device
     CUDA_VISIBLE_DEVICES=7 python src/sandbox/server/test_single_operator.py \
@@ -48,54 +48,29 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Default test module for TLE optimization experiments
-DEFAULT_TEST_MODULE = "flagbench.accuracy.test_v2_1_ops_with_benchmark"
+DEFAULT_TEST_MODULE = "kernelgenbench.accuracy.test_v2_1_ops_with_benchmark"
 
 # Default test set
-DEFAULT_TEST_SET = "v2_1"
+DEFAULT_TEST_SET = "KernelGenBench"
 
 
 # ============ Test Set Definitions ============
 
 def get_test_sets() -> Dict[str, Dict[str, Any]]:
-    """获取所有测试集配置"""
-    from flagbench.dataset.kernel_list import (
-        V2_OPERATORS,
-        V2_1_OPERATORS,
-        CUPY_OPERATORS,
-    )
-
+    """Get all test set configurations"""
+    from kernelgenbench.dataset import get_kernelgenbench_operators
     return {
-        "v2": {
-            "operators": V2_OPERATORS,
-            "modules": ["flagbench.accuracy.test_v2_ops"],
-            "description": "V2 PyTorch operators (50 operators)",
-            "label_format": "aten::{op}",  # 算子标签格式
-        },
-        "v2_1": {
-            "operators": V2_1_OPERATORS,
-            "modules": ["flagbench.accuracy.test_v2_1_ops"],
-            "description": "V2.1 PyTorch operators (111 operators)",
-            "label_format": "aten::{op}",
-        },
-        "cupy": {
-            "operators": CUPY_OPERATORS,
-            "modules": _get_cupy_modules(),
-            "description": "cuBLAS operators via cupy (47 operators)",
-            "label_format": "cupy::{op}",
+        "KernelGenBench": {
+            "operators": get_kernelgenbench_operators(),
+            "modules": [
+                "kernelgenbench.accuracy.test_v2_1_ops_with_benchmark",
+                "kernelgenbench.accuracy.vllm13",
+                "kernelgenbench.accuracy.cublas",
+            ],
+            "description": "KernelGenBench operators (210 operators)",
+            "label_format": "{op}",
         },
     }
-
-
-def _get_cupy_modules() -> List[str]:
-    """获取 cupy accuracy 模块列表"""
-    # cupy 模块在 flagbench.accuracy.cupy 目录下
-    cupy_ops = [
-        "caxpy", "cdgmm", "cdotc", "cdotu", "cgeam", "cgemm", "cgemv", "cgerc", "cgeru", "cscal", "csyrk",
-        "dasum", "daxpy", "ddgmm", "ddot", "dgeam", "dgemm", "dgemv", "dger", "dnrm2", "dsbmv", "dscal", "dsyrk",
-        "hgemm", "sasum", "saxpy", "sdgmm", "sdot", "sgeam", "sgemm", "sgemv", "sger", "snrm2", "ssbmv", "sscal", "ssyrk",
-        "zaxpy", "zdgmm", "zdotc", "zdotu", "zgeam", "zgemm", "zgemv", "zgerc", "zgeru", "zscal", "zsyrk",
-    ]
-    return [f"flagbench.accuracy.cupy.accuracy_{op}_cublas_ops" for op in cupy_ops]
 
 
 class SingleOperatorTester:
@@ -115,7 +90,7 @@ class SingleOperatorTester:
             kernel_file_path: Path to the generated kernel .py file
             output_dir: Optional output directory for test results
             test_module: Test module to use (takes priority over test_set)
-            test_set: Test set to use (v2, v2_1, cupy). Used if test_module is not specified.
+            test_set: Test set to use (KernelGenBench). Used if test_module is not specified.
         """
         self.kernel_file_path = Path(kernel_file_path)
         if not self.kernel_file_path.exists():
@@ -248,9 +223,9 @@ class SingleOperatorTester:
         verifier = Verifier(verify_config)
 
         # Convert module name to path if needed
-        if self.test_module.startswith("flagbench."):
-            # flagbench.accuracy.test_v2_1_ops_with_benchmark
-            # -> src/flagbench/accuracy/test_v2_1_ops_with_benchmark.py
+        if self.test_module.startswith("kernelgenbench."):
+            # kernelgenbench.accuracy.test_v2_1_ops_with_benchmark
+            # -> src/kernelgenbench/accuracy/test_v2_1_ops_with_benchmark.py
             module_path = self.test_module.replace(".", "/")
             module_path = f"src/{module_path}.py"
         else:
@@ -372,7 +347,7 @@ def main():
     parser.add_argument(
         "--test-set",
         type=str,
-        choices=["v2", "v2_1", "cupy"],
+        choices=["KernelGenBench"],
         default=DEFAULT_TEST_SET,
         help=f"Test set to use (default: {DEFAULT_TEST_SET}). Ignored if --test-module is specified."
     )

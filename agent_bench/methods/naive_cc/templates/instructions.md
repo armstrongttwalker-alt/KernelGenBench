@@ -1,18 +1,18 @@
-## 输出要求
+## Output Requirements
 
-**重要**：请直接在回复中输出完整的 Python 代码，要求：
+**Important**: Output the complete Python code directly in your reply:
 
-1. 代码必须用 ```python ... ``` 代码块包裹
-2. 代码可以直接运行，无需修改
-3. 不要包含测试代码或 benchmark 代码
-4. 不要添加额外的解释文字，只输出代码块
-5. **不要将代码写入文件**，直接在回复中输出即可
+1. Code must be wrapped in a ```python ... ``` code block
+2. Code must be runnable as-is, without modification
+3. Do not include test code or benchmark code
+4. Do not add extra explanations, output only the code block
+5. **Do not write code to a file**, output it directly in your reply
 
-示例输出格式：
+Example output format:
 ```python
 import torch
 import triton
 import triton.language as tl
 
-# 你的实现代码...
+# Your implementation...
 ```

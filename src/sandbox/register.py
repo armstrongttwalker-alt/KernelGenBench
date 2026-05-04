@@ -3,12 +3,12 @@
 # import error
 # from . import error
 from .error import error
-from flagbench.dataset import Autograd
+from kernelgenbench.dataset import Autograd
 from collections import OrderedDict
 
 import logging
 
-from flagbench.dataset import IMPL_INFO, is_pytorch_op
+from kernelgenbench.dataset import IMPL_INFO, is_pytorch_op
 from sandbox.config import DEVICE as device
 
 REGISTERED_OPS = OrderedDict()
@@ -38,13 +38,13 @@ def register(api, key, has_backward=Autograd.enable, namespace: str=""):
             # REGISTERED_OPS[key] = (key, func, has_backward)
         else:
             REGISTERED_OPS[namespace][key] = (key, func, has_backward)
-        # 只对 PyTorch 算子检查 IMPL_INFO，非 PyTorch 算子（如 cupy::sgemm）跳过
+        # Only check IMPL_INFO for PyTorch operators; skip non-PyTorch operators (e.g. cupy::sgemm)
         if is_pytorch_op(api, namespace=namespace) is False and "::" not in api:
-            # api 不在 IMPL_INFO 中，且没有 namespace 前缀（如 cupy::），说明是一个未注册的 aten 算子
+            # api not in IMPL_INFO and no namespace prefix (e.g. cupy::), meaning it is an unregistered aten operator
             logging.warning(f"Operator {key} not found in IMPL_INFO, make sure using bench.{key} directly rather than bench.use_gems")
         import sys
         # package_name = __name__.split('.')[0]
-        package_name = "flagbench"
+        package_name = "kernelgenbench"
         bench_module = sys.modules[package_name]
         if namespace:
             if not hasattr(bench_module, namespace):

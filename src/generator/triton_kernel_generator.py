@@ -12,15 +12,15 @@ from .prompt_builder import PromptBuilder
 class TritonKernelGenerator(BaseGenerator):
     def __init__(self, generation_config, prompt_builder: Optional[PromptBuilder] = None):
         """
-        初始化 TritonKernelGenerator
+        Initialize TritonKernelGenerator
 
         Args:
-            generation_config: 生成配置
-            prompt_builder: Prompt 构造器（可选）。如果未提供，将自动创建 TorchPromptBuilder
+            generation_config: Generation configuration
+            prompt_builder: Prompt builder (optional). If not provided, TorchPromptBuilder will be created automatically
         """
         super().__init__(generation_config)
 
-        # 向后兼容：如果没有提供 prompt_builder，自动创建 TorchPromptBuilder
+        # Backward compatibility: if prompt_builder is not provided, create TorchPromptBuilder automatically
         if prompt_builder is None:
             warnings.warn(
                 "TritonKernelGenerator: prompt_builder parameter is not provided. "
@@ -38,15 +38,15 @@ class TritonKernelGenerator(BaseGenerator):
     # @print_prompt
     def generate_prompt(self, info):
         """
-        生成 prompt（委托给 PromptBuilder）
+        Generate prompt (delegated to PromptBuilder)
 
         Args:
-            info: 生成参数（BaseGenerateArgs 或其子类）
+            info: Generation arguments (BaseGenerateArgs or subclass)
 
         Returns:
-            生成的 prompt 字符串
+            Generated prompt string
         """
-        # 根据状态打印相应的消息
+        # Print appropriate message based on state
         if info.check_result is not None and info.check_result.success is False:
             if info.old_code and info.check_result.code.strip() == info.old_code.strip():
                 console.print("Generating prompt for Triton kernel fix...")
@@ -57,11 +57,11 @@ class TritonKernelGenerator(BaseGenerator):
         else:
             console.print("Generating prompt for new Triton kernel...")
 
-        # 委托给 PromptBuilder
+        # Delegate to PromptBuilder
         return self.prompt_builder.build(info)
 
     def _init_data(self, kwargs):
-        # 保存原始类型
+        # Save original type
         original_type = type(kwargs)
 
         config = kwargs.dict()
@@ -71,17 +71,17 @@ class TritonKernelGenerator(BaseGenerator):
             from sandbox.utils.accuracy_utils import VerifyResult
             config["check_result"] = VerifyResult(**config["check_result"])
 
-        # ai_advice 只对 TritonKernelGenerateArgs 有效
-        from flagbench.framework.generate_args import TritonKernelGenerateArgs
+        # ai_advice is only valid for TritonKernelGenerateArgs
+        from kernelgenbench.framework.generate_args import TritonKernelGenerateArgs
         if self.generation_config.use_ai_advice is True and original_type == TritonKernelGenerateArgs:
             console.print("AI advice generation is enabled for Triton kernel generator.")
             self.ai_advice = TritonKernelAdviceGenerator(self.generation_config)
             config["user_advice"] = self.ai_advice(TritonKernelGenerateArgs(**config))
 
-        # 恢复为原始类型（不强制转换为 TritonKernelGenerateArgs）
+        # Restore to original type (do not force cast to TritonKernelGenerateArgs)
         config = original_type(**config)
 
-        # 使用通用的 op_name 属性
+        # Use the generic op_name property
         self.kernel_name = config.op_name
 
         return config

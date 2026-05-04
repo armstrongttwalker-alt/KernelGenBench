@@ -1,17 +1,17 @@
 """
-CublasPromptBuilder - cuBLAS 框架的 Prompt 构造器
+CublasPromptBuilder - Prompt builder for the cuBLAS framework
 """
 
 from typing import TYPE_CHECKING
 from .prompt_builder import PromptBuilder
-from flagbench.framework.generate_args import BaseGenerateArgs, CublasGenerateArgs
+from kernelgenbench.framework.generate_args import BaseGenerateArgs, CublasGenerateArgs
 
 if TYPE_CHECKING:
     from sandbox.utils.accuracy_utils import VerifyResult
 
 
 class CublasPromptBuilder(PromptBuilder):
-    """cuBLAS 框架的 Prompt 构造器"""
+    """Prompt builder for the cuBLAS framework"""
 
     def build_new(self, gen_args: BaseGenerateArgs) -> str:
         if not isinstance(gen_args, CublasGenerateArgs):
@@ -77,19 +77,19 @@ def saxpy(n, alpha, x, incx, y, incy):
                 if "args" in info.impl_info:
                     prompt += f"Arguments: {len(info.impl_info['args'])} parameters\\n"
 
-        # 从 kernel_name 提取函数名
+        # Extract function name from kernel_name
         func_name = info.cublas_kernel_name.split("::")[-1] if "::" in info.cublas_kernel_name else info.cublas_kernel_name
 
-        # 添加测试环境说明
+        # Add testing environment description
         prompt += f"\\n## Testing Environment\\n"
         prompt += f"Your implementation will be tested as follows:\\n"
         prompt += f"```python\\n"
         prompt += f"# Baseline (cuBLAS C API wrapper)\\n"
-        prompt += f"from flagbench.dataset.baseline.cublas_ctypes.{func_name} import {func_name} as baseline_{func_name}\\n"
+        prompt += f"from kernelgenbench.dataset.baseline.cublas_ctypes.{func_name} import {func_name} as baseline_{func_name}\\n"
         prompt += f"ref_out = baseline_{func_name}(...)\\n\\n"
         prompt += f"# Your Triton implementation\\n"
-        prompt += f"import flagbench\\n"
-        prompt += f"act_out = flagbench.triton.{func_name}(...)\\n\\n"
+        prompt += f"import kernelgenbench\\n"
+        prompt += f"act_out = kernelgenbench.triton.{func_name}(...)\\n\\n"
         prompt += f"# Accuracy verification\\n"
         prompt += f"assert_close(act_out, ref_out, dtype)\\n"
         prompt += f"```\\n"
@@ -101,14 +101,14 @@ def saxpy(n, alpha, x, incx, y, incy):
         prompt += "3. Handle edge cases and boundary conditions\\n"
         prompt += "4. Ensure numerical stability\\n"
 
-        # 添加禁止hack说明
+        # Add no-cheating notice
         prompt += "\\n## IMPORTANT - No Cheating\\n"
         prompt += "- You MUST implement the algorithm using Triton kernels (@triton.jit)\\n"
         prompt += "- Do NOT call the baseline function or cuBLAS C API directly\\n"
         prompt += "- Do NOT use ctypes to call cuBLAS functions\\n"
         prompt += "- Your implementation must be a pure Triton kernel solution\\n"
 
-        # 添加输出格式要求
+        # Add output format requirements
         prompt += "\\n## Output Format\\n"
         prompt += "Generate ONLY the Python code for the Triton kernel implementation:\\n"
         prompt += "- Use ```python ... ``` code block format\\n"
@@ -131,7 +131,7 @@ def saxpy(n, alpha, x, incx, y, incy):
         prompt += f"cuBLAS baseline function:\n```python\n{info.baseline_code}\n```\n\n"
 
         if has_history:
-            # 多轮历史：逐轮展示 kernel + 报错
+            # Multi-round history: show kernel + error per round
             history = info.history or []
             prompt += f"Below are ALL previous attempts ({len(history)} round(s)) and their error messages. Learn from each failure:\n"
             for entry in history:
@@ -145,7 +145,7 @@ def saxpy(n, alpha, x, incx, y, incy):
                 if params:
                     prompt += f"Test parameters:\n{params}\n"
         else:
-            # 单轮兼容逻辑
+            # Single-round compatibility logic
             if info.old_code:
                 prompt += f"Previous failed implementation:\n```python\n{info.old_code}\n```\n\n"
             if info.check_result:
@@ -153,7 +153,7 @@ def saxpy(n, alpha, x, incx, y, incy):
                 if info.check_result.params:
                     prompt += f"Test parameters:\n{info.check_result.params}\n\n"
 
-        # 从 kernel_name 提取函数名
+        # Extract function name from kernel_name
         func_name = info.cublas_kernel_name.split("::")[-1] if "::" in info.cublas_kernel_name else info.cublas_kernel_name
 
         prompt += f"\nPlease fix the issues and provide a corrected implementation.\n"
@@ -166,5 +166,5 @@ def saxpy(n, alpha, x, incx, y, incy):
         return prompt
 
     def build_optimization(self, gen_args: BaseGenerateArgs) -> str:
-        # 优化场景：暂时复用build_fix逻辑
+        # Optimization scenario: reuse build_fix logic for now
         return self.build_fix(gen_args)

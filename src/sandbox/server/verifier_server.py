@@ -42,7 +42,14 @@ from pydantic import BaseModel, Field
 import uvicorn
 
 # Import runtime module for device detection
-from runtime import device, torch_device_fn, get_visible_devices_env
+import torch
+class _device: name = "cuda"
+device = _device()
+class _torch_device_fn:
+    @staticmethod
+    def device_count(): return torch.cuda.device_count()
+torch_device_fn = _torch_device_fn()
+def get_visible_devices_env(): return "CUDA_VISIBLE_DEVICES"
 
 # =============================================================================
 # Setup
@@ -304,7 +311,7 @@ class TestRequest(BaseModel):
     operator_name: str = Field(..., description="Operator name")
     kernel_code: str = Field(..., description="Kernel source code content")
     test_module: str = Field(default="", description="Test module (takes priority over test_set)")
-    test_set: str = Field(default="v2_1", description="Test set: v2, v2_1, cupy")
+    test_set: str = Field(default="KernelGenBench", description="Test set: KernelGenBench")
     timeout: int = Field(default=300, description="Timeout in seconds")
 
 

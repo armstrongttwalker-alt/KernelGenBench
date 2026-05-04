@@ -31,8 +31,7 @@ import concurrent
 from functools import cache
 # from transformers import AutoTokenizer
 import hashlib
-# from bench import PYTORCH_OPERATORS
-from flagbench.dataset.kernel_list import PYTORCH_OPERATORS
+from kernelgenbench.dataset import get_kernelgenbench_operators
 from sandbox.utils.accuracy_utils import VerifyResult
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -51,8 +50,6 @@ ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY")
 SAMBANOVA_API_KEY = os.environ.get("SAMBANOVA_API_KEY")
 FIREWORKS_API_KEY = os.environ.get("FIREWORKS_API_KEY")
 DASHSCOPE_API_KEY = os.environ.get("DASHSCOPE_API_KEY")
-PANDA_API_KEY = os.environ.get("PANDA_API_KEY")
-KSYUN_API_KEY = os.environ.get("KSYUN_API_KEY")
 
 ############################################
 # Triton Prompt
@@ -89,7 +86,7 @@ tensors with arbitrary memory layouts.
 
 
 FEW_SHOTS_OP = {
-    "torch.nn.functional.scaled_dot_product_attention": "/share/project/tj/workspace/attention.py",
+    "torch.nn.functional.scaled_dot_product_attention": "",
 }
 
 
@@ -197,11 +194,13 @@ def query_server(
         #     )
         #     model = model_name
 
-        # case "anthropic":
-        #     client = anthropic.Anthropic(
-        #         api_key=ANTHROPIC_KEY,
-        #     )
-        #     model = model_name
+        case "anthropic":
+            import anthropic as _anthropic
+            _kwargs = {"api_key": ANTHROPIC_KEY}
+            if os.environ.get("ANTHROPIC_BASE_URL"):
+                _kwargs["base_url"] = os.environ["ANTHROPIC_BASE_URL"]
+            client = _anthropic.Anthropic(**_kwargs)
+            model = model_name
         # case "google":
         #     genai.configure(api_key=GEMINI_KEY)
         #     model = model_name
@@ -230,31 +229,6 @@ def query_server(
         #     )
         #     model = model_name
 
-        case "panda":
-            client = OpenAI(
-                api_key=PANDA_API_KEY,
-                base_url="https://api.pandalla.ai/v1",
-                timeout=10000000,
-                max_retries=10,
-            )
-            model = model_name
-
-        case "ksyun":
-            client = OpenAI(
-                api_key=KSYUN_API_KEY,
-                base_url="https://kspmas.ksyun.com/v1",
-                timeout=10000000,
-                max_retries=10,
-            )
-            # Model name mapping for ksyun
-            ksyun_model_mapping = {
-                "gpt-5": "mog-1",
-                "gpt-5.2": "mog-2",
-                "gemini-3-pro-preview": "mgg-2",
-                "gemini-3-flash": "mgg-7",
-            }
-            model = ksyun_model_mapping.get(model_name, model_name)
-
         case _:
             raise NotImplementedError
 
@@ -272,8 +246,8 @@ def query_server(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            # Qwen3模型通过enable_thinking参数控制思考过程（开源版默认True，商业版默认False）
-            # 使用Qwen3开源版模型时，若未启用流式输出，请将下行取消注释，否则会报错
+            # Qwen3 model controls the thinking process via enable_thinking parameter (open-source default True, commercial default False)
+            # When using Qwen3 open-source model without streaming, uncomment the line below, otherwise it will error
             # extra_body={"enable_thinking": False}, 
             stream=False, 
             temperature=temperature,
@@ -283,34 +257,6 @@ def query_server(
         )
         outputs = [choice.message.content for choice in response.choices]
     elif server_type == "vllm":
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
-            stream=False,
-            temperature=temperature,
-            n=num_completions,
-            max_tokens=max_tokens,
-            top_p=top_p,
-        )
-        outputs = [choice.message.content for choice in response.choices]
-    elif server_type == "panda":
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
-            stream=False,
-            temperature=temperature,
-            n=num_completions,
-            max_tokens=max_tokens,
-            top_p=top_p,
-        )
-        outputs = [choice.message.content for choice in response.choices]
-    elif server_type == "ksyun":
         response = client.chat.completions.create(
             model=model,
             messages=[
@@ -528,9 +474,9 @@ SERVER_PRESETS = {
         "max_tokens": 4096,
     },
     "sglang": {  # this is for running locally, mostly for Llama
-        "temperature": 0.8, # human eval pass@N temperature
-        "server_port": 10210,
-        "server_address": "matx2.stanford.edu",
+        "temperature": 0.8,
+        "server_port": 8000,
+        "server_address": "localhost",
         "max_tokens": 8192,
     },
     "anthropic": {  # for Claude 3.5 Sonnet
@@ -558,17 +504,7 @@ SERVER_PRESETS = {
         "model_name": "Qwen3-Coder-30B-A3B-Instruct/",
         "temperature": 0.0,
         "max_tokens": 32768,
-    }, 
-    "panda": {
-        "model_name": "claude-opus-4-1-20250805",
-        "temperature": 0.0,
-        "max_tokens": 32768,
     },
-    "ksyun": {
-        "model_name": "glm-4.7",
-        "temperature": 0.0,
-        "max_tokens": 32768,
-    }
 }
 
 
@@ -893,10 +829,10 @@ def get_torch_op_docstring(torch_op: str) -> str:
     #     return torch.nn.functional.avg_pool2d.__doc__ + "\nAnd \'torch.nn.AvgPool2d\''s docstring is:\n" + torch.nn.AvgPool2d.__doc__
     try:
         parts = torch_op.split(".")
-        # 动态导入顶层模块
+        # Dynamically import top-level module
         module = importlib.import_module(parts[0])
         obj = module
-        # 依次获取每一层属性
+        # Retrieve each attribute level by level
         for part in parts[1:]:
             obj = getattr(obj, part)
         return obj.__doc__ or ""
@@ -904,4 +840,4 @@ def get_torch_op_docstring(torch_op: str) -> str:
         return f"Cannot find docstring for '{torch_op}': {e}"
 
 def construct_dataset():
-    return PYTORCH_OPERATORS
+    return get_kernelgenbench_operators()
