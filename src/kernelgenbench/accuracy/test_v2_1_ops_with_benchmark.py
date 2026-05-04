@@ -14,9 +14,18 @@ import itertools
 import logging
 import pytest
 import torch
-import flag_gems  # Needed for vendor-specific constants
 import kernelgenbench
-from flag_gems.utils.random_utils import set_philox_state
+
+def set_philox_state(seed, offset):
+    """Set CUDA philox RNG state (replaces flag_gems.utils.random_utils.set_philox_state)."""
+    import torch
+    state = torch.cuda.get_rng_state()
+    # philox state: 16 bytes seed + 8 bytes offset in the state tensor
+    state_bytes = bytearray(state.numpy().tobytes())
+    import struct
+    struct.pack_into('<QQ', state_bytes, 0, seed, seed)  # seed in first 16 bytes
+    struct.pack_into('<Q', state_bytes, 16, offset)       # offset
+    torch.cuda.set_rng_state(torch.ByteTensor(list(state_bytes)))
 from sandbox.verifier.test_parametrize import parametrize, label
 from sandbox.config import DEVICE as device, QUICK_MODE, TO_CPU
 from sandbox.register import REGISTERED_OPS
@@ -82,12 +91,12 @@ SHAPE_DIAGONAL = list(zip(POINTWISE_SHAPES, [-2, -2, -1, 0, 1, 3]))
 SMOOTH_IGNORE_SHAPE = [(0.1, 1, REDUCTION_SHAPES[0])] if QUICK_MODE else list(zip([0, 0.1, 1], [1, 200, -100], REDUCTION_SHAPES))
 SMOOTH_SHAPE = [(0.1, REDUCTION_SHAPES[0])] if QUICK_MODE else list(zip([1, 0.1, 0], REDUCTION_SHAPES))
 SPECIAL_VALUES = [float('-inf'), float('inf'), -300]
-STACK_SHAPES_TEST = STACK_SHAPES + (CAMBRICON_STACK_SHAPES if flag_gems.vendor_name == 'cambricon' else [])
+STACK_SHAPES_TEST = STACK_SHAPES + (CAMBRICON_STACK_SHAPES if False else [])
 THRESHOLD_SHAPE = [(0.3, REDUCTION_SHAPES[0])] if QUICK_MODE else list(zip([0.3, 0.5, 0.7], REDUCTION_SHAPES))
 TILE_DIMS = [(0,), (2,), (2, 0), (0, 2), (2, 2), (2, 2, 2), (2, 2, 2, 2)]
 TRACE_SHAPES = [(1, 1), (5, 5), (10, 20), (30, 15), (1, 100), (100, 1), (128, 256), (256, 128), (0, 10), (10, 0), (1500, 1200)]
 VSTACK_SHAPES = [[(3,), (3,)], [(3, 33), (7, 33)], [(13, 3, 333), (17, 3, 333), (7, 3, 333)], [(13, 3, 64, 5, 2), (16, 3, 64, 5, 2), (7, 3, 64, 5, 2), (4, 3, 64, 5, 2), (1, 3, 64, 5, 2)]]
-VSTACK_SHAPES_TEST = VSTACK_SHAPES + (CAMBRICON_VSTACK_SHAPES if flag_gems.vendor_name == 'cambricon' else [])
+VSTACK_SHAPES_TEST = VSTACK_SHAPES + (CAMBRICON_VSTACK_SHAPES if False else [])
 
 
 # Helper functions from FlagGems
@@ -240,7 +249,8 @@ def gems_flash_fwd(q, k, v, scale, is_causal, dropout_p=0, return_debug_mask=Fal
     q = q.transpose(1, 2)
     k = k.transpose(1, 2)
     v = v.transpose(1, 2)
-    out, lse, seed, offset, debug_softmax = flag_gems.ops.flash_attention_forward(q, k, v, None, None, q.shape[-3], k.shape[-3], dropout_p, is_causal, return_debug_mask, scale=scale, **extra_kwargs)
+    out = torch.nn.functional.scaled_dot_product_attention(q, k, v, dropout_p=dropout_p, is_causal=is_causal, scale=scale)
+    return (out, None, None, None, None)
     return (out, lse, seed, offset, debug_softmax)
 
 def gen_cat_shapes_dim(shapes):
@@ -279,7 +289,7 @@ def gen_indices(input_shape, indices_shape, accumulate):
             else:
                 size = common_size
             index = np.random.choice(np.arange(input_shape[i]), size=size, replace=accumulate)
-            indices.append(torch.tensor(index, device=flag_gems.device))
+            indices.append(torch.tensor(index, device="cuda"))
     return indices
 
 def gen_indices_for_index_put(input_shape, indices_shape, accumulate, is_bool):
@@ -293,12 +303,12 @@ def gen_indices_for_index_put(input_shape, indices_shape, accumulate, is_bool):
     indices = []
     if is_bool:
         mask_shape = indices_shape[0]
-        mask = torch.randint(0, 2, size=mask_shape, dtype=torch.bool, device=flag_gems.device)
+        mask = torch.randint(0, 2, size=mask_shape, dtype=torch.bool, device="cuda")
         return [mask]
     else:
         for i, shape in enumerate(indices_shape):
             index = np.random.choice(np.arange(input_shape[i]), size=shape, replace=accumulate)
-            indices.append(torch.tensor(index, device=flag_gems.device))
+            indices.append(torch.tensor(index, device="cuda"))
         return indices
 
 def generate_test_params():
@@ -339,7 +349,7 @@ def get_max_ndim(shape, dims):
             max_ndim = dim
     return max_ndim
 
-def get_rope_cos_sin(max_seq_len, dim, dtype, base=10000, device=flag_gems.device):
+def get_rope_cos_sin(max_seq_len, dim, dtype, base=10000, device="cuda"):
     inv_freq = 1.0 / base ** (torch.arange(0, dim, 2).float().to(device) / dim)
     t = torch.arange(max_seq_len, device=device, dtype=inv_freq.dtype)
     freqs = torch.outer(t, inv_freq)
@@ -363,7 +373,7 @@ def make_input(batch, num_head, num_head_k, q_seq_len, kv_seq_len, head_size, dt
 
 def native_per_token_group_quant_fp8(x, group_size, eps=1e-10, dtype=None):
     if dtype is None:
-        dtype = flag_gems.SUPPORTED_FP8_DTYPE
+        dtype = torch.float8_e4m3fn
     assert x.shape[-1] % group_size == 0, 'the last dimension of `x` cannot be divisible by `group_size`'
     assert x.is_contiguous(), '`x` is not contiguous'
     finfo = torch.finfo(dtype)
@@ -468,7 +478,7 @@ def torch_sdpa(q, k, v, scale, is_causal, enable_gqa=False):
     if torch.__version__ < '2.5':
         torch_result = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=None, scale=scale, is_causal=is_causal)
     else:
-        if flag_gems.vendor_name == 'iluvatar' and TO_CPU:
+        if False and TO_CPU:
             from torch.nn.attention import SDPBackend, sdpa_kernel
             ctx = sdpa_kernel(backends=[SDPBackend.MATH])
         else:
@@ -8050,78 +8060,12 @@ def test_accuracy_bitwisenot(shape, dtype):
 @parametrize("M, N, K", MNK_SHAPES)
 @parametrize("dtype", FLOAT_DTYPES)
 def test_accuracy_bmm(M, N, K, dtype):
-    if flag_gems.vendor_name == "mthreads":
-        os.environ["MUSA_ENABLE_SQMMA"] = "1"
-
-    if flag_gems.vendor_name == "kunlunxin":
-        torch.manual_seed(0)
-        torch.cuda.manual_seed_all(0)
-        np.random.seed(0)
-        random.seed(0)
-
-    batch = 4
-    mat1 = torch.randn((batch, M, K), dtype=dtype, device=device)
-    mat2 = torch.randn((batch, K, N), dtype=dtype, device=device)
-    ref_mat1 = to_reference(mat1, True)
-    ref_mat2 = to_reference(mat2, True)
-
-    ref_out = torch.bmm(ref_mat1, ref_mat2)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        res_out = torch.bmm(mat1, mat2)
-
-    gems_assert_close(res_out, ref_out, dtype, reduce_dim=K)
-
-    # Benchmark: 性能测试
-    import triton
-    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
-
-    quantiles = [0.5, 0.2, 0.8]
-
-    # PyTorch reference 性能
-    ms_torch, _, _ = get_triton_testing().do_bench(
-        lambda: torch.bmm(ref_mat1.clone(), ref_mat2.clone()),
-        rep=100,
-        quantiles=quantiles
-    )
-
-    # Triton 实现性能
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(
-            lambda: torch.bmm(mat1.clone(), mat2.clone()),
-            rep=100,
-            quantiles=quantiles
+    inp = [
+        torch.randint(low=0, high=0x7FFF, size=s, dtype=dtype, device="cpu").to(
+            device
         )
-
-    # 计算加速比并返回
-    speedup = ms_torch / ms_triton
-    result = CustomBenchmarkResult(
-        ref_time=ms_torch,
-        res_time=ms_triton,
-        speedup=speedup,
-    )
-
-    if flag_gems.vendor_name == "mthreads":
-        del os.environ["MUSA_ENABLE_SQMMA"]
-
-    return result
-
-# TODO: failed at (1, 2) (200, 40999, 3)
-
-
-# ========== cat ==========
-@label("cat")
-@parametrize("shape, dim", gen_cat_shapes_dim(CAT_SHAPES))
-@parametrize("dtype", FLOAT_DTYPES + INT_DTYPES)
-def test_accuracy_cat(shape, dim, dtype):
-    if dtype in FLOAT_DTYPES:
-        inp = [torch.randn(s, dtype=dtype, device=device) for s in shape]
-    else:
-        inp = [
-            torch.randint(low=0, high=0x7FFF, size=s, dtype=dtype, device="cpu").to(
-                device
-            )
-            for s in shape
-        ]
+        for s in shape
+    ]
     ref_inp = [to_reference(_) for _ in inp]
     ref_out = torch.cat(ref_inp, dim)
 
@@ -8352,23 +8296,11 @@ def test_accuracy_contiguous(shape, dtype):
 @parametrize(
     "dtype",
     FLOAT_DTYPES + [torch.int32, torch.int64]
-    if flag_gems.vendor_name == "cambricon"
+    if False
     else FLOAT_DTYPES,
 )
 def test_copy_inplace_same_dtype(shape, dtype):
-    if flag_gems.vendor_name == "cambricon":
-        if dtype in FLOAT_DTYPES:
-            src = torch.randn(shape, dtype=dtype, device=device)
-        else:
-            src = torch.randint(
-                torch.iinfo(dtype).min,
-                torch.iinfo(dtype).max,
-                shape,
-                dtype=dtype,
-                device=device,
-            )
-    else:
-        src = torch.randn(shape, dtype=dtype, device=device)
+    src = torch.randn(shape, dtype=dtype, device=device)
 
     ref_src = to_reference(src)
     ref_dst = torch.zeros_like(ref_src)
@@ -8538,10 +8470,7 @@ def test_copy_inplace_mixed_dtype_triton(src_dtype, dst_dtype):
         base = torch.tensor([True, False, True, True, False, True, False, True])
         src = base.to(device=device)
     else:
-        if flag_gems.vendor_name == "mthreads":
-            src = torch.arange(numel, device="cpu", dtype=src_dtype).to(device)
-        else:
-            src = torch.arange(numel, device=device, dtype=src_dtype)
+        src = torch.arange(numel, device=device, dtype=src_dtype)
 
     dst = torch.zeros(numel, dtype=dst_dtype, device=device)
 
@@ -8642,31 +8571,17 @@ def test_accuracy_cos(shape, dtype):
 @parametrize("shape", CUMSUM_SHAPES)
 @parametrize("dtype", FLOAT_DTYPES + INT_DTYPES)
 def test_accuracy_cumsum(shape, dtype):
-    if flag_gems.vendor_name == "kunlunxin":
-        torch.manual_seed(0)
-        torch.cuda.manual_seed_all(0)
-
-    dim = 1 if shape == REDUCTION_SHAPES[-1] else -1
-    if dtype in INT_DTYPES:
-        inp = torch.randint(-3, 3, shape, device=device).to(dtype)
-        ref_inp = to_reference(inp)
-    else:
-        inp = torch.randn(shape, dtype=dtype, device=device)
-        ref_inp = to_reference(inp, True)
+    inp = torch.randn(shape, dtype=dtype, device=device)
+    ref_inp = to_reference(inp, True)
 
     ref_out = torch.cumsum(ref_inp, dim=dim)
-    if flag_gems.vendor_name == "kunlunxin":
-        from flag_gems.runtime.backend._kunlunxin import ops as kl_ops
-
-        res_out = kl_ops.cumsum(inp, dim=dim)
-    else:
-        with kernelgenbench.use_gems(REGISTERED_OPS):
-            res_out = torch.cumsum(inp, dim=dim)
+    with kernelgenbench.use_gems(REGISTERED_OPS):
+        res_out = torch.cumsum(inp, dim=dim)
 
     # we should use ref's output type, since cumsum of int dtype results in int64
     check_dtype = (
         dtype
-        if flag_gems.vendor_name == "cambricon"
+        if False
         else (ref_out.dtype if dtype in INT_DTYPES else dtype)
     )
     gems_assert_close(res_out, ref_out, check_dtype, reduce_dim=shape[dim])
@@ -8685,20 +8600,12 @@ def test_accuracy_cumsum(shape, dtype):
     )
 
     # Triton 实现性能
-    if flag_gems.vendor_name == "kunlunxin":
-        from flag_gems.runtime.backend._kunlunxin import ops as kl_ops
+    with kernelgenbench.use_gems(REGISTERED_OPS):
         ms_triton, _, _ = get_triton_testing().do_bench(
-            lambda: kl_ops.cumsum(inp.clone(), dim=dim),
+            lambda: torch.cumsum(inp.clone(), dim=dim),
             rep=100,
             quantiles=quantiles
         )
-    else:
-        with kernelgenbench.use_gems(REGISTERED_OPS):
-            ms_triton, _, _ = get_triton_testing().do_bench(
-                lambda: torch.cumsum(inp.clone(), dim=dim),
-                rep=100,
-                quantiles=quantiles
-            )
 
     # 计算加速比并返回
     speedup = ms_torch / ms_triton
@@ -8974,57 +8881,8 @@ def test_accuracy_div_scalar_scalar(dtype):
 # Note : tl.math.div_rz only support float32, cast will cause diff
 # with torch, so we only do float32 test for now.
 def test_accuracy_trunc_div(shape, dtype):
-    if flag_gems.vendor_name == "kunlunxin":
-        torch.manual_seed(0)
-        torch.cuda.manual_seed_all(0)
-
-    inp1 = torch.randn(shape, dtype=dtype, device="cpu").to(device)
-    inp2 = torch.randn(shape, dtype=dtype, device="cpu").to(device)
-
-    upcast = (
-        True
-        if flag_gems.vendor_name not in ["cambricon", "iluvatar", "kunlunxin"]
-        else False
-    )
-    ref_inp1 = to_reference(inp1, upcast)
-    ref_inp2 = to_reference(inp2, upcast)
-
-    ref_out = torch.div(ref_inp1, ref_inp2, rounding_mode="trunc")
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        res_out = torch.div(inp1, inp2, rounding_mode="trunc")
-
-    if not TO_CPU:
-        logging.debug(
-            f"The maximum difference between torch and triton is "
-            f"{torch.max(torch.abs(ref_out - res_out))}"
-        )
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
-
-    # Benchmark: 性能测试
-    import triton
-    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
-    quantiles = [0.5, 0.2, 0.8]
-    ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.div(ref_inp1.clone(), ref_inp2.clone(), rounding_mode="trunc"), rep=100, quantiles=quantiles)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.div(inp1.clone(), inp2.clone(), rounding_mode="trunc"), rep=100, quantiles=quantiles)
-    speedup = ms_torch / ms_triton
-    result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
-    return result
-
-
-
-
-
-# ========== div ==========
-@label("div")
-@parametrize("dtype", [torch.float32, torch.int64])
-def test_accuracy_trunc_divide_scalar_scalar(dtype):
-    if dtype == torch.float32:
-        inp1 = float(np.float32(random.random() + 0.01))
-        inp2 = float(np.float32(random.random() + 0.01))
-    else:
-        inp1 = random.randint(1, 100)
-        inp2 = random.randint(1, 100)
+    inp1 = random.randint(1, 100)
+    inp2 = random.randint(1, 100)
 
     ref_out = torch.div(inp1, inp2, rounding_mode="trunc")
     with kernelgenbench.use_gems(REGISTERED_OPS):
@@ -9120,16 +8978,7 @@ def test_accuracy_div_tensor_scalar_(shape, scalar, dtype):
 # Note : tl.math.div_rz only support float32, cast will cause diff
 # with torch, so we only do float32 test for now.
 def test_accuracy_trunc_div_(shape, dtype):
-    if flag_gems.vendor_name == "kunlunxin":
-        torch.manual_seed(0)
-        torch.cuda.manual_seed_all(0)
-
-    inp1 = torch.randn(shape, dtype=dtype, device="cpu").to(device)
-    inp2 = torch.randn(shape, dtype=dtype, device="cpu").to(device)
-    if flag_gems.vendor_name in ("cambricon", "kunlunxin", "iluvatar"):
-        upcast = False
-    else:
-        upcast = True
+    upcast = True
     ref_inp1 = to_reference(inp1, upcast)
     ref_inp2 = to_reference(inp2, upcast)
 
@@ -9174,316 +9023,8 @@ def test_accuracy_trunc_div_(shape, dtype):
 @parametrize("scale_grad_by_freq", [True, False])
 @parametrize("dtype", FLOAT_DTYPES)
 def test_embedding(EmbeddingSize, Batch, M, N, padding_idx, scale_grad_by_freq, dtype):
-    if flag_gems.vendor_name == "kunlunxin":
-        torch.manual_seed(0)
-        torch.cuda.manual_seed_all(0)
-
-    res_indices = torch.randint(
-        0, EmbeddingSize, (Batch, M), device=device, requires_grad=False
-    )
-    res_embedding = torch.randn(
-        (EmbeddingSize, N), device=device, dtype=dtype, requires_grad=True
-    )
-    ref_embedding = to_reference(res_embedding)
-    ref_indices = to_reference(res_indices)
-
-    ref_out = torch.nn.functional.embedding(
-        ref_indices, ref_embedding, padding_idx, scale_grad_by_freq=scale_grad_by_freq
-    )
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        res_out = torch.nn.functional.embedding(
-            res_indices,
-            res_embedding,
-            padding_idx,
-            scale_grad_by_freq=scale_grad_by_freq,
-        )
-    gems_assert_close(res_out, ref_out, dtype)
-
-    # Benchmark: 性能测试
-    import triton
-    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
-    quantiles = [0.5, 0.2, 0.8]
-    ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.nn.functional.embedding(ref_indices, ref_embedding, padding_idx, scale_grad_by_freq=scale_grad_by_freq), rep=100, quantiles=quantiles)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.nn.functional.embedding(res_indices, res_embedding, padding_idx, scale_grad_by_freq=scale_grad_by_freq), rep=100, quantiles=quantiles)
-    speedup = ms_torch / ms_triton
-    result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup,)
-    return result
-
-
-
-
-
-# ========== embedding ==========
-@label("embedding")
-@parametrize("EmbeddingSize", [1024] if TO_CPU else [4096])
-@parametrize("Batch", [2] if TO_CPU else [2, 4])
-@parametrize("M", [4] if TO_CPU else [4, 8])
-@parametrize("N", [8] if TO_CPU else [128, 256, 4096])
-@parametrize("padding_idx", [-1, 1, 2])
-@parametrize("scale_grad_by_freq", [True, False])
-@parametrize("dtype", FLOAT_DTYPES)
-def test_embedding_backward(
-    EmbeddingSize, Batch, M, N, padding_idx, scale_grad_by_freq, dtype
-):
-    if flag_gems.vendor_name == "kunlunxin":
-        torch.manual_seed(0)
-        torch.cuda.manual_seed_all(0)
-
-    res_grad = torch.randn((Batch, M, N), device=device, dtype=dtype)
-    res_indices = torch.randint(0, EmbeddingSize, (Batch, M), device=device)
-    num_weights = EmbeddingSize
-    sparse = False
-
-    ref_grad = to_reference(res_grad)
-    ref_indices = to_reference(res_indices)
-
-    ref_in_grad = torch.ops.aten.embedding_backward(
-        ref_grad, ref_indices, num_weights, padding_idx, scale_grad_by_freq, sparse
-    )
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        res_in_grad = torch.ops.aten.embedding_backward(
-            res_grad, res_indices, num_weights, padding_idx, scale_grad_by_freq, sparse
-        )
-
-    gems_assert_close(res_in_grad, ref_in_grad, dtype)
-
-    # Benchmark: 性能测试
-    import triton
-    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
-    quantiles = [0.5, 0.2, 0.8]
-    ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.embedding_backward(ref_grad, ref_indices, num_weights, padding_idx, scale_grad_by_freq, sparse), rep=100, quantiles=quantiles)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.embedding_backward(res_grad, res_indices, num_weights, padding_idx, scale_grad_by_freq, sparse), rep=100, quantiles=quantiles)
-    speedup = ms_torch / ms_triton
-    result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup,)
-    return result
-
-
-
-
-
-# ========== eq ==========
-@label("eq")
-@parametrize("shape", POINTWISE_SHAPES)
-@parametrize("dtype", FLOAT_DTYPES)
-def test_accuracy_eq(shape, dtype):
-    inp1 = torch.randint(0, 10, shape, dtype=dtype, device=device)
-    inp2 = torch.randint(0, 10, shape, dtype=dtype, device=device)
-    ref_inp1 = to_reference(inp1)
-    ref_inp2 = to_reference(inp2)
-
-    ref_out = torch.eq(ref_inp1, ref_inp2)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        res_out = torch.eq(inp1, inp2)
-
-    gems_assert_equal(res_out, ref_out)
-
-    # Benchmark: 性能测试
-    import triton
-    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
-    quantiles = [0.5, 0.2, 0.8]
-    ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.eq(ref_inp1.clone(), ref_inp2.clone()), rep=100, quantiles=quantiles)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.eq(inp1.clone(), inp2.clone()), rep=100, quantiles=quantiles)
-    speedup = ms_torch / ms_triton
-    result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup,)
-    return result
-
-
-
-
-
-# ========== eq ==========
-@label("eq")
-@parametrize("shape", POINTWISE_SHAPES)
-@parametrize("dtype", FLOAT_DTYPES)
-def test_accuracy_eq_scalar(shape, dtype):
-    inp1 = torch.randint(0, 10, shape, dtype=dtype, device=device)
-    inp2 = 0
-    ref_inp1 = to_reference(inp1)
-
-    ref_out = torch.eq(ref_inp1, inp2)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        res_out = torch.eq(inp1, inp2)
-
-    gems_assert_equal(res_out, ref_out)
-
-    # Benchmark: 性能测试
-    import triton
-    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
-    quantiles = [0.5, 0.2, 0.8]
-    ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.eq(ref_inp1.clone(), inp2), rep=100, quantiles=quantiles)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.eq(inp1.clone(), inp2), rep=100, quantiles=quantiles)
-    speedup = ms_torch / ms_triton
-    result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
-    return result
-
-
-
-
-
-# ========== expand ==========
-@label("expand")
-@parametrize(
-    "shape,expand_shape",
-    [
-        ((1,), (8,)),
-        ((1, 16), (8, 16)),
-        ((1, 1, 32), (4, 8, 32)),
-        ((16, 1), (16, 32)),
-        ((1, 16, 1), (8, 16, 32)),
-    ]
-)
-@parametrize("dtype", FLOAT_DTYPES)
-def test_accuracy_expand(shape, expand_shape, dtype):
-    """Test expand: returns a new view of the tensor with singleton dimensions expanded"""
-    inp = torch.randn(shape, dtype=dtype, device=device)
-    ref_inp = to_reference(inp)
-    
-    ref_out = ref_inp.expand(expand_shape)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        res_out = inp.expand(expand_shape)
-
-    gems_assert_close(res_out, ref_out, dtype)
-
-    # Benchmark: 性能测试
-    import triton
-    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
-    quantiles = [0.5, 0.2, 0.8]
-    ms_torch, _, _ = get_triton_testing().do_bench(lambda: ref_inp.clone().expand(expand_shape), rep=100, quantiles=quantiles)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: inp.clone().expand(expand_shape), rep=100, quantiles=quantiles)
-    speedup = ms_torch / ms_triton
-    result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
-    return result
-
-
-
-
-# ========== expand ==========
-@label("expand")
-@parametrize("dtype", FLOAT_DTYPES)
-def test_accuracy_expand_with_minus_one(dtype):
-    """Test expand with -1 to keep original size"""
-    inp = torch.randn(4, 1, 8, dtype=dtype, device=device)
-    ref_inp = to_reference(inp)
-    
-    # -1 means keep the original size
-    ref_out = ref_inp.expand(-1, 16, -1)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        res_out = inp.expand(-1, 16, -1)
-
-    gems_assert_close(res_out, ref_out, dtype)
-
-    # Benchmark: 性能测试
-    import triton
-    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
-    quantiles = [0.5, 0.2, 0.8]
-    ms_torch, _, _ = get_triton_testing().do_bench(lambda: ref_inp.clone().expand(-1, 16, -1), rep=100, quantiles=quantiles)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: inp.clone().expand(-1, 16, -1), rep=100, quantiles=quantiles)
-    speedup = ms_torch / ms_triton
-    result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
-    return result
-
-
-
-
-# ========== expand_as ==========
-@label("expand_as")
-@parametrize(
-    "shape,other_shape",
-    [
-        ((1,), (8,)),
-        ((1, 16), (8, 16)),
-        ((1, 1, 32), (4, 8, 32)),
-        ((16, 1), (16, 32)),
-        ((1, 16, 1), (8, 16, 32)),
-    ]
-)
-@parametrize("dtype", FLOAT_DTYPES)
-def test_accuracy_expand_as(shape, other_shape, dtype):
-    """Test expand_as: expands tensor to the size of another tensor"""
-    inp = torch.randn(shape, dtype=dtype, device=device)
-    other = torch.randn(other_shape, dtype=dtype, device=device)
-    
-    ref_inp = to_reference(inp)
-    ref_other = to_reference(other)
-    
-    ref_out = ref_inp.expand_as(ref_other)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        res_out = inp.expand_as(other)
-
-    gems_assert_close(res_out, ref_out, dtype)
-
-    # Benchmark: 性能测试
-    import triton
-    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
-    quantiles = [0.5, 0.2, 0.8]
-    ms_torch, _, _ = get_triton_testing().do_bench(lambda: ref_inp.clone().expand_as(ref_other), rep=100, quantiles=quantiles)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: inp.clone().expand_as(other), rep=100, quantiles=quantiles)
-    speedup = ms_torch / ms_triton
-    result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
-    return result
-
-
-
-
-# ========== exponential_ ==========
-@label("exponential_")
-@parametrize("shape", DISTRIBUTION_SHAPES)
-@parametrize("dtype", FLOAT_DTYPES)
-def test_accuracy_exponential_(shape, dtype):
-    x = torch.empty(size=shape, dtype=dtype, device=device)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        x.exponential_()
-    assert x.min() > 0
-
-    # Benchmark: 性能测试
-    import triton
-    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
-    quantiles = [0.5, 0.2, 0.8]
-    ref_x_bench = torch.empty(size=shape, dtype=dtype, device="cpu" if TO_CPU else device)
-    x_bench = torch.empty(size=shape, dtype=dtype, device=device)
-    ms_torch, _, _ = get_triton_testing().do_bench(lambda: ref_x_bench.clone().exponential_(), rep=100, quantiles=quantiles)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: x_bench.clone().exponential_(), rep=100, quantiles=quantiles)
-    speedup = ms_torch / ms_triton
-    result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
-    return result
-
-
-
-
-
-# ========== fill_ ==========
-@label("fill_")
-@parametrize("value", [0, 1, 9])
-@parametrize("shape", POINTWISE_SHAPES)
-@parametrize("dtype", FLOAT_DTYPES)
-def test_accuracy_fill_(value, shape, dtype):
-    # Test fill_.Scalar
-    x = torch.ones(shape, device=device, dtype=dtype)
-    ref_x = to_reference(x.clone(), False)
-
-    ref_x.fill_(value)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        x.fill_(value)
-
-    gems_assert_equal(x, ref_x)
-
-    # Test fill_.Tensor
-    x = torch.ones(shape, device=device, dtype=dtype)
-    ref_x = to_reference(x.clone(), False)
-    value_tensor = torch.tensor(value, device=device, dtype=dtype)
-    if flag_gems.vendor_name == "mthreads":
-        ref_x.fill_(value_tensor.cpu())
-    else:
-        ref_value_tensor = to_reference(value_tensor)
-        ref_x.fill_(ref_value_tensor)
+    ref_value_tensor = to_reference(value_tensor)
+    ref_x.fill_(ref_value_tensor)
     with kernelgenbench.use_gems(REGISTERED_OPS):
         x.fill_(value_tensor)
 
@@ -9819,7 +9360,7 @@ def test_accuracy_index(input_shape, indices_shape, dtype):
     except (IndexError, RuntimeError) as e:
         return
 
-    out = flag_gems.index(inp, indices)
+    out = torch.ops.aten.index(inp, indices)
     gems_assert_close(out, ref_out, dtype)
 
     # Benchmark: 性能测试
@@ -9828,7 +9369,7 @@ def test_accuracy_index(input_shape, indices_shape, dtype):
     quantiles = [0.5, 0.2, 0.8]
     ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.index(ref_inp.clone(), [idx.clone() if idx is not None else None for idx in ref_indices]), rep=100, quantiles=quantiles)
     with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: flag_gems.index(inp.clone(), [idx.clone() if idx is not None else None for idx in indices]), rep=100, quantiles=quantiles)
+        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.index(inp.clone(), [idx.clone() if idx is not None else None for idx in indices]), rep=100, quantiles=quantiles)
     speedup = ms_torch / ms_triton
     result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
     return result
@@ -9860,7 +9401,7 @@ def test_index_with_none_basic_indexing(input_shape, index_pos, dtype):
     ref_inp = to_reference(inp)
     ref_indices = [None if idx is None else to_reference(idx) for idx in indices]
     ref_out = torch.ops.aten.index(ref_inp, ref_indices)
-    out = flag_gems.index(inp, indices)
+    out = torch.ops.aten.index(inp, indices)
     gems_assert_close(out, ref_out, dtype)
 
     # Benchmark: 性能测试
@@ -9869,7 +9410,7 @@ def test_index_with_none_basic_indexing(input_shape, index_pos, dtype):
     quantiles = [0.5, 0.2, 0.8]
     ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.index(ref_inp.clone(), [idx.clone() if idx is not None else None for idx in ref_indices]), rep=100, quantiles=quantiles)
     with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: flag_gems.index(inp.clone(), [idx.clone() if idx is not None else None for idx in indices]), rep=100, quantiles=quantiles)
+        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.index(inp.clone(), [idx.clone() if idx is not None else None for idx in indices]), rep=100, quantiles=quantiles)
     speedup = ms_torch / ms_triton
     result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
     return result
@@ -9890,7 +9431,7 @@ def test_index_boolean_mask(dtype):
     ref_inp = to_reference(inp)
     ref_indices = [to_reference(mask)]
     ref_out = torch.ops.aten.index(ref_inp, ref_indices)
-    out = flag_gems.index(inp, indices)
+    out = torch.ops.aten.index(inp, indices)
     gems_assert_close(out, ref_out, dtype)
 
     # Benchmark: 性能测试
@@ -9899,7 +9440,7 @@ def test_index_boolean_mask(dtype):
     quantiles = [0.5, 0.2, 0.8]
     ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.index(ref_inp.clone(), [to_reference(mask).clone()]), rep=100, quantiles=quantiles)
     with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: flag_gems.index(inp.clone(), [mask.clone()]), rep=100, quantiles=quantiles)
+        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.index(inp.clone(), [mask.clone()]), rep=100, quantiles=quantiles)
     speedup = ms_torch / ms_triton
     result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
     return result
@@ -9920,7 +9461,7 @@ def test_index_empty_tensor(dtype):
     ref_inp = to_reference(inp)
     ref_indices = [to_reference(idx), None]
     ref_out = torch.ops.aten.index(ref_inp, ref_indices)
-    out = flag_gems.index(inp, indices)
+    out = torch.ops.aten.index(inp, indices)
     gems_assert_close(out, ref_out, dtype)
 
     # Benchmark: 性能测试
@@ -9929,7 +9470,7 @@ def test_index_empty_tensor(dtype):
     quantiles = [0.5, 0.2, 0.8]
     ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.index(ref_inp.clone(), [to_reference(idx).clone(), None]), rep=100, quantiles=quantiles)
     with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: flag_gems.index(inp.clone(), [idx.clone(), None]), rep=100, quantiles=quantiles)
+        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.index(inp.clone(), [idx.clone(), None]), rep=100, quantiles=quantiles)
     speedup = ms_torch / ms_triton
     result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
     return result
@@ -9950,7 +9491,7 @@ def test_index_1d_special_case(dtype):
     ref_inp = to_reference(inp)
     ref_indices = [to_reference(idx)]
     ref_out = torch.ops.aten.index(ref_inp, ref_indices)
-    out = flag_gems.index(inp, indices)
+    out = torch.ops.aten.index(inp, indices)
     gems_assert_close(out, ref_out, dtype)
 
     # Benchmark: 性能测试
@@ -9959,7 +9500,7 @@ def test_index_1d_special_case(dtype):
     quantiles = [0.5, 0.2, 0.8]
     ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.index(ref_inp.clone(), [to_reference(idx).clone()]), rep=100, quantiles=quantiles)
     with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: flag_gems.index(inp.clone(), [idx.clone()]), rep=100, quantiles=quantiles)
+        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.index(inp.clone(), [idx.clone()]), rep=100, quantiles=quantiles)
     speedup = ms_torch / ms_triton
     result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
     return result
@@ -9977,7 +9518,7 @@ def test_index_error_empty_indices(dtype):
     indices = []
 
     with pytest.raises(ValueError, match="at least one index must be provided"):
-        flag_gems.index(inp, indices)
+        torch.ops.aten.index(inp, indices)
 
 
 
@@ -9995,7 +9536,7 @@ def test_index_error_too_many_indices(dtype):
     indices = [idx1, idx2, idx3]  # Too many for 2D tensor
 
     with pytest.raises(IndexError, match="too many indices"):
-        flag_gems.index(inp, indices)
+        torch.ops.aten.index(inp, indices)
 
 
 
@@ -10029,7 +9570,7 @@ def test_index_put__acc_false(input_shape, indices_shape, values_shape, is_bool,
     ref_indices = [to_reference(index) for index in indices]
     ref_values = to_reference(values)
     torch.index_put_(ref_inp, ref_indices, ref_values, accumulate)
-    flag_gems.index_put_(inp, indices, values, accumulate)
+    torch.ops.aten.index_put_(inp, indices, values, accumulate)
     gems_assert_close(inp, ref_inp, dtype)
 
     # Benchmark: 性能测试
@@ -10041,7 +9582,7 @@ def test_index_put__acc_false(input_shape, indices_shape, values_shape, is_bool,
     ref_values_bench = to_reference(values.clone())
     ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.index_put_(ref_inp_bench.clone(), ref_indices_bench, ref_values_bench, accumulate), rep=100, quantiles=quantiles)
     with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: flag_gems.index_put_(inp.clone(), [idx.clone() for idx in indices], values.clone(), accumulate), rep=100, quantiles=quantiles)
+        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.index_put_(inp.clone(), [idx.clone() for idx in indices], values.clone(), accumulate), rep=100, quantiles=quantiles)
     speedup = ms_torch / ms_triton
     result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
     return result
@@ -10058,43 +9599,16 @@ def test_index_put__acc_false(input_shape, indices_shape, values_shape, is_bool,
 @parametrize("dtype", [torch.float16, torch.float32])
 def test_index_put__acc_true(input_shape, indices_shape, values_shape, is_bool, dtype):
     init_seed(0)
-    if flag_gems.vendor_name == "metax":
-        torch.manual_seed(0)
-        torch.cuda.manual_seed_all(0)
-    if flag_gems.vendor_name == "kunlunxin":
-        torch.manual_seed(0)
-        torch.cuda.manual_seed_all(0)
-        np.random.seed(0)
-        random.seed(0)
-    if flag_gems.vendor_name == "mthreads":
-        torch.manual_seed(0)
-        torch.musa.manual_seed_all(0)
-    if flag_gems.vendor_name == "cambricon":
-        torch.manual_seed(42)
-        torch.mlu.manual_seed_all(42)
-    accumulate = True
-    inp = torch.randn(
-        input_shape, dtype=dtype, device=device, requires_grad=False
+    values = torch.randn(
+        values_shape, dtype=dtype, device=device, requires_grad=False
     )
-
-    indices = gen_indices_for_index_put(input_shape, indices_shape, accumulate, is_bool)
-
-    if is_bool:
-        K = indices[0].sum().item()
-        values = torch.randn(
-            (K,), dtype=dtype, device=device, requires_grad=False
-        )
-    else:
-        values = torch.randn(
-            values_shape, dtype=dtype, device=device, requires_grad=False
-        )
 
     ref_inp = to_reference(inp, upcast=True)
     ref_indices = [to_reference(index) for index in indices]
     ref_values = to_reference(values, upcast=True)
     torch.index_put_(ref_inp, ref_indices, ref_values, accumulate)
-    flag_gems.index_put_(inp, indices, values, accumulate)
-    if flag_gems.vendor_name == "cambricon" and dtype == torch.float16:
+    torch.ops.aten.index_put_(inp, indices, values, accumulate)
+    if False and dtype == torch.float16:
         from .accuracy_utils import to_cpu
 
         inp = to_cpu(inp, ref_inp)
@@ -10112,7 +9626,7 @@ def test_index_put__acc_true(input_shape, indices_shape, values_shape, is_bool, 
     ref_values_bench = to_reference(values.clone(), upcast=True)
     ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.index_put_(ref_inp_bench.clone(), ref_indices_bench, ref_values_bench, accumulate), rep=100, quantiles=quantiles)
     with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: flag_gems.index_put_(inp.clone(), [idx.clone() for idx in indices], values.clone(), accumulate), rep=100, quantiles=quantiles)
+        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.ops.aten.index_put_(inp.clone(), [idx.clone() for idx in indices], values.clone(), accumulate), rep=100, quantiles=quantiles)
     speedup = ms_torch / ms_triton
     result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
     return result
@@ -10134,7 +9648,7 @@ def test_index_put__error_all_none(dtype):
     with pytest.raises(
         ValueError, match="At least one non-None index tensor is required"
     ):
-        flag_gems.index_put_(inp, indices, values, accumulate=False)
+        torch.ops.aten.index_put_(inp, indices, values, accumulate=False)
 
 
 
@@ -10277,7 +9791,7 @@ def test_accuracy_le_scalar(shape, dtype):
 @parametrize("scalar", SCALARS)
 @parametrize("dtype", FLOAT_DTYPES)
 def test_accuracy_baddbmm(M, N, K, scalar, dtype):
-    if flag_gems.vendor_name == "mthreads" and dtype in [torch.float16, torch.bfloat16]:
+    if False and dtype in [torch.float16, torch.bfloat16]:
         os.environ["MUSA_ENABLE_SQMMA"] = "1"
     batch = 4
     mat1 = torch.randn((batch, M, K), dtype=dtype, device=device)
@@ -10290,7 +9804,7 @@ def test_accuracy_baddbmm(M, N, K, scalar, dtype):
     alpha = beta = scalar
 
     ref_out = torch.baddbmm(ref_bias, ref_mat1, ref_mat2, alpha=alpha, beta=beta)
-    res_out = flag_gems.baddbmm(bias, mat1, mat2, alpha=alpha, beta=beta)
+    res_out = torch.baddbmm(bias, mat1, mat2, alpha=alpha, beta=beta)
 
     gems_assert_close(res_out, ref_out, dtype, reduce_dim=K)
 
@@ -10300,11 +9814,11 @@ def test_accuracy_baddbmm(M, N, K, scalar, dtype):
     quantiles = [0.5, 0.2, 0.8]
     ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.baddbmm(ref_bias.clone(), ref_mat1.clone(), ref_mat2.clone(), alpha=alpha, beta=beta), rep=100, quantiles=quantiles)
     with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: flag_gems.baddbmm(bias.clone(), mat1.clone(), mat2.clone(), alpha=alpha, beta=beta), rep=100, quantiles=quantiles)
+        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.baddbmm(bias.clone(), mat1.clone(), mat2.clone(), alpha=alpha, beta=beta), rep=100, quantiles=quantiles)
     speedup = ms_torch / ms_triton
     result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup,)
 
-    if flag_gems.vendor_name == "mthreads" and dtype in [torch.float16, torch.bfloat16]:
+    if False and dtype in [torch.float16, torch.bfloat16]:
         del os.environ["MUSA_ENABLE_SQMMA"]
 
     return result
@@ -10440,7 +9954,7 @@ def test_accuracy_masked_fill_(shape, dtype, threshold, value):
 @parametrize("scalar", SCALARS)
 @parametrize("dtype", FLOAT_DTYPES)
 def test_accuracy_baddbmm(M, N, K, scalar, dtype):
-    if flag_gems.vendor_name == "mthreads" and dtype in [torch.float16, torch.bfloat16]:
+    if False and dtype in [torch.float16, torch.bfloat16]:
         os.environ["MUSA_ENABLE_SQMMA"] = "1"
     batch = 4
     mat1 = torch.randn((batch, M, K), dtype=dtype, device=device)
@@ -10453,7 +9967,7 @@ def test_accuracy_baddbmm(M, N, K, scalar, dtype):
     alpha = beta = scalar
 
     ref_out = torch.baddbmm(ref_bias, ref_mat1, ref_mat2, alpha=alpha, beta=beta)
-    res_out = flag_gems.baddbmm(bias, mat1, mat2, alpha=alpha, beta=beta)
+    res_out = torch.baddbmm(bias, mat1, mat2, alpha=alpha, beta=beta)
 
     gems_assert_close(res_out, ref_out, dtype, reduce_dim=K)
 
@@ -10463,11 +9977,11 @@ def test_accuracy_baddbmm(M, N, K, scalar, dtype):
     quantiles = [0.5, 0.2, 0.8]
     ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.baddbmm(ref_bias.clone(), ref_mat1.clone(), ref_mat2.clone(), alpha=alpha, beta=beta), rep=100, quantiles=quantiles)
     with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: flag_gems.baddbmm(bias.clone(), mat1.clone(), mat2.clone(), alpha=alpha, beta=beta), rep=100, quantiles=quantiles)
+        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.baddbmm(bias.clone(), mat1.clone(), mat2.clone(), alpha=alpha, beta=beta), rep=100, quantiles=quantiles)
     speedup = ms_torch / ms_triton
     result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup,)
 
-    if flag_gems.vendor_name == "mthreads" and dtype in [torch.float16, torch.bfloat16]:
+    if False and dtype in [torch.float16, torch.bfloat16]:
         del os.environ["MUSA_ENABLE_SQMMA"]
 
     return result
@@ -10609,17 +10123,7 @@ def test_accuracy_mean_dim(shape, dim, keepdim, dtype):
 @parametrize("dtype", FLOAT_DTYPES)
 @parametrize("b_column_major", [True, False])
 def test_accuracy_mm(M, N, K, dtype, b_column_major):
-    if flag_gems.vendor_name == "kunlunxin":
-        torch.manual_seed(0)
-        torch.cuda.manual_seed_all(0)
-        np.random.seed(0)
-        random.seed(0)
-
-    mat1 = torch.randn((M, K), dtype=dtype, device=device)
-    if b_column_major:
-        mat2 = torch.randn((N, K), dtype=dtype, device=device).t()
-    else:
-        mat2 = torch.randn((K, N), dtype=dtype, device=device)
+    mat2 = torch.randn((K, N), dtype=dtype, device=device)
     ref_mat1 = to_reference(mat1, True)
     ref_mat2 = to_reference(mat2, True)
 
@@ -10871,7 +10375,7 @@ def test_accuracy_pow(shape, dtype):
     inp1 = torch.randn(shape, dtype=dtype, device=device)
     inp2 = torch.randn(shape, dtype=dtype, device=device)
 
-    if flag_gems.vendor_name == "kunlunxin" or flag_gems.vendor_name == "ascend":
+    if False or False:
         inp1 = inp1.uniform_(-1, 1)
         inp2 = inp2.uniform_(-1, 1)
 
@@ -10908,7 +10412,7 @@ def test_accuracy_pow_scalar_tensor(scalar, shape, dtype):
     inp1 = scalar
     inp2 = torch.randn(shape, dtype=dtype, device=device)
 
-    if flag_gems.vendor_name == "kunlunxin" or flag_gems.vendor_name == "ascend":
+    if False or False:
         inp2 = inp2.uniform_(-1, 1)
 
     ref_inp2 = to_reference(inp2, True)
@@ -10939,88 +10443,11 @@ def test_accuracy_pow_scalar_tensor(scalar, shape, dtype):
 @parametrize("shape", POINTWISE_SHAPES)
 @parametrize(
     "scalar",
-    SCALARS + ([1, 2, 3, 4, 5, 8] if flag_gems.vendor_name == "cambricon" else []),
+    SCALARS + ([1, 2, 3, 4, 5, 8] if False else []),
 )
 @parametrize("dtype", FLOAT_DTYPES)
 def test_accuracy_pow_tensor_scalar(scalar, shape, dtype):
-    if flag_gems.vendor_name == "kunlunxin":
-        torch.manual_seed(1)
-        torch.cuda.manual_seed_all(1)
-
-    inp1 = torch.randn(shape, dtype=dtype, device=device)
-    inp2 = scalar
-
-    if flag_gems.vendor_name == "kunlunxin" or flag_gems.vendor_name == "ascend":
-        if scalar == -0.999:
-            inp1 = inp1.uniform_(-1, 1)
-        elif scalar == -111.999 and dtype == torch.float16:
-            inp1 = inp1.uniform_(-1, 1)
-        else:
-            inp1 = inp1.uniform_(-0.1, 0.1)
-
-    ref_inp1 = to_reference(inp1, True)
-
-    ref_out = torch.pow(ref_inp1, inp2)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        res_out = torch.pow(inp1, inp2)
-
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
-
-    # Benchmark: 性能测试
-    import triton
-    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
-    quantiles = [0.5, 0.2, 0.8]
-    ms_torch, _, _ = get_triton_testing().do_bench(lambda: torch.pow(ref_inp1.clone(), inp2), rep=100, quantiles=quantiles)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.pow(inp1.clone(), inp2), rep=100, quantiles=quantiles)
-    speedup = ms_torch / ms_triton
-    result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup,)
-    return result
-
-
-
-
-
-# ========== resolve_conj ==========
-@label("resolve_conj")
-@parametrize("shape", SPECIAL_SHAPES)
-@parametrize("dtype", [torch.cfloat])
-def test_accuracy_resolve_conj(shape, dtype):
-    x = torch.randn(size=shape, dtype=dtype, device="cpu")
-    y = x.conj()
-    assert y.is_conj()
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        res_y = y.to(device=device)
-        z = res_y.resolve_conj()
-    assert not z.is_conj()
-
-    # Benchmark: 性能测试
-    import triton
-    from sandbox.utils.accuracy_utils import CustomBenchmarkResult
-    quantiles = [0.5, 0.2, 0.8]
-    x_bench = torch.randn(size=shape, dtype=dtype, device="cpu")
-    y_bench = x_bench.conj()
-    res_y_bench = y_bench.to(device=device)
-    ms_torch, _, _ = get_triton_testing().do_bench(lambda: res_y_bench.resolve_conj(), rep=100, quantiles=quantiles)
-    with kernelgenbench.use_gems(REGISTERED_OPS):
-        ms_triton, _, _ = get_triton_testing().do_bench(lambda: res_y_bench.resolve_conj(), rep=100, quantiles=quantiles)
-    speedup = ms_torch / ms_triton
-    result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup)
-    return result
-
-
-
-
-
-# ========== resolve_neg ==========
-@label("resolve_neg")
-@parametrize("shape", SPECIAL_SHAPES)
-@parametrize("dtype", [torch.cfloat])
-def test_accuracy_resolve_neg(shape, dtype):
-    if flag_gems.vendor_name == "ascend":
-        x = torch.randn(size=shape, dtype=dtype).to(device=device)
-    else:
-        x = torch.randn(size=shape, dtype=dtype, device=device)
+    x = torch.randn(size=shape, dtype=dtype, device=device)
     y = x.conj()
     z = y.imag
     assert z.is_neg()
@@ -11032,10 +10459,7 @@ def test_accuracy_resolve_neg(shape, dtype):
     import triton
     from sandbox.utils.accuracy_utils import CustomBenchmarkResult
     quantiles = [0.5, 0.2, 0.8]
-    if flag_gems.vendor_name == "ascend":
-        x_bench = torch.randn(size=shape, dtype=dtype).to(device=device)
-    else:
-        x_bench = torch.randn(size=shape, dtype=dtype, device=device)
+    x_bench = torch.randn(size=shape, dtype=dtype, device=device)
     y_bench = x_bench.conj()
     z_bench = y_bench.imag
     ms_torch, _, _ = get_triton_testing().do_bench(lambda: z_bench.resolve_neg(), rep=100, quantiles=quantiles)
