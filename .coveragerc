@@ -75,7 +75,7 @@ ignore_errors = False
 directory = htmlcov
 
 # Title for HTML report
-title = Flagbench Coverage Report
+title = KernelGenBench Coverage Report
 
 [xml]
 # Output file for XML report (for CI/CD)
