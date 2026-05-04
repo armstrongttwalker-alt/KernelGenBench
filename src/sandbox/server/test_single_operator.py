@@ -200,10 +200,10 @@ class SingleOperatorTester:
         kernel_code = self.read_kernel_code()
 
         # Setup environment
-        os.environ["FLAGBENCH_USE_DYNAMIC_IMPL_INFO"] = "1"
-        os.environ["FLAGBENCH_UPCAST"] = "1"
+        os.environ["KERNELGENBENCH_USE_DYNAMIC_IMPL_INFO"] = "1"
+        os.environ["KERNELGENBENCH_UPCAST"] = "1"
         os.environ["DISPATCH_TORCH_LIB"] = "1"
-        os.environ["FLAGBENCH_SKIP_BOTH_TEST"] = "1"
+        os.environ["KERNELGENBENCH_SKIP_BOTH_TEST"] = "1"
 
         # Create verification config
         verify_config = VerifyConfig(

@@ -16,7 +16,7 @@ import numpy as np
 from sandbox.config import QUICK_MODE, TO_CPU
 
 import os
-UPCAST = os.environ.get("FLAGBENCH_UPCAST", "1") == "1"
+UPCAST = os.environ.get("KERNELGENBENCH_UPCAST", "1") == "1"
 
 fp64_is_supported = True
 

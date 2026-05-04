@@ -1,5 +1,5 @@
 import os
-os.environ["FLAGBENCH_USE_DYNAMIC_IMPL_INFO"] = "1"
+os.environ["KERNELGENBENCH_USE_DYNAMIC_IMPL_INFO"] = "1"
 import argparse
 import json
 import logging
@@ -105,7 +105,7 @@ class PassAtKTester:
 
     def setup(self):
         """Setup the os environment variables."""
-        os.environ["FLAGBENCH_UPCAST"] = "0"
+        os.environ["KERNELGENBENCH_UPCAST"] = "0"
         if self.test_type == "triton":
             self.create_verify_args = self.create_triton_kernel_verify_args
 

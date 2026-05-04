@@ -88,7 +88,7 @@ def verify_kernels(
 
     # Setup environment
     os.environ["DISPATCH_TORCH_LIB"] = "1"
-    os.environ["FLAGBENCH_SKIP_BOTH_TEST"] = "1"
+    os.environ["KERNELGENBENCH_SKIP_BOTH_TEST"] = "1"
 
     # Create verifier
     verify_config = VerifyConfig(

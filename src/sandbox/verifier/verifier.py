@@ -176,8 +176,8 @@ class Verifier:
 
     def import_tests(self, mode: str = "accuracy"):
         import os
-        if os.environ.get("FLAGBENCH_SKIP_BOTH_TEST", "0") == "1" and self.external_modules_set is False:
-            logger.info("Skipping both accuracy and performance test imports due to FLAGBENCH_SKIP_BOTH_TEST=1")
+        if os.environ.get("KERNELGENBENCH_SKIP_BOTH_TEST", "0") == "1" and self.external_modules_set is False:
+            logger.info("Skipping both accuracy and performance test imports due to KERNELGENBENCH_SKIP_BOTH_TEST=1")
             return
         if not self.accuracy_modules:
             from kernelgenbench import accuracy_modules
@@ -783,7 +783,7 @@ class Verifier:
         # replace the "bench.triton." to "bench." and handle bench.triton.{torch_kernel_name} patterns
         import os
         os.environ["DISPATCH_TORCH_LIB"] = "0"
-        os.environ["FLAGBENCH_UPCAST"] = "0"
+        os.environ["KERNELGENBENCH_UPCAST"] = "0"
         
         # First, do the simple replacement
         mocked_test_func_code = test_func_code.replace("kernelgenbench.triton.", "kernelgenbench.")
@@ -816,7 +816,7 @@ class Verifier:
         results_with_mocked_test_func.test_func = test_func_code
 
         os.environ["DISPATCH_TORCH_LIB"] = "1"
-        os.environ["FLAGBENCH_UPCAST"] = "1"
+        os.environ["KERNELGENBENCH_UPCAST"] = "1"
         return results_with_mocked_test_func
 
     def verify_triton_kernel(
