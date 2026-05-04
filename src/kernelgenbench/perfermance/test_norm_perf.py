@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-# import flag_gems
+# import kernelgenbench
 
 from .attri_util import FLOAT_DTYPES, BenchLevel
 from .performance_utils import (
@@ -114,7 +114,7 @@ def batchnorm_input_fn(shape, dtype, device):
                 # pytest.mark.layer_norm,
                 "layer_norm",
                 # pytest.mark.skipif(
-                #     flag_gems.device == "musa", reason="ZeroDivisionError"
+                #     kernelgenbench.device == "musa", reason="ZeroDivisionError"
                 # ),
             ],
         ),
@@ -126,7 +126,7 @@ def batchnorm_input_fn(shape, dtype, device):
                 # pytest.mark.instance_norm,
                 "instance_norm",
                 # pytest.mark.skipif(
-                #     flag_gems.device == "musa", reason="ZeroDivisionError"
+                #     kernelgenbench.device == "musa", reason="ZeroDivisionError"
                 # ),
             ],
         ),
@@ -138,7 +138,7 @@ def batchnorm_input_fn(shape, dtype, device):
                 # pytest.mark.batch_norm,
                 "batch_norm",
                 # pytest.mark.skipif(
-                #     flag_gems.device == "musa", reason="ZeroDivisionError"
+                #     kernelgenbench.device == "musa", reason="ZeroDivisionError"
                 # ),
             ],
         ),

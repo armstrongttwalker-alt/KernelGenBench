@@ -4,7 +4,7 @@ from typing import Generator
 import pytest
 import torch
 
-# import flag_gems
+# import kernelgenbench
 
 from .attri_util import (
     COMPLEX_DTYPES,
@@ -208,7 +208,7 @@ class VdotBenchmark(BlasBenchmark):
 
 
 # @pytest.mark.skipif(vendor_name == "kunlunxin", reason="RESULT TODOFIX")
-# @pytest.mark.skipif(flag_gems.device == "musa", reason="Segmentation fault")
+# @pytest.mark.skipif(kernelgenbench.device == "musa", reason="Segmentation fault")
 # @pytest.mark.vdot
 @label("vdot")
 def test_vdot_benchmark():

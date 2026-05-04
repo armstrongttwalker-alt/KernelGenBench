@@ -7,8 +7,8 @@ import torch
 
 # from bench.sandbox.test.perfermance.performance_utils import vendor_name
 
-# import flag_gems
-# from flag_gems.runtime import torch_device_fn
+# import kernelgenbench
+# from kernelgenbench.runtime import torch_device_fn
 torch_device_fn = torch.cuda
 
 from .attri_util import (
@@ -23,8 +23,8 @@ from .attri_util import (
     get_recommended_shapes,
 )
 
-# device = flag_gems.device
-# vendor_name = flag_gems.vendor_name
+# device = kernelgenbench.device
+# vendor_name = kernelgenbench.vendor_name
 device = "cuda"
 vendor_name = "nvidia"
 

@@ -658,7 +658,7 @@ class Verifier:
         source = [s if not s or not os.path.isfile(s) else read_file(s) for s in source]
 
         try:
-            self._init_test_func()    # For external Triton kernel developers, there is no need to initialize flaggems test functions; use this line if running as a benchmark
+            self._init_test_func()    # For external Triton kernel developers, there is no need to initialize kernelgenbench test functions; use this line if running as a benchmark
         except Exception as e:
             logger.error(f"Init test functions failed: {e}")
             raise e

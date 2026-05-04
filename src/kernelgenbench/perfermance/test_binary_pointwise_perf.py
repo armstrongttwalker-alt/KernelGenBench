@@ -3,7 +3,7 @@ from typing import Generator
 import pytest
 import torch
 
-# import flag_gems
+# import kernelgenbench
 
 from .attri_util import BOOL_DTYPES, DEFAULT_METRICS, FLOAT_DTYPES, INT_DTYPES
 from .performance_utils import Benchmark, generate_tensor_input
@@ -56,7 +56,7 @@ class BinaryPointwiseBenchmark(Benchmark):
                     ("floor_divide", torch.floor_divide, INT_DTYPES),
                     ("remainder", torch.remainder, INT_DTYPES),
                 ]
-                # if flag_gems.device != "musa"
+                # if kernelgenbench.device != "musa"
                 # else []
             ),
             ("rsub", torch.rsub, FLOAT_DTYPES),

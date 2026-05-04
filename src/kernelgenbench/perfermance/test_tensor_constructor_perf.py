@@ -3,7 +3,7 @@ import math
 import pytest
 import torch
 
-# import flag_gems
+# import kernelgenbench
 
 from .attri_util import BenchLevel
 from .performance_utils import (
@@ -100,7 +100,7 @@ def test_tensor_constructor_benchmark(op_name, torch_op, input_fn):
 # @pytest.mark.skipif(
 #     vendor_name == "kunlunxin" or vendor_name == "hygon", reason="RESULT TODOFIX"
 # )
-# @pytest.mark.skipif(flag_gems.device == "musa", reason="ZeroDivisionError")
+# @pytest.mark.skipif(kernelgenbench.device == "musa", reason="ZeroDivisionError")
 # @pytest.mark.randperm
 @label("randperm")
 def test_perf_randperm():

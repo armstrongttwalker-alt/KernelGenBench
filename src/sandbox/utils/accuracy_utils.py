@@ -9,7 +9,7 @@ from typing import Callable, List, Optional, Union, Dict
 import random
 import numpy as np
 
-# import flag_gems
+# import kernelgenbench
 
 # from .conftest import QUICK_MODE, TO_CPU
 # from .config import QUICK_MODE, TO_CPU

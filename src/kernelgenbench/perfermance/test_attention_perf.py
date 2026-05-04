@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-# import flag_gems
+# import kernelgenbench
 
 from .performance_utils import GenericBenchmark, vendor_name
 from sandbox.verifier.test_parametrize import label, parametrize, Param
@@ -20,7 +20,7 @@ class AttentionBenchmark(GenericBenchmark):
 
 # @pytest.mark.skipif(vendor_name == "kunlunxin", reason="RESULT TODOFIX")
 # @pytest.mark.skipif(
-#     flag_gems.device == "musa" or vendor_name == "hygon", reason="RuntimeError"
+#     kernelgenbench.device == "musa" or vendor_name == "hygon", reason="RuntimeError"
 # )
 # @pytest.mark.attention
 # @label("attention")

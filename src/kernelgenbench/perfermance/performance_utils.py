@@ -10,7 +10,7 @@ import torch
 import triton
 import yaml
 
-# import flag_gems
+# import kernelgenbench
 import kernelgenbench
 
 from .attri_util import (
@@ -28,10 +28,10 @@ from .attri_util import (
 from .conftest import Config, torch_device_fn, vendor_name
 from sandbox.register import REGISTERED_OPS
 
-# torch_backend_device = flag_gems.runtime.torch_backend_device
-# torch_device_fn = flag_gems.runtime.torch_device_fn
-# device = flag_gems.device
-# vendor_name = flag_gems.vendor_name
+# torch_backend_device = kernelgenbench.runtime.torch_backend_device
+# torch_device_fn = kernelgenbench.runtime.torch_device_fn
+# device = kernelgenbench.device
+# vendor_name = kernelgenbench.vendor_name
 
 torch_backend_device = torch.backends.cuda
 torch_device_fn = torch.cuda
@@ -241,7 +241,7 @@ class Benchmark:
         if vendor_name == "kunlunxin":
             Config.shape_file = os.path.join(
                 os.path.dirname(__file__),
-                "../src/flag_gems/runtime/backend/_kunlunxin/core_shapes.yaml",
+                "../src/kernelgenbench/runtime/backend/_kunlunxin/core_shapes.yaml",
             )  # Speed Up Benchmark Test, Big Shape Will Cause Timeout
         self.set_shapes(Config.shape_file)
 

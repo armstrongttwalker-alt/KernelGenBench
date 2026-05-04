@@ -3,7 +3,7 @@ import random
 import pytest
 import torch
 
-# import flag_gems
+# import kernelgenbench
 
 from .attri_util import BOOL_DTYPES, FLOAT_DTYPES, INT_DTYPES, BenchLevel
 from .performance_utils import (
@@ -48,7 +48,7 @@ special_operations = [
             ("resolve_neg", torch.resolve_neg, [torch.cfloat], resolve_neg_input_fn),
             ("resolve_conj", torch.resolve_conj, [torch.cfloat], resolve_conj_input_fn),
         ]
-        # if flag_gems.device != "musa"
+        # if kernelgenbench.device != "musa"
         # else []
     ),
 ]
@@ -78,7 +78,7 @@ def test_special_operations_benchmark(op_name, torch_op, dtypes, input_fn):
 
 
 # @pytest.mark.skipif(vendor_name == "kunlunxin", reason="RESULT TODOFIX")
-# @pytest.mark.skipif(flag_gems.device == "musa", reason="AssertionError")
+# @pytest.mark.skipif(kernelgenbench.device == "musa", reason="AssertionError")
 # @pytest.mark.isin
 @label("isin")
 def test_isin_perf():
@@ -104,7 +104,7 @@ def test_isin_perf():
 
 
 # @pytest.mark.skipif(vendor_name == "kunlunxin", reason="RESULT TODOFIX")
-# @pytest.mark.skipif(flag_gems.device == "musa", reason="AssertionError")
+# @pytest.mark.skipif(kernelgenbench.device == "musa", reason="AssertionError")
 # @pytest.mark.unique
 @label("unique")
 def test_perf_unique():
@@ -143,7 +143,7 @@ def test_perf_sort():
 
 
 # @pytest.mark.skipif(vendor_name == "kunlunxin", reason="RESULT TODOFIX")
-# @pytest.mark.skipif(flag_gems.device == "musa", reason="ZeroDivisionError")
+# @pytest.mark.skipif(kernelgenbench.device == "musa", reason="ZeroDivisionError")
 # @pytest.mark.multinomial
 @label("multinomial")
 def test_multinomial_with_replacement():
@@ -398,7 +398,7 @@ def test_perf_diag_embed():
     return bench.run()
 
 
-# @pytest.mark.skipif(flag_gems.device == "musa", reason="RuntimeError")
+# @pytest.mark.skipif(kernelgenbench.device == "musa", reason="RuntimeError")
 # @pytest.mark.diagonal_backward
 @label("diagonal_backward")
 def test_perf_diagonal_backward():
@@ -420,7 +420,7 @@ def test_perf_diagonal_backward():
     return bench.run()
 
 
-# @pytest.mark.skipif(flag_gems.device == "musa", reason="ZeroDivisionError")
+# @pytest.mark.skipif(kernelgenbench.device == "musa", reason="ZeroDivisionError")
 # @pytest.mark.skipif(vendor_name == "kunlunxin", reason="RESULT TODOFIX")
 # @pytest.mark.kron
 @label("kron")

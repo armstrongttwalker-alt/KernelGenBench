@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-# import flag_gems
+# import kernelgenbench
 
 from .attri_util import FLOAT_DTYPES
 from .performance_utils import (
@@ -18,7 +18,7 @@ def test_perf_gelu_and_mul():
     def torch_op(x, y):
         return torch.mul(torch.nn.functional.gelu(x), y)
 
-    gems_op = flag_gems.gelu_and_mul
+    gems_op = kernelgenbench.gelu_and_mul
     bench = GenericBenchmark(
         input_fn=binary_input_fn,
         op_name="gelu_and_mul",
@@ -35,7 +35,7 @@ def test_perf_silu_and_mul():
     def torch_op(x, y):
         return torch.mul(torch.nn.functional.silu(x), y)
 
-    gems_op = flag_gems.silu_and_mul
+    gems_op = kernelgenbench.silu_and_mul
 
     bench = GenericBenchmark(
         input_fn=binary_input_fn,
@@ -61,7 +61,7 @@ def test_perf_skip_layernorm():
     def torch_op(inp, residual, layer_shape, weight, bias):
         return torch.layer_norm(inp + residual, layer_shape, weight, bias)
 
-    gems_op = flag_gems.skip_layer_norm
+    gems_op = kernelgenbench.skip_layer_norm
 
     bench = GenericBenchmarkExcluse1D(
         input_fn=skip_layernorm_input_fn,
@@ -89,7 +89,7 @@ def test_perf_skip_rmsnorm():
         hidden_states = x * torch.rsqrt(variance + eps)
         return weight * hidden_states
 
-    gems_op = flag_gems.skip_rms_norm
+    gems_op = kernelgenbench.skip_rms_norm
 
     bench = GenericBenchmarkExcluse1D(
         input_fn=skip_rmsnorm_input_fn,

@@ -15,7 +15,7 @@ from bench.sandbox.utils.accuracy_utils import (
 )
 from bench.sandbox.config import DEVICE as device
 
-# if flag_gems.vendor_name == "kunlunxin":
+# if kernelgenbench.vendor_name == "kunlunxin":
 #     pytestmark = pytest.mark.skip("Test Files for Operators Not Pending Testing")
 
 

@@ -4,8 +4,8 @@ from typing import Generator
 import pytest
 import torch
 
-# import flag_gems
-# from flag_gems.utils import shape_utils
+# import kernelgenbench
+# from kernelgenbench.utils import shape_utils
 from sandbox.utils.utils import size_in_bytes
 
 from .attri_util import BOOL_DTYPES, FLOAT_DTYPES, INT_DTYPES, BenchLevel
@@ -59,7 +59,7 @@ forward_operations = [
             ("all", torch.all, FLOAT_DTYPES),
             ("any", torch.any, FLOAT_DTYPES),
         ]
-        # if flag_gems.device != "musa"
+        # if kernelgenbench.device != "musa"
         # else []
     ),
     ("amax", torch.amax, FLOAT_DTYPES),
@@ -182,7 +182,7 @@ def mse_loss_input_fn(shape, cur_dtype, device):
             marks=[
                 # pytest.mark.nonzero,
                 "nonzero",
-                # pytest.mark.skipif(flag_gems.device == "musa", reason="RuntimeError"),
+                # pytest.mark.skipif(kernelgenbench.device == "musa", reason="RuntimeError"),
             ],
         ),
         Param(
@@ -202,7 +202,7 @@ def mse_loss_input_fn(shape, cur_dtype, device):
                 # pytest.mark.cumsum,
                 "cumsum",
                 # pytest.mark.skipif(
-                #     flag_gems.device == "musa", reason="ZeroDivisionError"
+                #     kernelgenbench.device == "musa", reason="ZeroDivisionError"
                 # ),
             ],
         ),
@@ -226,7 +226,7 @@ def mse_loss_input_fn(shape, cur_dtype, device):
                 # pytest.mark.NLLLoss,
                 "NLLLoss",
                 # pytest.mark.skipif(
-                #     flag_gems.device == "musa", reason="ZeroDivisionError"
+                #     kernelgenbench.device == "musa", reason="ZeroDivisionError"
                 # ),
             ],
         ),
@@ -239,7 +239,7 @@ def mse_loss_input_fn(shape, cur_dtype, device):
                 # pytest.mark.MSELoss,
                 "MSELoss",
                 # pytest.mark.skipif(
-                #     flag_gems.device == "musa", reason="ZeroDivisionError"
+                #     kernelgenbench.device == "musa", reason="ZeroDivisionError"
                 # ),
             ],
         ),
@@ -260,7 +260,7 @@ def test_generic_reduction_benchmark(op_name, torch_op, input_fn, dtypes):
 # @pytest.mark.skipif(
 #     vendor_name == "kunlunxin" or vendor_name == "hygon", reason="RESULT TODOFIX"
 # )
-# @pytest.mark.skipif(flag_gems.device == "musa", reason="ZeroDivisionError")
+# @pytest.mark.skipif(kernelgenbench.device == "musa", reason="ZeroDivisionError")
 # @pytest.mark.count_nonzero
 @label("count_nonzero")
 def test_perf_count_nonzero():

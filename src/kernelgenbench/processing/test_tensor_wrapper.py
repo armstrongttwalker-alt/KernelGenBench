@@ -3,8 +3,8 @@
 # import triton
 # from triton import language as tl
 
-# import flag_gems
-# from flag_gems.utils import tensor_wrapper
+# import kernelgenbench
+# from kernelgenbench.utils import tensor_wrapper
 
 
 # @triton.jit
@@ -18,13 +18,13 @@
 
 
 # (
-#     flag_gems.vendor_name == "kunlunxin",
+#     kernelgenbench.vendor_name == "kunlunxin",
 #     reason="Test Files for Operators Not Pending Testing",
 # )
-# (flag_gems.device == "musa", reason="torch.complex not impl")
+# (kernelgenbench.device == "musa", reason="torch.complex not impl")
 # def test_typed_pointer():
-#     real = torch.randn(10, 10, device=flag_gems.device)
-#     imag = torch.randn(10, 10, device=flag_gems.device)
+#     real = torch.randn(10, 10, device=kernelgenbench.device)
+#     imag = torch.randn(10, 10, device=kernelgenbench.device)
 #     x = torch.complex(real, imag)
 
 #     out = torch.empty_like(x)
@@ -41,13 +41,13 @@
 
 
 # (
-#     flag_gems.vendor_name == "kunlunxin",
+#     kernelgenbench.vendor_name == "kunlunxin",
 #     reason="Test Files for Operators Not Pending Testing",
 # )
-# (flag_gems.device == "musa", reason="torch.complex not impl")
+# (kernelgenbench.device == "musa", reason="torch.complex not impl")
 # def test_typed_pointer_reinterpret_with_offset():
-#     real = torch.randn(100, device=flag_gems.device)
-#     imag = torch.randn(100, device=flag_gems.device)
+#     real = torch.randn(100, device=kernelgenbench.device)
+#     imag = torch.randn(100, device=kernelgenbench.device)
 #     x = torch.complex(real, imag)
 
 #     out = torch.empty_like(x)
@@ -67,11 +67,11 @@
 
 
 # (
-#     flag_gems.vendor_name == "kunlunxin",
+#     kernelgenbench.vendor_name == "kunlunxin",
 #     reason="Test Files for Operators Not Pending Testing",
 # )
 # def test_typed_pointer_as_is():
-#     x = torch.randn(100, device=flag_gems.device)
+#     x = torch.randn(100, device=kernelgenbench.device)
 #     out = torch.empty_like(x)
 #     TILE_SIZE = 128
 #     k = 10
@@ -87,11 +87,11 @@
 
 
 # (
-#     flag_gems.vendor_name == "kunlunxin",
+#     kernelgenbench.vendor_name == "kunlunxin",
 #     reason="Test Files for Operators Not Pending Testing",
 # )
 # def test_strided_buffer_slice():
-#     x = torch.randn(100, 100, device=flag_gems.device)
+#     x = torch.randn(100, 100, device=kernelgenbench.device)
 #     x_buffer = tensor_wrapper.StridedBuffer(x, (10, 10), (100, 1))
 #     assert x_buffer.size() == (10, 10)
 #     assert x.element_size() == x.element_size()
