@@ -2,7 +2,7 @@
 # One-click script to test operators with agent benchmark
 #
 # Usage:
-#   ./test_ops.sh -d v2_1                 # Test entire v2_1 dataset
+#   ./test_ops.sh -d KernelGenBench    # Test entire dataset
 #   ./test_ops.sh add                     # Test single operator
 #   ./test_ops.sh add,softmax             # Test multiple operators
 #   ./test_ops.sh add --dataset v2        # Specify dataset
@@ -84,7 +84,7 @@ while [[ $# -gt 0 ]]; do
             echo "                      If not specified, test entire dataset"
             echo ""
             echo "Options:"
-            echo "  -d, --dataset       Dataset to use (default: v2_1)"
+            echo "  -d, --dataset       Dataset to use (default: KernelGenBench)"
             echo "  -m, --method        Agent method to use (default: naive_cc)"
             echo "                      Available: naive_cc, normal_cc, iterative_optimizer"
             echo "  --device-count      Number of GPUs for verification (default: 8)"

@@ -5,12 +5,6 @@ from typing import Dict
 from .dataloader import TorchOpsLoader
 from logging import getLogger
 import os
-from .baseline.cupy import (
-    caxpy, cdgmm, cdotc, cdotu, cgeam, cgemm, cgemv, cgerc, cgeru, cscal, csyrk,
-    dasum, daxpy, ddgmm, ddot, dgeam, dgemm, dgemv, dger, dnrm2, dsbmv, dscal, dsyrk,
-    hgemm, sasum, saxpy, sdgmm, sdot, sgeam, sgemm, sgemv, sger, snrm2, ssbmv, sscal, ssyrk,
-    zaxpy, zdgmm, zdotc, zdotu, zgeam, zgemm, zgemv, zgerc, zgeru, zscal, zsyrk
-)
 
 logger = getLogger(__name__)
 

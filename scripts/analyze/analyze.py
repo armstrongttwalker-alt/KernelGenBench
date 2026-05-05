@@ -11,7 +11,7 @@ Key features in v6:
 - Keeps BEST speedup across all rounds
 
 Usage:
-    python scripts/analyze/analyze_speedup_v6.py <result_dir> [--dataset auto|v2_1|KernelGenBench] [--no-antihack]
+    python scripts/analyze/analyze.py <result_dir> [--dataset auto|v2_1|KernelGenBench] [--no-antihack]
 """
 
 import json
@@ -527,7 +527,7 @@ def save_results(operator_results: Dict[str, Dict], result_dir: Path, dataset: s
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python scripts/analyze/analyze_speedup_v6.py <result_dir> [--dataset auto|v2_1|KernelGenBench] [--no-antihack]")
+        print("Usage: python scripts/analyze/analyze.py <result_dir> [--dataset auto|v2_1|KernelGenBench] [--no-antihack]")
         sys.exit(1)
 
     result_dir = Path(sys.argv[1])

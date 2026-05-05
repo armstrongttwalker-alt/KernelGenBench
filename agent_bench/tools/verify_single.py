@@ -44,7 +44,7 @@ def get_test_module(dataset: str, config: dict = None) -> str:
     """Get test module path for dataset.
 
     Args:
-        dataset: Dataset name (v2, v2_1, cupy, etc.)
+        dataset: Dataset name (KernelGenBench)
         config: Optional config dict with custom test_modules mapping
 
     Returns:
@@ -104,7 +104,7 @@ def verify_single_kernel(
     Args:
         code_path: Path to the kernel Python file
         operator: Operator name
-        dataset: Dataset name (v2, v2_1, cupy)
+        dataset: Dataset name (KernelGenBench)
         timeout: Timeout in seconds
         config: Optional config dict
         output_dir: Optional directory to save verification logs
