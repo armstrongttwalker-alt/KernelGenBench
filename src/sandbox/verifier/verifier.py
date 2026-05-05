@@ -17,7 +17,9 @@ import importlib
 from pydantic import BaseModel
 from copy import deepcopy
 from dataclasses import dataclass, asdict
-from kernelgenbench.perfermance.attri_util import BenchmarkResult
+class BenchmarkResult:
+    """Stub: legacy benchmark result type, no longer used."""
+    pass
 from sandbox.utils.accuracy_utils import CustomBenchmarkResult
 
 
