@@ -37,8 +37,6 @@ assert_close = kernelgenbench_assert_close
 AVGPOOL2D_CONFIGS = [((4, 3, 32, 32), 3, 2, 1, False, True, None), ((4, 3, 32, 32), 3, 2, 1, False, False, None), ((8, 16, 28, 28), (3, 5), (1, 2), 1, False, True, None), ((2, 4, 15, 15), 3, 2, 1, True, True, None), ((1, 1, 7, 7), 2, 1, 0, False, True, 1), ((1, 64, 56, 56), 3, 2, 1, False, True, None), ((2, 8, 16, 16), 2, 2, 0, False, False, None), ((2, 8, 16, 20), 2, 2, (1, 0), False, True, None)]
 BITWISE_SHAPES = [((512, 1024), (512, 1024)), ((256, 512), (1, 512)), ((256, 512), (256, 1)), ((1, 512), (256, 512)), ((256, 1), (256, 512)), ((1024,), ()), ((), (1024,))]
 BLOCK_SIZES_MLA = [16]
-CAMBRICON_STACK_SHAPES = [[(8, 8, 128), (8, 8, 128), (8, 8, 128)], [(32, 64, 128, 8), (32, 64, 128, 8), (32, 64, 128, 8), (32, 64, 128, 8)]]
-CAMBRICON_VSTACK_SHAPES = [[(16, 128, 64, 64), (16, 128, 64, 64), (16, 128, 64, 64), (16, 128, 64, 64)], [(32, 64, 128, 8), (32, 64, 128, 8), (32, 64, 128, 8), (32, 64, 128, 8), (32, 64, 128, 8)]]
 CAT_SHAPES = [[(1, 32), (8, 32)], [(16, 128), (32, 128)], [(1024, 1024), (1024, 1024)], [(1, 1024, 256), (8, 1024, 256), (16, 1024, 256)], [(16, 320, 15), (32, 320, 15), (64, 320, 15)], [(16, 128, 64, 64), (16, 128, 64, 64), (24, 128, 64, 64), (32, 128, 64, 64)]]
 CROSS_ENTROPY_LOSS_REDUCTION = ['mean'] if QUICK_MODE else ['mean', 'none', 'sum']
 CUDA_DEVICES = [f'cuda:{i}' for i in range(1 if torch.cuda.device_count() == 1 else 2)]
@@ -91,12 +89,12 @@ SHAPE_DIAGONAL = list(zip(POINTWISE_SHAPES, [-2, -2, -1, 0, 1, 3]))
 SMOOTH_IGNORE_SHAPE = [(0.1, 1, REDUCTION_SHAPES[0])] if QUICK_MODE else list(zip([0, 0.1, 1], [1, 200, -100], REDUCTION_SHAPES))
 SMOOTH_SHAPE = [(0.1, REDUCTION_SHAPES[0])] if QUICK_MODE else list(zip([1, 0.1, 0], REDUCTION_SHAPES))
 SPECIAL_VALUES = [float('-inf'), float('inf'), -300]
-STACK_SHAPES_TEST = STACK_SHAPES + (CAMBRICON_STACK_SHAPES if False else [])
+STACK_SHAPES_TEST = STACK_SHAPES
 THRESHOLD_SHAPE = [(0.3, REDUCTION_SHAPES[0])] if QUICK_MODE else list(zip([0.3, 0.5, 0.7], REDUCTION_SHAPES))
 TILE_DIMS = [(0,), (2,), (2, 0), (0, 2), (2, 2), (2, 2, 2), (2, 2, 2, 2)]
 TRACE_SHAPES = [(1, 1), (5, 5), (10, 20), (30, 15), (1, 100), (100, 1), (128, 256), (256, 128), (0, 10), (10, 0), (1500, 1200)]
 VSTACK_SHAPES = [[(3,), (3,)], [(3, 33), (7, 33)], [(13, 3, 333), (17, 3, 333), (7, 3, 333)], [(13, 3, 64, 5, 2), (16, 3, 64, 5, 2), (7, 3, 64, 5, 2), (4, 3, 64, 5, 2), (1, 3, 64, 5, 2)]]
-VSTACK_SHAPES_TEST = VSTACK_SHAPES + (CAMBRICON_VSTACK_SHAPES if False else [])
+VSTACK_SHAPES_TEST = VSTACK_SHAPES
 
 
 # Helper functions from KernelGenBench
