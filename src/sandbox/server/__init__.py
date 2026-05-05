@@ -1,4 +1,4 @@
-# Verifier Server - Multi-backend support for CUDA/NPU/MUSA
+# Verifier Server - CUDA backend support
 # This module provides server/client architecture for distributed verification
 
 from .verifier_server import (

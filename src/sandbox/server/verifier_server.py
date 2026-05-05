@@ -2,14 +2,9 @@
 """
 Verifier Server for Operator Verification (Multi-Backend Support)
 
-A HTTP API server for executing operator tests on specified devices (CUDA/NPU/MUSA).
+A HTTP API server for executing operator tests on CUDA devices.
 The client passes kernel_code (source content), and the server saves it to a temporary
 file before execution.
-
-Supports:
-    - CUDA (NVIDIA GPUs)
-    - NPU (Ascend devices)
-    - MUSA (Moore Threads devices)
 
 Architecture:
     - DeviceStatesManager: Manages device states (idle/busy)
@@ -86,18 +81,18 @@ class DeviceInfo:
 class DeviceStatesManager:
     """Manages device states, ensuring only one test runs per device at a time.
 
-    Supports CUDA/NPU/MUSA backends through the runtime module.
+    Supports CUDA backend through the runtime module.
     """
 
     def __init__(self):
         self._devices: Dict[int, DeviceInfo] = {}
         self._lock = asyncio.Lock()
-        self._device_type = device.name  # cuda, npu, or musa
+        self._device_type = device.name  # cuda
         self._init_devices()
 
     @property
     def device_type(self) -> str:
-        """Return the current device type (cuda/npu/musa)."""
+        """Return the current device type (cuda)."""
         return self._device_type
 
     def _init_devices(self):
@@ -344,7 +339,7 @@ class VerifierServer:
 
         self.app = FastAPI(
             title="Verifier Server",
-            description="Multi-backend operator verification server (CUDA/NPU/MUSA)",
+            description="Operator verification server (CUDA)",
             version="2.0.0"
         )
         self._setup_routes()

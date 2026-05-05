@@ -7,8 +7,6 @@ The client reads local kernel file content and sends the code to the server for 
 
 Supports:
     - CUDA (NVIDIA GPUs)
-    - NPU (Ascend devices)
-    - MUSA (Moore Threads devices)
 
 Usage:
     # Submit test and save result

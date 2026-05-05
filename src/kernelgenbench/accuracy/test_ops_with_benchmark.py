@@ -9791,8 +9791,6 @@ def test_accuracy_le_scalar(shape, dtype):
 @parametrize("scalar", SCALARS)
 @parametrize("dtype", FLOAT_DTYPES)
 def test_accuracy_baddbmm(M, N, K, scalar, dtype):
-    if False and dtype in [torch.float16, torch.bfloat16]:
-        os.environ["MUSA_ENABLE_SQMMA"] = "1"
     batch = 4
     mat1 = torch.randn((batch, M, K), dtype=dtype, device=device)
     mat2 = torch.randn((batch, K, N), dtype=dtype, device=device)
@@ -9817,9 +9815,6 @@ def test_accuracy_baddbmm(M, N, K, scalar, dtype):
         ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.baddbmm(bias.clone(), mat1.clone(), mat2.clone(), alpha=alpha, beta=beta), rep=100, quantiles=quantiles)
     speedup = ms_torch / ms_triton
     result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup,)
-
-    if False and dtype in [torch.float16, torch.bfloat16]:
-        del os.environ["MUSA_ENABLE_SQMMA"]
 
     return result
 
@@ -9954,8 +9949,6 @@ def test_accuracy_masked_fill_(shape, dtype, threshold, value):
 @parametrize("scalar", SCALARS)
 @parametrize("dtype", FLOAT_DTYPES)
 def test_accuracy_baddbmm(M, N, K, scalar, dtype):
-    if False and dtype in [torch.float16, torch.bfloat16]:
-        os.environ["MUSA_ENABLE_SQMMA"] = "1"
     batch = 4
     mat1 = torch.randn((batch, M, K), dtype=dtype, device=device)
     mat2 = torch.randn((batch, K, N), dtype=dtype, device=device)
@@ -9980,9 +9973,6 @@ def test_accuracy_baddbmm(M, N, K, scalar, dtype):
         ms_triton, _, _ = get_triton_testing().do_bench(lambda: torch.baddbmm(bias.clone(), mat1.clone(), mat2.clone(), alpha=alpha, beta=beta), rep=100, quantiles=quantiles)
     speedup = ms_torch / ms_triton
     result = CustomBenchmarkResult(ref_time=ms_torch, res_time=ms_triton, speedup=speedup,)
-
-    if False and dtype in [torch.float16, torch.bfloat16]:
-        del os.environ["MUSA_ENABLE_SQMMA"]
 
     return result
 

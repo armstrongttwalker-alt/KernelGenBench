@@ -69,10 +69,7 @@ class Register:
         self.lib = lib
         # reg_key like 'CUDA', reg_bac_key like AutogradCUDA
         # self.reg_key = self.device.name.upper()
-        if device == 'npu':
-          self.reg_key = "PrivateUse1"
-        else:
-          self.reg_key = device.upper()
+        self.reg_key = device.upper()
         # Cambricon device has a different reg_key.
         # if self.device.vendor_name == "cambricon":
         #     self.reg_key = "PrivateUse1"
