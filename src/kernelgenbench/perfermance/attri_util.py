@@ -211,7 +211,7 @@ class BenchmarkResult:
         torch_gbps_str = (
             f"{metrics.gbps_base:.3f}" if metrics.gbps_base is not None else "N/A"
         )
-        gems_gbps_str = f"{metrics.gbps:.3f}" if metrics.gbps is not None else "N/A"
+        triton_gbps_str = f"{metrics.gbps:.3f}" if metrics.gbps is not None else "N/A"
         if metrics.tflops and metrics.tflops != 0.0:
             tflops_str = (
                 f"{metrics.tflops:.3f}" if metrics.tflops is not None else "N/A"
@@ -229,7 +229,7 @@ class BenchmarkResult:
         if metrics.tflops and metrics.tflops != 0.0:
             data_line += f"{tflops_str:>20}"
         if metrics.gbps is not None:
-            data_line += f"{torch_gbps_str:>20}{gems_gbps_str:>20}"
+            data_line += f"{torch_gbps_str:>20}{triton_gbps_str:>20}"
         data_line += " " * 10
         data_line += f"{shape_detail_str}\n"
         return data_line

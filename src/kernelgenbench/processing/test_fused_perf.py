@@ -18,14 +18,14 @@ def test_perf_gelu_and_mul():
     def torch_op(x, y):
         return torch.mul(torch.nn.functional.gelu(x), y)
 
-    gems_op = kernelgenbench.gelu_and_mul
+    triton_op = kernelgenbench.gelu_and_mul
     bench = GenericBenchmark(
         input_fn=binary_input_fn,
         op_name="gelu_and_mul",
         torch_op=torch_op,
         dtypes=FLOAT_DTYPES,
     )
-    bench.set_gems(gems_op)
+    bench.set_triton_op(triton_op)
     return bench.run()
 
 
@@ -35,7 +35,7 @@ def test_perf_silu_and_mul():
     def torch_op(x, y):
         return torch.mul(torch.nn.functional.silu(x), y)
 
-    gems_op = kernelgenbench.silu_and_mul
+    triton_op = kernelgenbench.silu_and_mul
 
     bench = GenericBenchmark(
         input_fn=binary_input_fn,
@@ -43,7 +43,7 @@ def test_perf_silu_and_mul():
         torch_op=torch_op,
         dtypes=FLOAT_DTYPES,
     )
-    bench.set_gems(gems_op)
+    bench.set_triton_op(triton_op)
     return bench.run()
 
 
@@ -61,7 +61,7 @@ def test_perf_skip_layernorm():
     def torch_op(inp, residual, layer_shape, weight, bias):
         return torch.layer_norm(inp + residual, layer_shape, weight, bias)
 
-    gems_op = kernelgenbench.skip_layer_norm
+    triton_op = kernelgenbench.skip_layer_norm
 
     bench = GenericBenchmarkExcluse1D(
         input_fn=skip_layernorm_input_fn,
@@ -69,7 +69,7 @@ def test_perf_skip_layernorm():
         torch_op=torch_op,
         dtypes=FLOAT_DTYPES,
     )
-    bench.set_gems(gems_op)
+    bench.set_triton_op(triton_op)
     return bench.run()
 
 
@@ -89,7 +89,7 @@ def test_perf_skip_rmsnorm():
         hidden_states = x * torch.rsqrt(variance + eps)
         return weight * hidden_states
 
-    gems_op = kernelgenbench.skip_rms_norm
+    triton_op = kernelgenbench.skip_rms_norm
 
     bench = GenericBenchmarkExcluse1D(
         input_fn=skip_rmsnorm_input_fn,
@@ -97,7 +97,7 @@ def test_perf_skip_rmsnorm():
         torch_op=torch_op,
         dtypes=FLOAT_DTYPES,
     )
-    bench.set_gems(gems_op)
+    bench.set_triton_op(triton_op)
     return bench.run()
 
 

@@ -91,7 +91,7 @@ class Benchmark:
         if is_backward:
             self.op_name += " backward"
         self.torch_op = torch_op
-        self.gems_op = None
+        self.triton_op = None
         self.is_backward = is_backward
         self._input_iter = None
 
@@ -245,8 +245,8 @@ class Benchmark:
             )  # Speed Up Benchmark Test, Big Shape Will Cause Timeout
         self.set_shapes(Config.shape_file)
 
-    def set_gems(self, gems_op):
-        self.gems_op = gems_op
+    def set_triton_op(self, triton_op):
+        self.triton_op = triton_op
 
     def get_latency(self, op, *args, **kwargs):
         fn = lambda: op(*args, **kwargs)
@@ -358,9 +358,9 @@ class Benchmark:
                             self.torch_op, *args, **kwargs
                         )
                     if "latency" in self.to_bench_metrics:
-                        if self.gems_op:
+                        if self.triton_op:
                             metric.latency = self.get_latency(
-                                self.gems_op, *args, **kwargs
+                                self.triton_op, *args, **kwargs
                             )
                         else:
                             with kernelgenbench.use_ops(REGISTERED_OPS):

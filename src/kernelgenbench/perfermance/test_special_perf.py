@@ -307,7 +307,7 @@ def test_perf_avg_pool2d():
         torch_op=torch.nn.functional.avg_pool2d,
         dtypes=FLOAT_DTYPES,
     )
-    bench.set_gems(fb.avg_pool2d)
+    bench.set_triton_op(fb.avg_pool2d)
     return bench.run()
 
 class ConvBenchmark(GenericBenchmark):
