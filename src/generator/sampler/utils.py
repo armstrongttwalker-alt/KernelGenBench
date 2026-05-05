@@ -146,12 +146,10 @@ def query_server(
 
 SERVER_PRESETS = {
     "anthropic": {
-        "model_name": "claude-3-5-sonnet-20241022",
         "temperature": 0.8,
         "max_tokens": 4096,
     },
     "openai": {
-        "model_name": "gpt-4o-2024-08-06",
         "temperature": 0.0,
         "max_tokens": 4096,
     },
