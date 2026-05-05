@@ -1,5 +1,5 @@
 """
-CublasAdapter - cuBLAS 框架适配器
+CublasAdapter - cuBLAS framework adapter
 """
 
 import inspect
@@ -10,7 +10,6 @@ from .generate_args import CublasGenerateArgs
 
 
 class CublasAdapter(FrameworkAdapter):
-    """cuBLAS 框架适配器"""
 
     def __init__(self):
         self._impl_info_cache = None

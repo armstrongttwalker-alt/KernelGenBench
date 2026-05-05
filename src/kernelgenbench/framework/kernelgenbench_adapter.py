@@ -1,7 +1,7 @@
 """
-KernelGenBench 适配器
+KernelGenBench adapter
 
-根据算子前缀（aten::/vllm13::/cublas::）路由到对应的 framework adapter。
+Routes to the corresponding framework adapter based on op prefix (aten::/vllm13::/cublas::).
 """
 
 from typing import Any, Dict
@@ -10,7 +10,7 @@ from .generate_args import BaseGenerateArgs
 
 
 class KernelGenBenchAdapter(FrameworkAdapter):
-    """KernelGenBench 适配器，根据 op_name 前缀分发到 VllmAdapter、CublasAdapter 或 TorchAdapter"""
+    """KernelGenBench adapter, dispatches to VllmAdapter, CublasAdapter or TorchAdapter based on op_name prefix."""
 
     def __init__(self):
         from .vllm_adapter import VllmAdapter
@@ -43,7 +43,6 @@ class KernelGenBenchAdapter(FrameworkAdapter):
         return self._get_adapter(op_name).get_reference_code(func, op_name)
 
     def get_impl_info(self, kernel_name: str) -> Any:
-        # 尝试从三个 adapter 获取，检查 None
         result = self.vllm_adapter.get_impl_info(kernel_name)
         if result is not None:
             return result

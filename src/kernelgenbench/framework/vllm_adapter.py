@@ -1,5 +1,5 @@
 """
-VllmAdapter - vLLM 框架适配器
+VllmAdapter - vLLM framework adapter
 """
 
 import inspect
@@ -10,7 +10,6 @@ from .generate_args import VllmGenerateArgs
 
 
 class VllmAdapter(FrameworkAdapter):
-    """vLLM 框架适配器"""
 
     def __init__(self):
         self._impl_info_cache = None
