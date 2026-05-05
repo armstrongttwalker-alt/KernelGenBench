@@ -78,4 +78,3 @@ python scripts/analyze/analyze.py output/pass_at_k/<run_dir>/
 python scripts/analyze/analyze.py agent_bench/runs/<run_dir>/
 ```
 
-Outputs per-operator speedup statistics (geometric mean, median, IQM) broken down by operator type (aten / cublas / vllm13).
