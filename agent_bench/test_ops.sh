@@ -5,7 +5,7 @@
 #   ./test_ops.sh -d KernelGenBench    # Test entire dataset
 #   ./test_ops.sh add                     # Test single operator
 #   ./test_ops.sh add,softmax             # Test multiple operators
-#   ./test_ops.sh add --dataset v2        # Specify dataset
+#   ./test_ops.sh add --dataset KernelGenBench  # Specify dataset
 #   ./test_ops.sh --skip-gen              # Skip prompt generation
 #   ./test_ops.sh --skip-verify           # Skip verification
 #   ./test_ops.sh --device-count 4        # Use 4 GPUs for verification
