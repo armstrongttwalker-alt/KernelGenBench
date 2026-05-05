@@ -18,7 +18,7 @@ class FrameworkAdapter(ABC):
         Get the operator function object.
 
         Args:
-            op_name: operator name, e.g. "aten::add" or "cupy::caxpy"
+            op_name: operator name, e.g. "aten::add", "cublas::sgemm", "vllm13::rms_norm"
 
         Returns:
             function object

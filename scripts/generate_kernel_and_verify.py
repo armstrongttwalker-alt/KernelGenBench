@@ -120,7 +120,7 @@ class PassAtKTester:
             self.prompt_builder = self._create_prompt_builder()
             self.adapter = self._create_adapter()
 
-            self.create_generate_args = self._create_cupy_generate_args_wrapper()
+            self.create_generate_args = self._create_generate_args_wrapper()
         else:
             raise ValueError(f"Unsupported test type: {self.test_type}")
 
@@ -135,9 +135,9 @@ class PassAtKTester:
         logger.info("Created KernelGenBenchAdapter")
         return adapter
 
-    def _create_cupy_generate_args_wrapper(self):
+    def _create_generate_args_wrapper(self):
         """
-        Create a generate_args wrapper function for cupy/KernelGenBench
+        Create a generate_args wrapper function for KernelGenBench
 
         This wrapper adapts the calling convention in generate_round(),
         converting arguments to the format required by Adapter.create_generate_args
@@ -147,7 +147,7 @@ class PassAtKTester:
         """
         def wrapper(torch_op_name: str, torch_op_func_or_namespace: str, impl_info: Any):
             """
-            Wrapper function, adapts the calling convention for cupy/KernelGenBench
+            Wrapper function, adapts the calling convention for KernelGenBench
 
             Args:
                 torch_op_name: kernel name (e.g. "caxpy" or "softmax")
@@ -157,12 +157,12 @@ class PassAtKTester:
             Returns:
                 GenerateArgs instance
             """
-            # For aten:: operators, use create_triton_generate_args directly (reuse v2_1 logic)
+            # For aten:: operators, use create_triton_generate_args directly
             if torch_op_func_or_namespace == "aten":
                 return create_triton_generate_args(torch_op_name, torch_op_func_or_namespace, impl_info)
 
             # For vllm/cublas operators, use adapter
-            # Construct full op_name (format: cupy::caxpy)
+            # Construct full op_name (format: vllm13::rms_norm, cublas::sgemm, etc.)
             op_name = f"{torch_op_func_or_namespace}::{torch_op_name}"
 
             # Get function object from adapter

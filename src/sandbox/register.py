@@ -38,9 +38,9 @@ def register(api, key, has_backward=Autograd.enable, namespace: str=""):
             # REGISTERED_OPS[key] = (key, func, has_backward)
         else:
             REGISTERED_OPS[namespace][key] = (key, func, has_backward)
-        # Only check IMPL_INFO for PyTorch operators; skip non-PyTorch operators (e.g. cupy::sgemm)
+        # Only check IMPL_INFO for PyTorch operators; skip non-PyTorch operators (e.g. cublas::sgemm)
         if is_pytorch_op(api, namespace=namespace) is False and "::" not in api:
-            # api not in IMPL_INFO and no namespace prefix (e.g. cupy::), meaning it is an unregistered aten operator
+            # api not in IMPL_INFO and no namespace prefix (e.g. cublas::), meaning it is an unregistered aten operator
             logging.warning(f"Operator {key} not found in IMPL_INFO, make sure using bench.{key} directly rather than bench.use_ops")
         import sys
         # package_name = __name__.split('.')[0]
