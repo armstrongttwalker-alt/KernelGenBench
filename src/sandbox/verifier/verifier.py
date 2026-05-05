@@ -103,7 +103,7 @@ def default_converter(o):
 
 from typing import List, Dict, Tuple
 
-# USE_GEMS = True
+# USE_OPS = True
 
 def get_name_list_from_code_dir(code_dir: str) -> List[str]:
     name_list = []

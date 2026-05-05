@@ -182,14 +182,14 @@ class BenchmarkResult:
         col_names = [
             f"{'Status':<10}",
             f"{'Torch Latency (ms)':>20}",
-            f"{'Gems Latency (ms)':>20}",
-            f"{'Gems Speedup':>20}",
+            f"{'Triton Latency (ms)':>20}",
+            f"{'Triton Speedup':>20}",
         ]
         if self.result[0].tflops and self.result[0].tflops != 0.0:
             col_names.append(f"{'TFLOPS':>20}")
         if self.result[0].gbps is not None:
             col_names.append(f"{'Torch GBPS ':>20}")
-            col_names.append(f"{'Gems GBPS ':>20}")
+            col_names.append(f"{'Triton GBPS ':>20}")
         col_names.append(f"{'Size Detail':>20}\n")
         header_col_names = " ".join(col_names)
         header_break = "-" * len(header_col_names) + "\n"
