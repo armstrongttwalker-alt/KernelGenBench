@@ -37,13 +37,13 @@ python scripts/generate_kernel_and_verify.py \
     --op-name aten::add \
     --single-test \
     --server-type anthropic \
-    --model-name claude-sonnet-4-6 \
+    --model-name <your-model> \
     --max-rounds 3
 
 # Full benchmark
 python scripts/generate_kernel_and_verify.py \
     --server-type anthropic \
-    --model-name claude-sonnet-4-6 \
+    --model-name <your-model> \
     --max-rounds 3
 ```
 
