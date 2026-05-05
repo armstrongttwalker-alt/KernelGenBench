@@ -23,7 +23,7 @@ def enable(config, lib=aten_lib, unused=None, registrar=Register):
     )
 
 
-class use_gems:
+class use_ops:
     def __init__(self, config, unused=None):
         self.lib = torch.library.Library("aten", "IMPL")
         self.unused = [] if unused is None else unused
@@ -52,7 +52,7 @@ accuracy_modules = [
 
 __all__ = [
     "enable",
-    "use_gems",
+    "use_ops",
     "register",
     "accuracy_modules",
 ]

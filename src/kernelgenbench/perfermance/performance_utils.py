@@ -363,7 +363,7 @@ class Benchmark:
                                 self.gems_op, *args, **kwargs
                             )
                         else:
-                            with kernelgenbench.use_gems(REGISTERED_OPS):
+                            with kernelgenbench.use_ops(REGISTERED_OPS):
                                 metric.latency = self.get_latency(
                                     self.torch_op, *args, **kwargs
                                 )

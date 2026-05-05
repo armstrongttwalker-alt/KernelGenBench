@@ -144,7 +144,7 @@ class TestFuncGenerator(BaseGenerator):
         prompt += f"## Operator Information\n"
         prompt += f"- Operator name: {info.kernel_name}\n"
         prompt += f"- PyTorch API call: torch.ops.{info.ops_namespace}.{info.kernel_name}(...)\n"
-        prompt += f"- Triton implementation call: Use the same API within `kernelgenbench.use_gems()` context\n\n"
+        prompt += f"- Triton implementation call: Use the same API within `kernelgenbench.use_ops()` context\n\n"
         
         # Operator schema information
         if info.operators:
@@ -171,7 +171,7 @@ class TestFuncGenerator(BaseGenerator):
         prompt += f"# PyTorch reference implementation\n"
         prompt += f"ref_out = torch.ops.{info.ops_namespace}.{info.kernel_name}(...)\n\n"
         prompt += f"# Triton implementation\n"
-        prompt += f"with kernelgenbench.use_gems(REGISTERED_OPS):\n"
+        prompt += f"with kernelgenbench.use_ops(REGISTERED_OPS):\n"
         prompt += f"    act_out = torch.ops.{info.ops_namespace}.{info.kernel_name}(...)\n\n"
         prompt += f"# Compare results\n"
         prompt += f"assert_close(act_out, ref_out)\n"
@@ -199,7 +199,7 @@ class TestFuncGenerator(BaseGenerator):
         prompt += "    \n"
         prompt += f"    ref_out = torch.ops.{info.ops_namespace}.{info.kernel_name}(ref_input, ref_other)\n"
         prompt += "    \n"
-        prompt += "    with kernelgenbench.use_gems(REGISTERED_OPS):\n"
+        prompt += "    with kernelgenbench.use_ops(REGISTERED_OPS):\n"
         prompt += f"        act_out = torch.ops.{info.ops_namespace}.{info.kernel_name}(input_tensor, other_tensor)\n"
         prompt += "    \n"
         prompt += "    assert_close(act_out, ref_out, dtype=dtype)\n"

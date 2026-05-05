@@ -29,12 +29,12 @@ def test_type_promotion_default(shape, alpha, float_type):
     ref_inp2 = to_reference(inp2, True)
     # arg0:int  arg1:float
     ref_out = torch.add(ref_inp1, ref_inp2, alpha=alpha)
-    with bench.use_gems(REGISTERED_OPS):
+    with bench.use_ops(REGISTERED_OPS):
         res_out = torch.add(inp1, inp2, alpha=alpha)
     kernelgenbench_assert_close(res_out, ref_out, float_type)
     # arg0:float  arg1:int
     ref_out = torch.add(ref_inp2, ref_inp1, alpha=alpha)
-    with bench.use_gems(REGISTERED_OPS):
+    with bench.use_ops(REGISTERED_OPS):
         res_out = torch.add(inp2, inp1, alpha=alpha)
     kernelgenbench_assert_close(res_out, ref_out, float_type)
 
@@ -48,13 +48,13 @@ def test_type_promotion_no_opmath(shape, float_type):
     ref_inp2 = to_reference(inp2)
     # arg0:bool  arg1:int  arg2:float
     ref_out = torch.where(ref_inp1 > 0, ref_inp1, ref_inp2)
-    with bench.use_gems(REGISTERED_OPS):
+    with bench.use_ops(REGISTERED_OPS):
         res_out = torch.where(inp1 > 0, inp1, inp2)
     kernelgenbench_assert_equal(res_out, ref_out)
 
     # arg0:bool  arg1:float  arg2:int
     ref_out = torch.where(ref_inp1 > 0, ref_inp2, ref_inp1)
-    with bench.use_gems(REGISTERED_OPS):
+    with bench.use_ops(REGISTERED_OPS):
         res_out = torch.where(inp1 > 0, inp2, inp1)
     kernelgenbench_assert_equal(res_out, ref_out)
 
@@ -66,7 +66,7 @@ def test_type_promotion_int_to_float(shape, float_type):
     inp_float = torch.randn(shape, dtype=float_type, device=device)
     ref_inp = to_reference(inp_float, True)
     ref_out = torch.sin(ref_inp)
-    with bench.use_gems(REGISTERED_OPS):
+    with bench.use_ops(REGISTERED_OPS):
         res_out = torch.sin(inp_float)
     kernelgenbench_assert_close(res_out, ref_out, float_type)
 
@@ -74,7 +74,7 @@ def test_type_promotion_int_to_float(shape, float_type):
     inp_int = torch.randint(10, shape, device=device)
     ref_inp_int = to_reference(inp_int, True)
     ref_out = torch.sin(ref_inp_int)
-    with bench.use_gems(REGISTERED_OPS):
+    with bench.use_ops(REGISTERED_OPS):
         res_out = torch.sin(inp_int)
     kernelgenbench_assert_close(res_out, ref_out, torch.float32)
 
@@ -87,7 +87,7 @@ def test_type_promotion_always_bool(shape):
     ref_inp1 = to_reference(inp1)
     ref_inp2 = to_reference(inp2)
     ref_out = torch.eq(ref_inp1, ref_inp2)
-    with bench.use_gems(REGISTERED_OPS):
+    with bench.use_ops(REGISTERED_OPS):
         res_out = torch.eq(inp1, inp2)
     kernelgenbench_assert_equal(res_out, ref_out)
 
@@ -99,7 +99,7 @@ def test_type_promotion_complex_to_long(shape, float_type):
     inp = torch.randn(shape, dtype=float_type, device=device)
     ref_inp = to_reference(inp)
     ref_out = torch.abs(ref_inp)
-    with bench.use_gems(REGISTERED_OPS):
+    with bench.use_ops(REGISTERED_OPS):
         res_out = torch.abs(inp)
     kernelgenbench_assert_equal(res_out, ref_out)
 
@@ -107,7 +107,7 @@ def test_type_promotion_complex_to_long(shape, float_type):
     inp1 = torch.randint(0, 10, shape, device=device)
     ref_inp1 = to_reference(inp1)
     ref_out1 = torch.abs(ref_inp1)
-    with bench.use_gems(REGISTERED_OPS):
+    with bench.use_ops(REGISTERED_OPS):
         res_out1 = torch.abs(inp1)
     kernelgenbench_assert_equal(res_out1, ref_out1)
 
@@ -121,7 +121,7 @@ def test_type_promotion_bool_to_long(shape, float_dtype):
     ref_inp2 = to_reference(inp2)
     # arg0: float  arg1: int
     ref_out = torch.pow(ref_inp1, ref_inp2)
-    with bench.use_gems(REGISTERED_OPS):
+    with bench.use_ops(REGISTERED_OPS):
         res_out = torch.pow(inp1, inp2)
     logging.debug(ref_out.dtype)
     logging.debug(res_out.dtype)
@@ -129,7 +129,7 @@ def test_type_promotion_bool_to_long(shape, float_dtype):
 
     # arg0: int  arg1: float
     ref_out = torch.pow(ref_inp2, ref_inp1)
-    with bench.use_gems(REGISTERED_OPS):
+    with bench.use_ops(REGISTERED_OPS):
         res_out = torch.pow(inp2, inp1)
     logging.debug(ref_out.dtype)
     logging.debug(res_out.dtype)
