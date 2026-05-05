@@ -1,7 +1,7 @@
 import kernelgenbench
 from sandbox.config import DEVICE as device
 from sandbox.verifier.test_parametrize import parametrize, label
-from sandbox.utils.accuracy_utils import gems_assert_close as assert_close
+from sandbox.utils.accuracy_utils import kernelgenbench_assert_close as assert_close
 import torch
 
 @label("cublasDasum_v2")

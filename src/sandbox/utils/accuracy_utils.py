@@ -250,14 +250,14 @@ def to_cpu(res, ref):
     return res
 
 
-def gems_assert_close(res, ref, dtype, equal_nan=False, reduce_dim=1):
+def kernelgenbench_assert_close(res, ref, dtype, equal_nan=False, reduce_dim=1):
     res = to_cpu(res, ref)
     assert_close(
         res, ref, dtype, equal_nan=equal_nan, reduce_dim=reduce_dim
     )
 
 
-def gems_assert_equal(res, ref, equal_nan=False):
+def kernelgenbench_assert_equal(res, ref, equal_nan=False):
     res = to_cpu(res, ref)
     assert_equal(res, ref, equal_nan=equal_nan)
 

@@ -88,7 +88,7 @@ class BenchmarkFuncGenerator(BaseGenerator):
 #     b = torch.randn(B_shape, dtype=dtype, device=device)
 #     ref_out = bench.add(ref_a, ref_b)
 #     res_out = bench.triton.add(a, b)
-#     gems_assert_close(res_out, ref_out, dtype)
+#     kernelgenbench_assert_close(res_out, ref_out, dtype)
 # ```
 # """.strip() + "\n"
 #         prompt += "The corresponding benchmark function you should write is:\n"
@@ -258,7 +258,7 @@ import kernelgenbench
 from kernelgenbench.perfermance.performance_utils import GenericBenchmark
 from sandbox.config import DEVICE as device
 from sandbox.verifier.test_parametrize import parametrize, label
-from sandbox.utils.accuracy_utils import gems_assert_close as assert_close
+from sandbox.utils.accuracy_utils import kernelgenbench_assert_close as assert_close
 from sandbox.utils.accuracy_utils import to_reference
 from sandbox.register import REGISTERED_OPS
 import torch

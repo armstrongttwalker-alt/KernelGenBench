@@ -31,8 +31,8 @@ from sandbox.config import DEVICE as device, QUICK_MODE, TO_CPU
 from sandbox.register import REGISTERED_OPS
 import triton.testing as _triton_testing
 def get_triton_testing(): return _triton_testing
-from sandbox.utils.accuracy_utils import ALL_FLOAT_DTYPES, ALL_INT_DTYPES, ARANGE_START, BOOL_TYPES, COMPLEX_DTYPES, CONTIGUOUS_SHAPE_STRIDES_2D, DISTRIBUTION_SHAPES, FLOAT_DTYPES, INT_DTYPES, IRREGULAR_SHAPE_STRIDES, KRON_SHAPES, POINTWISE_SHAPES, REDUCTION_SHAPES, REDUCTION_SMALL_SHAPES, SCALARS, SHAPE_STRIDES, SPECIAL_SHAPES, STACK_DIM_LIST, STACK_SHAPES, SkipVersion, UPSAMPLE_SHAPES, UT_SHAPES_1D, UT_SHAPES_2D, gems_assert_close, gems_assert_equal, init_seed, to_cpu, to_reference, unsqueeze_tensor, unsqueeze_tuple
-assert_close = gems_assert_close
+from sandbox.utils.accuracy_utils import ALL_FLOAT_DTYPES, ALL_INT_DTYPES, ARANGE_START, BOOL_TYPES, COMPLEX_DTYPES, CONTIGUOUS_SHAPE_STRIDES_2D, DISTRIBUTION_SHAPES, FLOAT_DTYPES, INT_DTYPES, IRREGULAR_SHAPE_STRIDES, KRON_SHAPES, POINTWISE_SHAPES, REDUCTION_SHAPES, REDUCTION_SMALL_SHAPES, SCALARS, SHAPE_STRIDES, SPECIAL_SHAPES, STACK_DIM_LIST, STACK_SHAPES, SkipVersion, UPSAMPLE_SHAPES, UT_SHAPES_1D, UT_SHAPES_2D, kernelgenbench_assert_close, kernelgenbench_assert_equal, init_seed, to_cpu, to_reference, unsqueeze_tensor, unsqueeze_tuple
+assert_close = kernelgenbench_assert_close
 # Additional constant definitions from KernelGenBench
 AVGPOOL2D_CONFIGS = [((4, 3, 32, 32), 3, 2, 1, False, True, None), ((4, 3, 32, 32), 3, 2, 1, False, False, None), ((8, 16, 28, 28), (3, 5), (1, 2), 1, False, True, None), ((2, 4, 15, 15), 3, 2, 1, True, True, None), ((1, 1, 7, 7), 2, 1, 0, False, True, 1), ((1, 64, 56, 56), 3, 2, 1, False, True, None), ((2, 8, 16, 16), 2, 2, 0, False, False, None), ((2, 8, 16, 20), 2, 2, (1, 0), False, True, None)]
 BITWISE_SHAPES = [((512, 1024), (512, 1024)), ((256, 512), (1, 512)), ((256, 512), (256, 1)), ((1, 512), (256, 512)), ((256, 1), (256, 512)), ((1024,), ()), ((), (1024,))]
@@ -245,7 +245,7 @@ def create_kv_caches_with_random_flash(num_blocks, block_size, num_layers, num_h
         value_caches.append(key_value_cache[:, 1])
     return (key_caches, value_caches)
 
-def gems_flash_fwd(q, k, v, scale, is_causal, dropout_p=0, return_debug_mask=False, **extra_kwargs):
+def kernelgenbench_flash_fwd(q, k, v, scale, is_causal, dropout_p=0, return_debug_mask=False, **extra_kwargs):
     q = q.transpose(1, 2)
     k = k.transpose(1, 2)
     v = v.transpose(1, 2)
@@ -7249,7 +7249,7 @@ def test_accuracy_index_put_impl_basic(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.ops.aten._index_put_impl_(inp, indices, values, accumulate=False, unsafe=False)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -7288,7 +7288,7 @@ def test_accuracy_index_put_impl_accumulate(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.ops.aten._index_put_impl_(inp, [indices_0, indices_1], values, accumulate=True, unsafe=False)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -7383,7 +7383,7 @@ def test_accuracy__softmax(shape, dtype, dim, neg_inf):
     ref_out = torch.nn.functional.softmax(ref_inp, dim=dim)
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.nn.functional.softmax(inp, dim=dim)
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, equal_nan=True)
 
     # Benchmark: 性能测试
     import triton
@@ -7443,7 +7443,7 @@ def test_accuracy__softmax_backward(shape, dtype, dim, neg_inf):
         res_in_grad = torch.ops.aten._softmax_backward_data(
             res_grad, res_out, dim, dtype
         )
-    gems_assert_close(
+    kernelgenbench_assert_close(
         res_in_grad, ref_in_grad, dtype, reduce_dim=shape[dim], equal_nan=True
     )
 
@@ -7491,7 +7491,7 @@ def test_accuracy_to_copy_dtype_cast(shape, target_dtype):
     ref_out = torch.ops.aten._to_copy(ref_x, dtype=target_dtype)
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.ops.aten._to_copy(x, dtype=target_dtype)
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -7528,7 +7528,7 @@ def test_accuracy_to_copy_preserve_strides(memory_format):
             dtype=x.dtype,
             memory_format=memory_format,
         )
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
     if memory_format is torch.preserve_format:
         assert res_out.stride() == ref_out.stride()
     else:
@@ -7564,7 +7564,7 @@ def test_accuracy_add(shape, alpha, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.add(inp1, inp2, alpha=alpha)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -7615,7 +7615,7 @@ def test_accuracy_add_tensor_scalar(shape, scalar, alpha, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.add(inp1, inp2, alpha=alpha)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -7666,7 +7666,7 @@ def test_accuracy_add_scalar_tensor(shape, scalar, alpha, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.add(inp1, inp2, alpha=alpha)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -7720,9 +7720,9 @@ def test_accuracy_add_scalar_scalar(dtype):
         res_out = torch.add(inp1, inp2, alpha=alpha)
 
     if dtype == torch.int64:
-        gems_assert_equal(res_out, ref_out)
+        kernelgenbench_assert_equal(res_out, ref_out)
     else:
-        gems_assert_close(res_out, ref_out, dtype)
+        kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -7773,7 +7773,7 @@ def test_accuracy_add_(shape, alpha, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = inp1.add_(inp2, alpha=alpha)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -7830,7 +7830,7 @@ def test_accuracy_add_tensor_scalar_(shape, scalar, alpha, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = inp1.add_(inp2, alpha=alpha)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -7894,7 +7894,7 @@ def test_arange(start, step, end, dtype, device, pin_memory):
             start, end, step, dtype=dtype, device=device, pin_memory=pin_memory
         )
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -7964,7 +7964,7 @@ def test_accuracy_argmax(shape, dim, keepdim, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.argmax(inp, dim=dim, keepdim=keepdim)
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -8019,7 +8019,7 @@ def test_accuracy_bitwisenot(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.bitwise_not(inp)
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -8071,7 +8071,7 @@ def test_accuracy_bmm(M, N, K, dtype):
 
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.cat(inp, dim)
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -8125,7 +8125,7 @@ def test_accuracy_cat_empty_tensor(shape, dim, dtype):
 
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.cat(inp, dim)
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -8178,7 +8178,7 @@ def test_accuracy_clone(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.ops.aten.clone(inp)
     
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -8210,7 +8210,7 @@ def test_accuracy_clone_memory_format(memory_format, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.ops.aten.clone(inp, memory_format=memory_format)
     
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     if memory_format == torch.contiguous_format:
         assert res_out.is_contiguous(), "Clone with contiguous_format should be contiguous"
@@ -8254,7 +8254,7 @@ def test_accuracy_contiguous(shape, dtype):
     assert res_out.is_contiguous() is True
     assert res_out.is_contiguous() is True
     assert res_out.stride() == ref_out.stride()
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -8310,7 +8310,7 @@ def test_copy_inplace_same_dtype(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_dst.copy_(src)
 
-    gems_assert_equal(res_dst, ref_dst)
+    kernelgenbench_assert_equal(res_dst, ref_dst)
 
     # Benchmark: 性能测试
     import triton
@@ -8363,7 +8363,7 @@ def test_copy_inplace_broadcast():
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_dst.copy_(src)
 
-    gems_assert_equal(res_dst, ref_dst)
+    kernelgenbench_assert_equal(res_dst, ref_dst)
 
     # Benchmark: 性能测试
     import triton
@@ -8415,7 +8415,7 @@ def test_copy_inplace_dtype_fallback():
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_dst.copy_(src)
 
-    gems_assert_equal(res_dst, ref_dst)
+    kernelgenbench_assert_equal(res_dst, ref_dst)
 
     # Benchmark: 性能测试
     import triton
@@ -8482,7 +8482,7 @@ def test_copy_inplace_mixed_dtype_triton(src_dtype, dst_dtype):
         res_dst = dst.clone()
         res_dst.copy_(src)
 
-    gems_assert_equal(res_dst, ref_dst)
+    kernelgenbench_assert_equal(res_dst, ref_dst)
 
     # Benchmark: 性能测试
     import triton
@@ -8530,7 +8530,7 @@ def test_accuracy_cos(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.cos(inp)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -8584,7 +8584,7 @@ def test_accuracy_cumsum(shape, dtype):
         if False
         else (ref_out.dtype if dtype in INT_DTYPES else dtype)
     )
-    gems_assert_close(res_out, ref_out, check_dtype, reduce_dim=shape[dim])
+    kernelgenbench_assert_close(res_out, ref_out, check_dtype, reduce_dim=shape[dim])
 
     # Benchmark: 性能测试
     import triton
@@ -8640,7 +8640,7 @@ def test_accuracy_diff(shape, n, dim, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.diff(inp, n=n, dim=dim)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -8673,7 +8673,7 @@ def test_accuracy_diff_with_prepend_append(dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.diff(inp, n=1, dim=-1, prepend=prepend, append=append)
     
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -8703,7 +8703,7 @@ def test_accuracy_div_tensor_tensor(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.div(inp1, inp2)
 
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, equal_nan=True)
 
     # Benchmark: 性能测试
     import triton
@@ -8753,7 +8753,7 @@ def test_accuracy_div_tensor_scalar(shape, scalar, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.div(inp1, inp2)
 
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, equal_nan=True)
 
     # Benchmark: 性能测试
     import triton
@@ -8803,7 +8803,7 @@ def test_accuracy_div_scalar_tensor(shape, scalar, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.div(inp1, inp2)
 
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, equal_nan=True)
 
     # Benchmark: 性能测试
     import triton
@@ -8855,9 +8855,9 @@ def test_accuracy_div_scalar_scalar(dtype):
         res_out = torch.mul(inp1, inp2)
 
     if dtype == torch.int64:
-        gems_assert_equal(res_out, ref_out)
+        kernelgenbench_assert_equal(res_out, ref_out)
     else:
-        gems_assert_close(res_out, ref_out, dtype)
+        kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -8889,9 +8889,9 @@ def test_accuracy_trunc_div(shape, dtype):
         res_out = torch.div(inp1, inp2, rounding_mode="trunc")
 
     if dtype == torch.int64:
-        gems_assert_equal(res_out, ref_out)
+        kernelgenbench_assert_equal(res_out, ref_out)
     else:
-        gems_assert_close(res_out, ref_out, dtype)
+        kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -8923,7 +8923,7 @@ def test_accuracy_div_tensor_tensor_(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = inp1.div_(inp2)
 
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, equal_nan=True)
 
     # Benchmark: 性能测试
     import triton
@@ -8954,7 +8954,7 @@ def test_accuracy_div_tensor_scalar_(shape, scalar, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = inp1.div_(inp2)
 
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, equal_nan=True)
 
     # Benchmark: 性能测试
     import triton
@@ -8991,7 +8991,7 @@ def test_accuracy_trunc_div_(shape, dtype):
             f"The maximum difference between torch and triton is "
             f"{torch.max(torch.abs(ref_out - res_out))}"
         )
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, equal_nan=True)
 
     # Benchmark: 性能测试
     import triton
@@ -9028,7 +9028,7 @@ def test_embedding(EmbeddingSize, Batch, M, N, padding_idx, scale_grad_by_freq, 
     with kernelgenbench.use_gems(REGISTERED_OPS):
         x.fill_(value_tensor)
 
-    gems_assert_equal(x, ref_x)
+    kernelgenbench_assert_equal(x, ref_x)
 
     # Benchmark: 性能测试
     import triton
@@ -9062,7 +9062,7 @@ def test_accuracy_floor_divide_float(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.div(inp1, inp2, rounding_mode="floor")
 
-    gems_assert_equal(res_out, ref_out, equal_nan=True)
+    kernelgenbench_assert_equal(res_out, ref_out, equal_nan=True)
 
     # Benchmark: 性能测试
     import triton
@@ -9110,19 +9110,19 @@ def test_accuracy_floor_divide_int(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = inp1 // inp2
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     for d in inp2.flatten()[:2]:
         ref_d = to_reference(d, False)
         ref_out = ref_inp1 // ref_d
         with kernelgenbench.use_gems(REGISTERED_OPS):
             res_out = inp1 // d
-        gems_assert_equal(res_out, ref_out)
+        kernelgenbench_assert_equal(res_out, ref_out)
 
         ref_out = ref_d // ref_inp1
         with kernelgenbench.use_gems(REGISTERED_OPS):
             res_out = d // inp1
-        gems_assert_equal(res_out, ref_out)
+        kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -9155,9 +9155,9 @@ def test_accuracy_floor_divide_scalar_scalar(dtype):
         res_out = torch.floor_divide(inp1, inp2)
 
     if dtype == torch.int64:
-        gems_assert_equal(res_out, ref_out)
+        kernelgenbench_assert_equal(res_out, ref_out)
     else:
-        gems_assert_close(res_out, ref_out, dtype)
+        kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -9184,7 +9184,7 @@ def test_accuracy_full(shape, dtype, fill_value):
     ref_out = torch.full(shape, fill_value, device="cpu" if TO_CPU else device)
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.full(shape, fill_value, device=device)
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # with dtype
     ref_out = torch.full(
@@ -9192,7 +9192,7 @@ def test_accuracy_full(shape, dtype, fill_value):
     )
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.full(shape, fill_value, dtype=dtype, device=device)
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -9250,7 +9250,7 @@ def test_accuracy_gather(inp_shape, dim, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.gather(inp, dim, index)
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     if dtype in (torch.bfloat16,):
         return
@@ -9262,7 +9262,7 @@ def test_accuracy_gather(inp_shape, dim, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         (res_in_grad,) = torch.autograd.grad(res_out, inp, out_grad)
     res_in_grad = to_reference(res_in_grad)
-    gems_assert_equal(res_in_grad, ref_in_grad)
+    kernelgenbench_assert_equal(res_in_grad, ref_in_grad)
 
     # Benchmark: 性能测试
     import triton
@@ -9293,7 +9293,7 @@ def test_accuracy_gt(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.gt(inp1, inp2)
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -9323,7 +9323,7 @@ def test_accuracy_gt_scalar(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.gt(inp1, inp2)
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -9361,7 +9361,7 @@ def test_accuracy_index(input_shape, indices_shape, dtype):
         return
 
     out = torch.ops.aten.index(inp, indices)
-    gems_assert_close(out, ref_out, dtype)
+    kernelgenbench_assert_close(out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -9402,7 +9402,7 @@ def test_index_with_none_basic_indexing(input_shape, index_pos, dtype):
     ref_indices = [None if idx is None else to_reference(idx) for idx in indices]
     ref_out = torch.ops.aten.index(ref_inp, ref_indices)
     out = torch.ops.aten.index(inp, indices)
-    gems_assert_close(out, ref_out, dtype)
+    kernelgenbench_assert_close(out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -9432,7 +9432,7 @@ def test_index_boolean_mask(dtype):
     ref_indices = [to_reference(mask)]
     ref_out = torch.ops.aten.index(ref_inp, ref_indices)
     out = torch.ops.aten.index(inp, indices)
-    gems_assert_close(out, ref_out, dtype)
+    kernelgenbench_assert_close(out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -9462,7 +9462,7 @@ def test_index_empty_tensor(dtype):
     ref_indices = [to_reference(idx), None]
     ref_out = torch.ops.aten.index(ref_inp, ref_indices)
     out = torch.ops.aten.index(inp, indices)
-    gems_assert_close(out, ref_out, dtype)
+    kernelgenbench_assert_close(out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -9492,7 +9492,7 @@ def test_index_1d_special_case(dtype):
     ref_indices = [to_reference(idx)]
     ref_out = torch.ops.aten.index(ref_inp, ref_indices)
     out = torch.ops.aten.index(inp, indices)
-    gems_assert_close(out, ref_out, dtype)
+    kernelgenbench_assert_close(out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -9571,7 +9571,7 @@ def test_index_put__acc_false(input_shape, indices_shape, values_shape, is_bool,
     ref_values = to_reference(values)
     torch.index_put_(ref_inp, ref_indices, ref_values, accumulate)
     torch.ops.aten.index_put_(inp, indices, values, accumulate)
-    gems_assert_close(inp, ref_inp, dtype)
+    kernelgenbench_assert_close(inp, ref_inp, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -9615,7 +9615,7 @@ def test_index_put__acc_true(input_shape, indices_shape, values_shape, is_bool, 
         ref_inp = ref_inp.to(dtype)
         torch.testing.assert_close(inp, ref_inp, atol=3e-3, rtol=3e-2)
     else:
-        gems_assert_close(inp, ref_inp, dtype)
+        kernelgenbench_assert_close(inp, ref_inp, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -9674,7 +9674,7 @@ def test_accuracy_index_select(shape, dim, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.index_select(inp, dim, index)
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -9736,7 +9736,7 @@ def test_accuracy_le(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.le(inp1, inp2)
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -9766,7 +9766,7 @@ def test_accuracy_le_scalar(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.le(inp1, inp2)
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -9806,7 +9806,7 @@ def test_accuracy_baddbmm(M, N, K, scalar, dtype):
     ref_out = torch.baddbmm(ref_bias, ref_mat1, ref_mat2, alpha=alpha, beta=beta)
     res_out = torch.baddbmm(bias, mat1, mat2, alpha=alpha, beta=beta)
 
-    gems_assert_close(res_out, ref_out, dtype, reduce_dim=K)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, reduce_dim=K)
 
     # Benchmark: 性能测试
     import triton
@@ -9862,9 +9862,9 @@ def test_accuracy_baddbmm_backward(M, N, K, scalar, dtype):
         res_out, (bias, mat1, mat2), out_grad
     )
 
-    gems_assert_close(res_in_bias, ref_in_bias, dtype, reduce_dim=1)
-    gems_assert_close(res_in_grad1, ref_in_grad1, dtype, reduce_dim=N)
-    gems_assert_close(res_in_grad2, ref_in_grad2, dtype, reduce_dim=M)
+    kernelgenbench_assert_close(res_in_bias, ref_in_bias, dtype, reduce_dim=1)
+    kernelgenbench_assert_close(res_in_grad1, ref_in_grad1, dtype, reduce_dim=N)
+    kernelgenbench_assert_close(res_in_grad2, ref_in_grad2, dtype, reduce_dim=M)
 
     # Benchmark: 性能测试
     import triton
@@ -9920,7 +9920,7 @@ def test_accuracy_masked_fill_(shape, dtype, threshold, value):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         inp.masked_fill_(mask, value)
 
-    gems_assert_equal(inp, ref_inp)
+    kernelgenbench_assert_equal(inp, ref_inp)
 
     # Benchmark: 性能测试
     import triton
@@ -9969,7 +9969,7 @@ def test_accuracy_baddbmm(M, N, K, scalar, dtype):
     ref_out = torch.baddbmm(ref_bias, ref_mat1, ref_mat2, alpha=alpha, beta=beta)
     res_out = torch.baddbmm(bias, mat1, mat2, alpha=alpha, beta=beta)
 
-    gems_assert_close(res_out, ref_out, dtype, reduce_dim=K)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, reduce_dim=K)
 
     # Benchmark: 性能测试
     import triton
@@ -10025,9 +10025,9 @@ def test_accuracy_baddbmm_backward(M, N, K, scalar, dtype):
         res_out, (bias, mat1, mat2), out_grad
     )
 
-    gems_assert_close(res_in_bias, ref_in_bias, dtype, reduce_dim=1)
-    gems_assert_close(res_in_grad1, ref_in_grad1, dtype, reduce_dim=N)
-    gems_assert_close(res_in_grad2, ref_in_grad2, dtype, reduce_dim=M)
+    kernelgenbench_assert_close(res_in_bias, ref_in_bias, dtype, reduce_dim=1)
+    kernelgenbench_assert_close(res_in_grad1, ref_in_grad1, dtype, reduce_dim=N)
+    kernelgenbench_assert_close(res_in_grad2, ref_in_grad2, dtype, reduce_dim=M)
 
     # Benchmark: 性能测试
     import triton
@@ -10069,7 +10069,7 @@ def test_accuracy_mean_without_dim(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.mean(inp)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -10099,7 +10099,7 @@ def test_accuracy_mean_dim(shape, dim, keepdim, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.mean(inp, dim, keepdim)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -10131,7 +10131,7 @@ def test_accuracy_mm(M, N, K, dtype, b_column_major):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.mm(mat1, mat2)
 
-    gems_assert_close(res_out, ref_out, dtype, reduce_dim=K)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, reduce_dim=K)
 
     # Benchmark: 性能测试
     import triton
@@ -10162,7 +10162,7 @@ def test_accuracy_mul(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.mul(inp1, inp2)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -10193,7 +10193,7 @@ def test_accuracy_mul_tensor_scalar(shape, scalar, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.mul(inp1, inp2)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -10224,7 +10224,7 @@ def test_accuracy_mul_scalar_tensor(shape, scalar, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.mul(inp1, inp2)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -10257,9 +10257,9 @@ def test_accuracy_mul_scalar_scalar(dtype):
         res_out = torch.mul(inp1, inp2)
 
     if dtype == torch.int64:
-        gems_assert_equal(res_out, ref_out)
+        kernelgenbench_assert_equal(res_out, ref_out)
     else:
-        gems_assert_close(res_out, ref_out, dtype)
+        kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -10295,7 +10295,7 @@ def test_accuracy_narrow(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.narrow(inp, dim, start, length)
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -10323,7 +10323,7 @@ def test_accuracy_neg(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.neg(inp)
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -10350,7 +10350,7 @@ def test_accuracy_ones_like(shape, dtype):
     ref_out = torch.ones_like(ref_inp)
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.ones_like(inp)
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -10386,7 +10386,7 @@ def test_accuracy_pow(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.pow(inp1, inp2)
 
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, equal_nan=True)
 
     # Benchmark: 性能测试
     import triton
@@ -10421,7 +10421,7 @@ def test_accuracy_pow_scalar_tensor(scalar, shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.pow(inp1, inp2)
 
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, equal_nan=True)
 
     # Benchmark: 性能测试
     import triton
@@ -10485,7 +10485,7 @@ def test_accuracy_rsqrt(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.rsqrt(inp)
 
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, equal_nan=True)
 
     # Benchmark: 性能测试
     import triton
@@ -10544,7 +10544,7 @@ def test_accuracy_scatter_src(src_shape, inp_shape, dim, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.scatter(inp, dim, index, src)
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -10604,7 +10604,7 @@ def test_accuracy_scatter_add(src_shape, inp_shape, dim, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.scatter(inp, dim, index, src, reduce="add")
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -10663,7 +10663,7 @@ def test_accuracy_scatter_mul(src_shape, inp_shape, dim, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.scatter(inp, dim, index, src, reduce="multiply")
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -10697,7 +10697,7 @@ def test_accuracy_select(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.select(inp, dim, index)
 
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -10725,7 +10725,7 @@ def test_accuracy_silu(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.nn.functional.silu(res_inp)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -10757,7 +10757,7 @@ def test_accuracy_silu_backward(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_in_grad = torch.ops.aten.silu_backward(res_grad, res_inp)
 
-    gems_assert_close(res_in_grad, ref_in_grad, dtype)
+    kernelgenbench_assert_close(res_in_grad, ref_in_grad, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -10786,7 +10786,7 @@ def test_accuracy_sin(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.sin(inp)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -10820,7 +10820,7 @@ def test_accuracy_softmax(shape, dtype, dim, neg_inf):
     ref_out = torch.nn.functional.softmax(ref_inp, dim=dim)
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.nn.functional.softmax(inp, dim=dim)
-    gems_assert_close(res_out, ref_out, dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, equal_nan=True)
 
     # Benchmark: 性能测试
     import triton
@@ -10877,7 +10877,7 @@ def test_accuracy_softmax_backward(shape, dtype, dim, neg_inf):
         res_in_grad = torch.ops.aten._softmax_backward_data(
             res_grad, res_out, dim, dtype
         )
-    gems_assert_close(
+    kernelgenbench_assert_close(
         res_in_grad, ref_in_grad, dtype, reduce_dim=shape[dim], equal_nan=True
     )
 
@@ -10950,8 +10950,8 @@ def test_sort(batch_size, hiddensize, descending, dtype, dim):
             y, dim=dim, stable=True, descending=descending
         )
 
-    gems_assert_close(res_value, ref_value, dtype)
-    gems_assert_equal(res_index, ref_index)
+    kernelgenbench_assert_close(res_value, ref_value, dtype)
+    kernelgenbench_assert_equal(res_index, ref_index)
 
     # Benchmark: 性能测试
     import triton
@@ -10988,7 +10988,7 @@ def test_accuracy_stack(shape, dim, dtype):
 
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.stack(inp, dim)
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton
@@ -11020,7 +11020,7 @@ def test_accuracy_sub(shape, alpha, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.sub(inp1, inp2, alpha=alpha)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -11052,7 +11052,7 @@ def test_accuracy_sub_tensor_scalar(shape, scalar, alpha, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.sub(inp1, inp2, alpha=alpha)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -11084,7 +11084,7 @@ def test_accuracy_sub_scalar_tensor(shape, scalar, alpha, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.sub(inp1, inp2, alpha=alpha)
 
-    gems_assert_close(res_out, ref_out, dtype)
+    kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -11119,9 +11119,9 @@ def test_accuracy_sub_scalar_scalar(dtype):
         res_out = torch.sub(inp1, inp2, alpha=alpha)
 
     if dtype == torch.int64:
-        gems_assert_equal(res_out, ref_out)
+        kernelgenbench_assert_equal(res_out, ref_out)
     else:
-        gems_assert_close(res_out, ref_out, dtype)
+        kernelgenbench_assert_close(res_out, ref_out, dtype)
 
     # Benchmark: 性能测试
     import triton
@@ -11150,7 +11150,7 @@ def test_accuracy_sum_without_dim(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.sum(inp)
 
-    gems_assert_close(res_out, ref_out, dtype, reduce_dim=inp.numel())
+    kernelgenbench_assert_close(res_out, ref_out, dtype, reduce_dim=inp.numel())
 
     # Benchmark: 性能测试
     import triton
@@ -11188,7 +11188,7 @@ def test_accuracy_sum_dim(shape, dim, keepdim, dtype):
         _dim *= shape[d]
     if dim == []:
         _dim = inp.numel()
-    gems_assert_close(res_out, ref_out, dtype, reduce_dim=_dim)
+    kernelgenbench_assert_close(res_out, ref_out, dtype, reduce_dim=_dim)
 
     # Benchmark: 性能测试
     import triton
@@ -11220,9 +11220,9 @@ def test_accuracy_to_dtype(shape, src_dtype, dst_dtype):
         res_out = inp.to(dst_dtype)
         
     if dst_dtype in FLOAT_DTYPES:
-        gems_assert_close(res_out, ref_out, dst_dtype)
+        kernelgenbench_assert_close(res_out, ref_out, dst_dtype)
     else:
-        gems_assert_equal(res_out, ref_out)
+        kernelgenbench_assert_equal(res_out, ref_out)
     # Benchmark: 性能测试
     import triton
     from sandbox.utils.accuracy_utils import CustomBenchmarkResult
@@ -11251,7 +11251,7 @@ def test_accuracy_zero_(shape, dtype):
     with kernelgenbench.use_gems(REGISTERED_OPS):
         inp.zero_()
 
-    gems_assert_equal(inp, ref_inp)
+    kernelgenbench_assert_equal(inp, ref_inp)
 
     # Benchmark: 性能测试
     import triton
@@ -11281,12 +11281,12 @@ def test_accuracy_zeros(shape, dtype):
     # without dtype
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.zeros(shape, device=device)
-    gems_assert_equal(res_out, torch.zeros(shape, device="cpu" if TO_CPU else device))
+    kernelgenbench_assert_equal(res_out, torch.zeros(shape, device="cpu" if TO_CPU else device))
 
     # with dtype
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.zeros(shape, dtype=dtype, device=device)
-    gems_assert_equal(
+    kernelgenbench_assert_equal(
         res_out, torch.zeros(shape, dtype=dtype, device="cpu" if TO_CPU else device)
     )
 
@@ -11315,7 +11315,7 @@ def test_accuracy_zeros_like(shape, dtype):
     ref_out = torch.zeros_like(ref_inp)
     with kernelgenbench.use_gems(REGISTERED_OPS):
         res_out = torch.zeros_like(inp)
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # Benchmark: 性能测试
     import triton

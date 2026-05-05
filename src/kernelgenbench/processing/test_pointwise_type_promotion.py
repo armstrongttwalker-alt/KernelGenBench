@@ -9,8 +9,8 @@ from bench.sandbox.utils.accuracy_utils import (
     FLOAT_DTYPES,
     POINTWISE_SHAPES,
     SCALARS,
-    gems_assert_close,
-    gems_assert_equal,
+    kernelgenbench_assert_close,
+    kernelgenbench_assert_equal,
     to_reference,
 )
 from bench.sandbox.config import DEVICE as device
@@ -31,12 +31,12 @@ def test_type_promotion_default(shape, alpha, float_type):
     ref_out = torch.add(ref_inp1, ref_inp2, alpha=alpha)
     with bench.use_gems(REGISTERED_OPS):
         res_out = torch.add(inp1, inp2, alpha=alpha)
-    gems_assert_close(res_out, ref_out, float_type)
+    kernelgenbench_assert_close(res_out, ref_out, float_type)
     # arg0:float  arg1:int
     ref_out = torch.add(ref_inp2, ref_inp1, alpha=alpha)
     with bench.use_gems(REGISTERED_OPS):
         res_out = torch.add(inp2, inp1, alpha=alpha)
-    gems_assert_close(res_out, ref_out, float_type)
+    kernelgenbench_assert_close(res_out, ref_out, float_type)
 
 
 @pytest.mark.parametrize("shape", POINTWISE_SHAPES)
@@ -50,13 +50,13 @@ def test_type_promotion_no_opmath(shape, float_type):
     ref_out = torch.where(ref_inp1 > 0, ref_inp1, ref_inp2)
     with bench.use_gems(REGISTERED_OPS):
         res_out = torch.where(inp1 > 0, inp1, inp2)
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # arg0:bool  arg1:float  arg2:int
     ref_out = torch.where(ref_inp1 > 0, ref_inp2, ref_inp1)
     with bench.use_gems(REGISTERED_OPS):
         res_out = torch.where(inp1 > 0, inp2, inp1)
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
 
 @pytest.mark.parametrize("shape", POINTWISE_SHAPES)
@@ -68,7 +68,7 @@ def test_type_promotion_int_to_float(shape, float_type):
     ref_out = torch.sin(ref_inp)
     with bench.use_gems(REGISTERED_OPS):
         res_out = torch.sin(inp_float)
-    gems_assert_close(res_out, ref_out, float_type)
+    kernelgenbench_assert_close(res_out, ref_out, float_type)
 
     # arg0:int
     inp_int = torch.randint(10, shape, device=device)
@@ -76,7 +76,7 @@ def test_type_promotion_int_to_float(shape, float_type):
     ref_out = torch.sin(ref_inp_int)
     with bench.use_gems(REGISTERED_OPS):
         res_out = torch.sin(inp_int)
-    gems_assert_close(res_out, ref_out, torch.float32)
+    kernelgenbench_assert_close(res_out, ref_out, torch.float32)
 
 
 @pytest.mark.parametrize("shape", POINTWISE_SHAPES)
@@ -89,7 +89,7 @@ def test_type_promotion_always_bool(shape):
     ref_out = torch.eq(ref_inp1, ref_inp2)
     with bench.use_gems(REGISTERED_OPS):
         res_out = torch.eq(inp1, inp2)
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
 
 @pytest.mark.parametrize("shape", POINTWISE_SHAPES)
@@ -101,7 +101,7 @@ def test_type_promotion_complex_to_long(shape, float_type):
     ref_out = torch.abs(ref_inp)
     with bench.use_gems(REGISTERED_OPS):
         res_out = torch.abs(inp)
-    gems_assert_equal(res_out, ref_out)
+    kernelgenbench_assert_equal(res_out, ref_out)
 
     # arg0:int
     inp1 = torch.randint(0, 10, shape, device=device)
@@ -109,7 +109,7 @@ def test_type_promotion_complex_to_long(shape, float_type):
     ref_out1 = torch.abs(ref_inp1)
     with bench.use_gems(REGISTERED_OPS):
         res_out1 = torch.abs(inp1)
-    gems_assert_equal(res_out1, ref_out1)
+    kernelgenbench_assert_equal(res_out1, ref_out1)
 
 
 @pytest.mark.parametrize("shape", POINTWISE_SHAPES)
@@ -125,7 +125,7 @@ def test_type_promotion_bool_to_long(shape, float_dtype):
         res_out = torch.pow(inp1, inp2)
     logging.debug(ref_out.dtype)
     logging.debug(res_out.dtype)
-    gems_assert_close(res_out, ref_out, float_dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, float_dtype, equal_nan=True)
 
     # arg0: int  arg1: float
     ref_out = torch.pow(ref_inp2, ref_inp1)
@@ -133,4 +133,4 @@ def test_type_promotion_bool_to_long(shape, float_dtype):
         res_out = torch.pow(inp2, inp1)
     logging.debug(ref_out.dtype)
     logging.debug(res_out.dtype)
-    gems_assert_close(res_out, ref_out, float_dtype, equal_nan=True)
+    kernelgenbench_assert_close(res_out, ref_out, float_dtype, equal_nan=True)
