@@ -327,7 +327,7 @@ def _convert_single_test_func(code: str) -> str:
             indent + ')',
             '',
             indent + '# Benchmark triton implementation',
-            indent + 'with kernelgenbench.use_gems(REGISTERED_OPS):',
+            indent + 'with kernelgenbench.use_ops(REGISTERED_OPS):',
             indent + '    ms_triton, _, _ = triton.testing.do_bench(',
             indent + f'        lambda: {act_call},',
             indent + '        rep=100,',
