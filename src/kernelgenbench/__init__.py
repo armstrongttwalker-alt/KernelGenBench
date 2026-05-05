@@ -45,7 +45,7 @@ def all_ops():
     return current_work_registrar.get_all_ops()
 
 accuracy_modules = [
-    "kernelgenbench.accuracy.test_v2_1_ops_with_benchmark",
+    "kernelgenbench.accuracy.test_ops_with_benchmark",
     "kernelgenbench.accuracy.cublas",
     "kernelgenbench.accuracy.vllm13",
 ]

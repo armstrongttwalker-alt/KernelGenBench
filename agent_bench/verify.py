@@ -44,7 +44,7 @@ def get_test_module(dataset: str, config: dict) -> str:
 
     # Defaults
     defaults = {
-        "KernelGenBench": "src/kernelgenbench/accuracy/test_v2_1_ops_with_benchmark.py",
+        "KernelGenBench": "src/kernelgenbench/accuracy/test_ops_with_benchmark.py",
     }
     if dataset in defaults:
         return str(PROJECT_ROOT / defaults[dataset])

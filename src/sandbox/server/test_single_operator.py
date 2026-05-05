@@ -13,7 +13,7 @@ Usage:
 
     # With custom test module
     python src/sandbox/server/test_single_operator.py path/to/aten_softmax.py \
-        --test-module kernelgenbench.accuracy.test_v2_1_ops_with_benchmark
+        --test-module kernelgenbench.accuracy.test_ops_with_benchmark
 
     # With test set (auto-selects module)
     python src/sandbox/server/test_single_operator.py path/to/aten_softmax.py \
@@ -48,7 +48,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Default test module for TLE optimization experiments
-DEFAULT_TEST_MODULE = "kernelgenbench.accuracy.test_v2_1_ops_with_benchmark"
+DEFAULT_TEST_MODULE = "kernelgenbench.accuracy.test_ops_with_benchmark"
 
 # Default test set
 DEFAULT_TEST_SET = "KernelGenBench"
@@ -63,7 +63,7 @@ def get_test_sets() -> Dict[str, Dict[str, Any]]:
         "KernelGenBench": {
             "operators": get_kernelgenbench_operators(),
             "modules": [
-                "kernelgenbench.accuracy.test_v2_1_ops_with_benchmark",
+                "kernelgenbench.accuracy.test_ops_with_benchmark",
                 "kernelgenbench.accuracy.vllm13",
                 "kernelgenbench.accuracy.cublas",
             ],
@@ -224,8 +224,8 @@ class SingleOperatorTester:
 
         # Convert module name to path if needed
         if self.test_module.startswith("kernelgenbench."):
-            # kernelgenbench.accuracy.test_v2_1_ops_with_benchmark
-            # -> src/kernelgenbench/accuracy/test_v2_1_ops_with_benchmark.py
+            # kernelgenbench.accuracy.test_ops_with_benchmark
+            # -> src/kernelgenbench/accuracy/test_ops_with_benchmark.py
             module_path = self.test_module.replace(".", "/")
             module_path = f"src/{module_path}.py"
         else:

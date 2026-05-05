@@ -23,7 +23,7 @@ paths:
 # Dataset to test module mapping (relative to project root)
 test_modules:
   KernelGenBench:
-    - src/kernelgenbench/accuracy/test_v2_1_ops_with_benchmark.py
+    - src/kernelgenbench/accuracy/test_ops_with_benchmark.py
     - src/kernelgenbench/accuracy/vllm13/
     - src/kernelgenbench/accuracy/cublas/
 
