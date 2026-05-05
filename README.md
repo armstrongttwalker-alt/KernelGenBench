@@ -15,7 +15,7 @@ The multi-chip variant **KernelGenBench-MC** (Multi-Chip), covering vendor-speci
 
 ```bash
 pip install -r requirements.txt
-pip install -e src/
+pip install -e .
 ```
 
 Set your API key:
