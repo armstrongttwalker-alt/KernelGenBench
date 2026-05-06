@@ -1,0 +1,67 @@
+{
+  "@context": {
+    "@language": "en",
+    "@vocab": "https://schema.org/",
+    "cr": "http://mlcommons.org/croissant/",
+    "dct": "http://purl.org/dc/terms/",
+    "sc": "https://schema.org/"
+  },
+  "@type": "sc:Dataset",
+  "name": "KernelGenBench",
+  "description": "KernelGenBench-MS (Multi-Source) is a benchmark for evaluating LLM and agent-based Triton kernel generation on NVIDIA GPUs. It contains 210 operators across three sources: PyTorch ATen (110), vLLM (50), and cuBLAS (50).",
+  "license": "https://opensource.org/licenses/Apache-2.0",
+  "url": "https://anonymous.4open.science/r/KernelGenBench",
+  "version": "1.0.0",
+  "cr:conformsTo": "http://mlcommons.org/croissant/1.0",
+  "distribution": [
+    {
+      "@type": "cr:FileObject",
+      "@id": "vllm_IMPL_INFO",
+      "name": "vllm_IMPL_INFO.json",
+      "description": "vLLM operator specifications (50 operators)",
+      "contentUrl": "src/kernelgenbench/dataset/vllm_IMPL_INFO.json",
+      "encodingFormat": "application/json",
+      "sha256": "sha256"
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "cublas_IMPL_INFO",
+      "name": "cublas_IMPL_INFO.json",
+      "description": "cuBLAS operator specifications (50 operators)",
+      "contentUrl": "src/kernelgenbench/dataset/cublas_IMPL_INFO.json",
+      "encodingFormat": "application/json",
+      "sha256": "sha256"
+    }
+  ],
+  "recordSet": [
+    {
+      "@type": "cr:RecordSet",
+      "@id": "operators",
+      "name": "operators",
+      "description": "210 operators across three sources for Triton kernel generation evaluation.",
+      "field": [
+        {
+          "@type": "cr:Field",
+          "@id": "operators/name",
+          "name": "name",
+          "description": "Operator name (e.g. aten::add, vllm13::rms_norm, cublas::cublasSgemm)",
+          "dataType": "sc:Text"
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "operators/source",
+          "name": "source",
+          "description": "Operator source: aten, vllm13, or cublas",
+          "dataType": "sc:Text"
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "operators/signature",
+          "name": "signature",
+          "description": "Function signature of the operator",
+          "dataType": "sc:Text"
+        }
+      ]
+    }
+  ]
+}
