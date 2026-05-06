@@ -3,25 +3,34 @@
     "@language": "en",
     "@vocab": "https://schema.org/",
     "cr": "http://mlcommons.org/croissant/",
+    "rai": "http://mlcommons.org/croissant/RAI/",
     "dct": "http://purl.org/dc/terms/",
     "sc": "https://schema.org/"
   },
   "@type": "sc:Dataset",
   "name": "KernelGenBench",
-  "description": "KernelGenBench-MS (Multi-Source) is a benchmark for evaluating LLM and agent-based Triton kernel generation on NVIDIA GPUs. It contains 210 operators across three sources: PyTorch ATen (110), vLLM (50), and cuBLAS (50).",
-  "license": "https://opensource.org/licenses/Apache-2.0",
-  "url": "https://anonymous.4open.science/r/KernelGenBench",
+  "description": "KernelGenBench is a unified benchmark for evaluating LLM- and agent-generated Triton kernels across diverse operator sources and heterogeneous hardware platforms. It comprises two sub-benchmarks: KernelGenBench-MS (210 operators from PyTorch ATen, vLLM, and cuBLAS sources) and KernelGenBench-MC (110 ATen operators evaluated across six hardware platforms). The benchmark provides a distributed sandbox infrastructure, a three-tier anti-hack mechanism, and a multi-dimensional evaluation protocol measuring functional correctness, execution speedup, and agentic cost efficiency.",
+  "url": "https://anonymous.4open.science/r/KernelGenBench-2592",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
   "version": "1.0.0",
   "cr:conformsTo": "http://mlcommons.org/croissant/1.0",
   "distribution": [
+    {
+      "@type": "cr:FileSet",
+      "@id": "prompts",
+      "name": "prompts",
+      "description": "210 operator task prompts in Markdown format, one per operator (aten, vllm13, cublas sources)",
+      "containedIn": {"@id": "repo"},
+      "encodingFormat": "text/markdown",
+      "includes": "agent_bench/prompts/KernelGenBench/*.md"
+    },
     {
       "@type": "cr:FileObject",
       "@id": "vllm_IMPL_INFO",
       "name": "vllm_IMPL_INFO.json",
       "description": "vLLM operator specifications (50 operators)",
       "contentUrl": "src/kernelgenbench/dataset/vllm_IMPL_INFO.json",
-      "encodingFormat": "application/json",
-      "sha256": "sha256"
+      "encodingFormat": "application/json"
     },
     {
       "@type": "cr:FileObject",
@@ -29,8 +38,7 @@
       "name": "cublas_IMPL_INFO.json",
       "description": "cuBLAS operator specifications (50 operators)",
       "contentUrl": "src/kernelgenbench/dataset/cublas_IMPL_INFO.json",
-      "encodingFormat": "application/json",
-      "sha256": "sha256"
+      "encodingFormat": "application/json"
     }
   ],
   "recordSet": [

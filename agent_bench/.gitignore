@@ -7,8 +7,6 @@ config.yaml
 # Run results
 runs/
 
-# Generated prompts (can be regenerated)
-prompts/
 
 # Lock files
 *.lock
