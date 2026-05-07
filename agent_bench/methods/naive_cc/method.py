@@ -48,9 +48,9 @@ class NaiveCCMethod(BaseMethod):
         Returns:
             Prompt with output section replaced
         """
-        # Pattern to match "## 输出要求" section header and everything after it
+        # Pattern to match "## Output Requirements" section header and everything after it
         # This captures from the header to the end of the file
-        pattern = r"(##\s*输出要求.*?)$"
+        pattern = r"(##\s*Output Requirements.*?)$"
         match = re.search(pattern, base_prompt, re.DOTALL | re.IGNORECASE)
 
         if match:
