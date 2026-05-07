@@ -12,10 +12,9 @@ from kernelgenbench.dataset import TorchOpsLoader, APIInfo
 from kernelgenbench.dataset import IMPL_INFO
 from sandbox.verifier import Verifier, VerifyConfig, VerifyRequest, Source
 from utils import (
-    today, 
-    _placeholder, 
-    create_triton_generate_args, 
-    query_operator_wiki
+    today,
+    _placeholder,
+    create_triton_generate_args
 )
 
 # Add project root to path
@@ -65,7 +64,6 @@ class PassAtKTester:
         single_test: bool = False,
         op_name: Optional[str] = None,
         reflection: bool = False,
-        use_wiki: bool = False,
     ):
         self.output_dir = output_dir
         self.test_type = test_type
@@ -94,12 +92,6 @@ class PassAtKTester:
         self.generated_codes: Dict[str, Dict[int, str]] = {}  # {op_name: {round: code}}
         self.generation_summaries: List[Dict] = []  # Track generation summaries for each round
         self.verify_results: Dict[str, Dict[int, Dict]] = {}  # {op_name: {round: [test_results]}}
-        
-        # Wiki cache for operator references
-        self.use_wiki = use_wiki
-        self.wiki_cache: Dict[str, Any] = {}  # {operator_name: wiki_info}
-
-        self.qwen_next = False
 
         self.setup()
 
@@ -125,7 +117,7 @@ class PassAtKTester:
             raise ValueError(f"Unsupported test type: {self.test_type}")
 
     def _create_prompt_builder(self):
-        mode = "with_wiki" if self.use_wiki else "basic"
+        mode = "basic"
         prompt_builder = KernelGenBenchPromptBuilder(mode=mode)
         logger.info(f"Created KernelGenBenchPromptBuilder with mode: {mode}")
         return prompt_builder
@@ -241,26 +233,9 @@ class PassAtKTester:
         if op_name not in self.verify_results:
             self.verify_results[op_name] = {}
         self.verify_results[op_name][round_idx] = test_results
-    
-    def query_wiki_with_cache(self, operator_name: str) -> Optional[Any]:
-        """Query Wiki for operator reference with caching.
-        
-        Args:
-            operator_name: The name of the operator to query.
-        Returns:
-            Wiki information or None if query fails.
-        """
-        if operator_name not in self.wiki_cache:
-            try:
-                wiki_info = query_operator_wiki(operator_name)
-                self.wiki_cache[operator_name] = wiki_info
-                logger.info(f"Queried Wiki for operator: {operator_name}")
-            except Exception as e:
-                logger.warning(f"Failed to query Wiki for {operator_name}: {e}")
-                self.wiki_cache[operator_name] = None
-        return self.wiki_cache[operator_name]
 
     def generate_round(self, round_idx: int, remaining_operators: Dict[str, Dict[str, APIInfo]]) -> Path:
+
         """Generate tests for remaining operators in this round."""
         round_dir = self.output_dir / f"round_{round_idx}"
         round_dir.mkdir(parents=True, exist_ok=True)
@@ -298,11 +273,6 @@ class PassAtKTester:
                 impl_info=impl_info_arg
             )
             gen_arg.sample_id = round_idx
-
-            # Query Wiki for reference implementations
-            if self.use_wiki:
-                wiki_info = self.query_wiki_with_cache(kernel_name)
-                gen_arg.wiki_reference = wiki_info
 
             # Add reflection: use previous round's verify results as feedback
             if self.reflection and round_idx > 0:
@@ -755,7 +725,6 @@ def main():
     parser.add_argument("--single-test", action="store_true", help="Single-test mode: randomly pick 1 operator")
     parser.add_argument("--op-name", type=str, default=None, help="Specify a single operator to test (e.g., vllm13::fused_add_rms_norm)")
     parser.add_argument("--reflection", action="store_true", help="Enable reflection: use previous round's verify results as feedback for next generation")
-    parser.add_argument("--use-wiki", action="store_true", help="Use Wiki references for generation")
     parser.add_argument("--custom-test-modules", type=str, nargs="+", default=None, help="Custom test module paths or directories (e.g., src/kernelgenbench/accuracy/test_custom.py or src/kernelgenbench/accuracy/)")
 
     args = parser.parse_args()
@@ -778,8 +747,6 @@ def main():
             postfix += "_debug"
         if args.reflection:
             postfix += "_reflection"
-        if args.use_wiki:
-            postfix += "_wiki"
         run_name = f"pass_at_{args.max_rounds}_{args.model_name}_{args.test_type}{postfix}_{today()}"
 
         # Adjust base directory based on test_type
@@ -846,7 +813,6 @@ def main():
         single_test=args.single_test,
         op_name=args.op_name,
         reflection=args.reflection,
-        use_wiki=args.use_wiki,
     )
     
     tester.initialize_operators(args.name)
