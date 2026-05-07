@@ -77,15 +77,20 @@ python scripts/generate_kernel_and_verify.py \
 Evaluate a coding agent on iteratively generating and verifying kernels:
 
 ```bash
-# Configure your environment
+# 1. Copy and configure the agent environment
 cp agent_bench/config.example.yaml agent_bench/config.yaml
-# Edit agent_bench/config.yaml: set paths.python to your Python interpreter
 
-# Single operator test
+# 2. Edit agent_bench/config.yaml:
+#    - Set agent.type: claude (requires Claude CLI) or custom
+#    - Set agent.bin: path to your agent executable (e.g., claude, cursor)
+#    - Set paths.python: path to your Python interpreter with dependencies installed
+#      Example: /path/to/conda/envs/myenv/bin/python
+
+# 3. Run single operator test
 cd agent_bench
 bash test_ops.sh add --device-count 1
 
-# Full benchmark
+# 4. Run full benchmark
 bash test_ops.sh --device-count 8
 ```
 
