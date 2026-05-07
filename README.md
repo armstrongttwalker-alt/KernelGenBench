@@ -46,7 +46,7 @@ python scripts/generate_kernel_and_verify.py \
     --op-name aten::add \
     --single-test \
     --server-type anthropic \
-    --model-name claude-sonnet-4-20250514 \
+    --model-name your-model-name \
     --max-rounds 3
 
 # OpenAI
@@ -54,7 +54,7 @@ python scripts/generate_kernel_and_verify.py \
     --op-name aten::add \
     --single-test \
     --server-type openai \
-    --model-name gpt-4 \
+    --model-name your-model-name \
     --max-rounds 3
 
 # OpenAI-compatible endpoint
@@ -68,7 +68,7 @@ python scripts/generate_kernel_and_verify.py \
 # Full benchmark
 python scripts/generate_kernel_and_verify.py \
     --server-type anthropic \
-    --model-name claude-sonnet-4-20250514 \
+    --model-name your-model-name \
     --max-rounds 3
 ```
 
