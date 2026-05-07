@@ -249,31 +249,8 @@ class TorchPromptBuilder(PromptBuilder):
         prompt += f"The generated code should include both the Triton kernel definition (with @triton.jit) and the Python wrapper function that launches the kernel.\n"
         prompt += f"The wrapper function name must be exactly the same as the provided function name: {info.op_name}\n"
 
-        # Add Wiki reference implementations if available
-        if info.wiki_reference:
-            prompt += f"\n## Reference Implementations\n"
-            prompt += f"Here are some reference implementations from similar operators that you can learn from:\n"
-            try:
-                if isinstance(info.wiki_reference, list):
-                    for idx, ref in enumerate(info.wiki_reference[:3], 1):
-                        if isinstance(ref, dict) and 'link' in ref and 'code' in ref:
-                            prompt += f"\nReference {idx} (from {ref['link']}):\n"
-                            prompt += "```python\n"
-                            prompt += f"{ref['code']}\n"
-                            prompt += "```\n"
-                elif isinstance(info.wiki_reference, dict) and 'data' in info.wiki_reference:
-                    refs = info.wiki_reference['data']
-                    if isinstance(refs, list):
-                        for idx, ref in enumerate(refs[:3], 1):
-                            if isinstance(ref, dict) and 'link' in ref and 'code' in ref:
-                                prompt += f"\nReference {idx} (from {ref['link']}):\n"
-                                prompt += "```python\n"
-                                prompt += f"{ref['code']}\n"
-                                prompt += "```\n"
-            except Exception as e:
-                pass
-
         if info.user_advice:
+
             prompt += f"And the following user advice should be considered: {info.user_advice}\n"
 
         prompt += f"You must generate the valid Triton code directly without any explanations or additional text, and ensure no testing or benchmarking code is included. The code must be complete and ready to run.\n"
