@@ -37,7 +37,6 @@ class BaseGenerateArgs(BaseModel, ABC):
     check_result: Optional[Any] = None  # VerifyResult
     old_code: Optional[str] = None
     sample_id: int = 0
-    wiki_reference: Optional[Any] = None
 
     @property
     @abstractmethod
