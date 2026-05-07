@@ -18,12 +18,21 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-Set your API key:
+Configure your API credentials based on the LLM provider:
 
+**Anthropic Claude:**
 ```bash
 export ANTHROPIC_API_KEY=your_key
-# or for OpenAI-compatible endpoints:
+```
+
+**OpenAI:**
+```bash
 export OPENAI_API_KEY=your_key
+```
+
+**OpenAI-compatible endpoints (e.g., vLLM, local models):**
+```bash
+export OPENAI_API_KEY=dummy
 export OPENAI_BASE_URL=http://your-endpoint/v1
 ```
 
@@ -32,18 +41,34 @@ export OPENAI_BASE_URL=http://your-endpoint/v1
 Evaluate an LLM on generating Triton kernels (Pass@K):
 
 ```bash
-# Single operator test
+# Anthropic Claude
 python scripts/generate_kernel_and_verify.py \
     --op-name aten::add \
     --single-test \
     --server-type anthropic \
-    --model-name <your-model> \
+    --model-name claude-sonnet-4-20250514 \
+    --max-rounds 3
+
+# OpenAI
+python scripts/generate_kernel_and_verify.py \
+    --op-name aten::add \
+    --single-test \
+    --server-type openai \
+    --model-name gpt-4 \
+    --max-rounds 3
+
+# OpenAI-compatible endpoint
+python scripts/generate_kernel_and_verify.py \
+    --op-name aten::add \
+    --single-test \
+    --server-type openai \
+    --model-name your-model-name \
     --max-rounds 3
 
 # Full benchmark
 python scripts/generate_kernel_and_verify.py \
     --server-type anthropic \
-    --model-name <your-model> \
+    --model-name claude-sonnet-4-20250514 \
     --max-rounds 3
 ```
 
@@ -61,7 +86,7 @@ cd agent_bench
 bash test_ops.sh add --device-count 1
 
 # Full benchmark
-bash test_ops.sh --device-count 4
+bash test_ops.sh --device-count 8
 ```
 
 Results are saved to `agent_bench/runs/`.
