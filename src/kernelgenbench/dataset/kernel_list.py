@@ -495,7 +495,21 @@ def get_cublas_operators():
     return _load_cublas_operators()
 
 
+def get_aten_operators():
+    """Get ATen operators (110 torch operators)."""
+    return _load_torch_operators()
+
+
+def get_kernelgenbench_nocublas_operators():
+    """Get KernelGenBench without cuBLAS subset (50 vllm + 110 torch = 160)."""
+    ops = {}
+    ops.update(_load_vllm_operators())
+    ops.update(_load_torch_operators())
+    return ops
+
+
 def get_kernelgenbench_operators():
+    """Get all KernelGenBench operators (50 vllm + 50 cublas + 110 torch = 210)."""
     ops = {}
     ops.update(_load_vllm_operators())
     ops.update(_load_cublas_operators())

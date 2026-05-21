@@ -3,7 +3,7 @@
 Use the following command to verify your implementation:
 
 ```bash
-CUDA_VISIBLE_DEVICES={{GPU_ID}} python {{VERIFY_SCRIPT}} --code kernel.py --op {{OPERATOR}} --dataset {{DATASET}} --output-json
+{{DEVICE_ENV}}={{GPU_ID}} python {{VERIFY_SCRIPT}} --code kernel.py --op {{OPERATOR}} --dataset {{DATASET}} --output-json
 ```
 
 The verification result is output as JSON containing:

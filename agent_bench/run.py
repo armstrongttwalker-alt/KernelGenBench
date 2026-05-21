@@ -18,7 +18,7 @@ try:
 except ImportError:
     yaml = None
 
-from device_manager import DeviceManager
+from device_manager import DeviceManager, get_device_env_var
 from methods import get_method, list_methods
 
 logger = logging.getLogger(__name__)
@@ -55,22 +55,24 @@ def load_config(config_path: Path) -> dict:
         return yaml.safe_load(f)
 
 
-def load_ops_from_prompts(prompts_dir: Path, namespace: str) -> list[str]:
+def load_ops_from_prompts(prompts_dir: Path, namespace: str, dataset: str = None) -> list[str]:
     """Load operator names by scanning prompt files in directory.
 
     Args:
         prompts_dir: Directory containing prompt .md files
-        namespace: Operator namespace (e.g., "aten")
+        namespace: Default operator namespace (e.g., "aten")
+        dataset: Dataset name (used for KernelGenBench multi-namespace support)
 
     Returns:
-        List of full operator names (e.g., ["aten::add", "aten::softmax"])
+        List of full operator names (e.g., ["aten::add", "vllm13::rms_norm"])
     """
     ops = []
     for f in sorted(prompts_dir.glob("*.md")):
-        stem = f.stem  # e.g., "aten__add" or "vllm13__fused_add_rms_norm"
-        if "__" in stem:
-            ns, op = stem.split("__", 1)
-            ops.append(f"{ns}::{op}")
+        stem = f.stem  # e.g., "softmax" or "aten__add" or "vllm13__rms_norm"
+        if dataset and dataset.startswith("KernelGenBench") and "__" in stem:
+            # KernelGenBench uses "namespace__opname" format
+            ns, op_name = stem.split("__", 1)
+            ops.append(f"{ns}::{op_name}")
         else:
             ops.append(f"{namespace}::{stem}")
     return ops
@@ -214,16 +216,28 @@ def run(args):
     prompts_dir = SCRIPT_DIR / config.get("paths", {}).get("prompts", "prompts")
     runs_dir = SCRIPT_DIR / config.get("paths", {}).get("runs", "runs")
 
-    # Dataset
+    # Dataset - sub-datasets share KernelGenBench prompts directory
     dataset = args.dataset
-    dataset_prompts_dir = prompts_dir / dataset
+    is_kgb = dataset.startswith("KernelGenBench")
+    prompts_dataset = "KernelGenBench" if is_kgb else dataset
+    dataset_prompts_dir = prompts_dir / prompts_dataset
 
     # Load operators from prompt files
     namespace = "aten"
-    ops = load_ops_from_prompts(dataset_prompts_dir, namespace)
+    ops = load_ops_from_prompts(dataset_prompts_dir, namespace, dataset=dataset)
     if not ops:
         print(f"Error: No prompt files found in {dataset_prompts_dir}")
         sys.exit(1)
+
+    # Filter by sub-dataset namespace
+    if dataset == "KernelGenBench-aten":
+        ops = [op for op in ops if op.startswith("aten::")]
+    elif dataset == "KernelGenBench-vllm":
+        ops = [op for op in ops if op.startswith("vllm13::")]
+    elif dataset == "KernelGenBench-cublas":
+        ops = [op for op in ops if op.startswith("cublas::")]
+    elif dataset == "KernelGenBench-nocublas":
+        ops = [op for op in ops if not op.startswith("cublas::")]
 
     # Filter operators if specified (exact match on operator name)
     if args.op:
@@ -262,9 +276,12 @@ def run(args):
 
     # Initialize device manager
     device_cfg = config.get("device", {}) or {}
+    gpu_ids = device_cfg.get("gpu_ids")
+    if args.device_count is not None:
+        gpu_ids = list(range(args.device_count))
     device_mgr = DeviceManager(
         lock_dir=device_cfg.get("lock_dir", "/tmp/agent_bench_gpu_locks"),
-        gpu_ids=device_cfg.get("gpu_ids"),
+        gpu_ids=gpu_ids,
     )
 
     # Initialize progress
@@ -279,9 +296,9 @@ def run(args):
             force_rerun = set(args.op.split(","))
 
         for f in kernels_dir.glob("*.py"):
-            op_name = f.stem
-            if op_name not in force_rerun:
-                existing_kernels.add(op_name)
+            stem = f.stem
+            if stem not in force_rerun:
+                existing_kernels.add(stem)
         logger.info(f"Found {len(existing_kernels)} existing kernels (skipping)")
         if force_rerun:
             logger.info(f"Force re-run: {', '.join(force_rerun)}")
@@ -290,7 +307,9 @@ def run(args):
     queue = deque()
     for full_name in ops:
         op_name = full_name.split("::")[-1]
-        if op_name not in existing_kernels:
+        # For KernelGenBench, check namespace__opname format
+        safe_name = full_name.replace("::", "__") if is_kgb else op_name
+        if safe_name not in existing_kernels:
             queue.append((full_name, op_name, 0))
 
     logger.info(f"Queue: {len(queue)} operators to process")
@@ -509,6 +528,12 @@ def main():
         "--verbose", "-v",
         action="store_true",
         help="Enable debug logging"
+    )
+    parser.add_argument(
+        "--device-count",
+        type=int,
+        default=None,
+        help="Number of devices to use (default: auto-detect)"
     )
 
     args = parser.parse_args()

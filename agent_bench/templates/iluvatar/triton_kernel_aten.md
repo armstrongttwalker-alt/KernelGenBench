@@ -1,4 +1,4 @@
-# Triton Kernel Implementation Task
+# Triton Kernel Implementation Task (Iluvatar)
 
 You need to implement a Triton kernel for a PyTorch operator.
 
@@ -10,8 +10,17 @@ You need to implement a Triton kernel for a PyTorch operator.
 
 ## Environment
 
-- All GPU commands must be prefixed with `{{DEVICE_ENV}}={{GPU_ID}}`
+- **Hardware**: Iluvatar GPU
+- **Software**: CUDA-compatible PyTorch
+- All device commands must be prefixed with `CUDA_VISIBLE_DEVICES={{GPU_ID}}`
 - Python path: `{{PYTHON_PATH}}`
+
+## Iluvatar GPU Requirements (MUST follow)
+
+- Device type is `cuda` (standard PyTorch CUDA API). No special import needed beyond `import torch`
+- Iluvatar GPUs provide a CUDA-compatible interface, but the underlying hardware architecture differs from NVIDIA. Avoid relying on NVIDIA-specific hardware features (e.g. Tensor Core specific instructions)
+- Some advanced Triton features may not be supported or may behave differently. Prefer basic Triton operations
+- Use `allow_tf32=False` for `tl.dot` to ensure precision
 
 ## Operator Specification
 

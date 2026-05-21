@@ -1,4 +1,4 @@
-# Triton Kernel Implementation Task
+# Triton Kernel Implementation Task (MUSA)
 
 You need to implement a Triton kernel for a PyTorch operator.
 
@@ -10,8 +10,22 @@ You need to implement a Triton kernel for a PyTorch operator.
 
 ## Environment
 
-- All GPU commands must be prefixed with `{{DEVICE_ENV}}={{GPU_ID}}`
+- **Hardware**: MUSA device (Moore Threads)
+- **Software**: torch_musa (PyTorch-based), Triton for MUSA
+- All device commands must be prefixed with `MUSA_VISIBLE_DEVICES={{GPU_ID}}`
 - Python path: `{{PYTHON_PATH}}`
+
+## MUSA Device Requirements (MUST follow)
+
+- **`import torch` MUST be immediately followed by `import torch_musa`**, otherwise the musa device is unavailable
+- Device type is `musa`. All device APIs use `musa`, for example:
+  - `device = torch.device("musa:0")`
+  - `torch.musa.synchronize()`
+  - `tensor.to('musa')`
+- Use `MUSA_VISIBLE_DEVICES` instead of `CUDA_VISIBLE_DEVICES`
+- Triton kernels are written similarly to NVIDIA GPU, but note:
+  - Some advanced Triton features may not be supported. Prefer basic Triton operations
+  - Avoid relying on CUDA-specific hardware features
 
 ## Operator Specification
 
@@ -57,6 +71,7 @@ Implementation example for the `add` operator:
 
 ```python
 import torch
+import torch_musa
 import triton
 import triton.language as tl
 
@@ -119,13 +134,15 @@ def add_out(self: torch.Tensor, other: torch.Tensor, alpha: float = 1, *, out: t
 
 1. Code must be wrapped in a ```python ... ``` code block
 2. Code must be runnable as-is, without modification
-3. Do not include test code or benchmark code
-4. Do not add extra explanations, output only the code block
-5. **Do not write code to a file**, output it directly in your reply
+3. **Must include `import torch` and `import torch_musa`**
+4. Do not include test code or benchmark code
+5. Do not add extra explanations, output only the code block
+6. **Do not write code to a file**, output it directly in your reply
 
 Example output format:
 ```python
 import torch
+import torch_musa
 import triton
 import triton.language as tl
 

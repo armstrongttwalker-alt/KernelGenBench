@@ -37,6 +37,10 @@ logger = logging.getLogger(__name__)
 # Default test module paths - can be overridden via config
 DEFAULT_TEST_MODULES = {
     "KernelGenBench": "src/kernelgenbench/accuracy/test_ops_with_benchmark.py",
+    "KernelGenBench-aten": "src/kernelgenbench/accuracy/test_ops_with_benchmark.py",
+    "KernelGenBench-vllm": "src/kernelgenbench/accuracy/vllm13/",
+    "KernelGenBench-cublas": "src/kernelgenbench/accuracy/cublas/",
+    "KernelGenBench-nocublas": "src/kernelgenbench/accuracy/test_ops_with_benchmark.py",
 }
 
 

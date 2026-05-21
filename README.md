@@ -1,8 +1,10 @@
 # KernelGenBench
 
-This repository contains **KernelGenBench-MS** (Multi-Source), the NVIDIA GPU implementation of KernelGenBench — a benchmark for evaluating LLM and agent-based Triton kernel generation.
+This repository contains **KernelGenBench** — a benchmark for evaluating LLM and agent-based Triton kernel generation.
 
-The multi-chip variant **KernelGenBench-MC** (Multi-Chip), covering vendor-specific hardware, is not included due to NDAs with chip vendors. Results on those platforms will be made available via a public leaderboard in the future.
+KernelGenBench includes two variants:
+- **KernelGenBench-MS** (Multi-Source): 210 operators across three sources (aten, vLLM, cuBLAS) on NVIDIA GPUs
+- **KernelGenBench-MC** (Multi-Chip): extends MS to vendor-specific hardware including Ascend NPU, MUSA, Hygon DCU, Iluvatar, and MetaX GPUs
 
 ## Dataset
 
@@ -10,6 +12,11 @@ The multi-chip variant **KernelGenBench-MC** (Multi-Chip), covering vendor-speci
 - `aten::` — 110 PyTorch ATen operators
 - `vllm13::` — 50 vLLM operators
 - `cublas::` — 50 cuBLAS operators
+
+Sub-datasets are available for non-NVIDIA chips that don't support cuBLAS:
+- `KernelGenBench-aten` — 110 ATen operators only
+- `KernelGenBench-vllm` — 50 vLLM operators only
+- `KernelGenBench-nocublas` — 160 operators (ATen + vLLM)
 
 ## Setup
 
@@ -34,6 +41,30 @@ export OPENAI_API_KEY=your_key
 ```bash
 export OPENAI_API_KEY=dummy
 export OPENAI_BASE_URL=http://your-endpoint/v1
+```
+
+## Multi-Chip Support
+
+KernelGenBench automatically detects the device type. Supported devices:
+
+| Device | Type | Env Var | Override (`GEMS_VENDOR`) |
+|--------|------|---------|--------------------------|
+| NVIDIA GPU | `cuda` | `CUDA_VISIBLE_DEVICES` | `nvidia` |
+| Ascend NPU | `npu` | `ASCEND_RT_VISIBLE_DEVICES` | `ascend` |
+| MUSA | `musa` | `MUSA_VISIBLE_DEVICES` | `mthreads` |
+| Hygon DCU | `cuda` (HIP) | `HIP_VISIBLE_DEVICES` | `hygon` |
+| Iluvatar GPU | `cuda` | `CUDA_VISIBLE_DEVICES` | `iluvatar` |
+| MetaX GPU | `cuda` | `MACA_VISIBLE_DEVICES` | `muxi` |
+
+For non-NVIDIA chips, use the `KernelGenBench-nocublas` or `KernelGenBench-aten` sub-dataset
+(cuBLAS operators require NVIDIA GPUs):
+
+```bash
+# ATen-only on non-NVIDIA chips
+python scripts/generate_kernel_and_verify.py \
+    --dataset KernelGenBench-aten \
+    --server-type openai \
+    --model-name your-model-name
 ```
 
 ## LLM Track

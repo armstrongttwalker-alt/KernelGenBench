@@ -55,9 +55,9 @@ class NormalCCMethod(BaseMethod):
         Returns:
             Prompt with output section replaced
         """
-        # Pattern to match "## 输出要求" section header and everything after it
+        # Pattern to match "## Output Requirements" section header and everything after it
         # This captures from the header to the end of the file
-        pattern = r"(##\s*输出要求.*?)$"
+        pattern = r"(##\s*Output Requirements.*?)$"
         match = re.search(pattern, base_prompt, re.DOTALL | re.IGNORECASE)
 
         if match:
@@ -97,6 +97,9 @@ class NormalCCMethod(BaseMethod):
         instructions = instructions.replace("{{VERIFY_SCRIPT}}", str(VERIFY_SCRIPT))
         instructions = instructions.replace("{{OPERATOR}}", operator)
         instructions = instructions.replace("{{DATASET}}", dataset)
+
+        from device_manager import get_device_env_var
+        instructions = instructions.replace("{{DEVICE_ENV}}", get_device_env_var())
 
         # Replace output section with method-specific instructions
         enhanced_prompt = self._replace_output_section(base_prompt, instructions)
@@ -145,7 +148,9 @@ class NormalCCMethod(BaseMethod):
         env = os.environ.copy()
         env.pop("CLAUDECODE", None)  # Allow launching CC from within CC
         env["IS_SANDBOX"] = "1"
-        env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+
+        from device_manager import get_device_env_var
+        env[get_device_env_var()] = str(gpu_id)
 
         # Build command
         agent_config = config.get("agent", {})

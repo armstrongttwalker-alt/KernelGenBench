@@ -1,4 +1,4 @@
-# Triton Kernel Implementation Task
+# Triton Kernel Implementation Task (Hygon DCU)
 
 You need to implement a Triton kernel for a PyTorch operator.
 
@@ -10,8 +10,17 @@ You need to implement a Triton kernel for a PyTorch operator.
 
 ## Environment
 
-- All GPU commands must be prefixed with `{{DEVICE_ENV}}={{GPU_ID}}`
+- **Hardware**: Hygon DCU (Deep Computing Unit)
+- **Software**: ROCm/HIP-based PyTorch
+- All device commands must be prefixed with `HIP_VISIBLE_DEVICES={{GPU_ID}}`
 - Python path: `{{PYTHON_PATH}}`
+
+## Hygon DCU Requirements (MUST follow)
+
+- Device type is `cuda` (standard PyTorch CUDA API via ROCm/HIP). No special import needed beyond `import torch`
+- Hygon DCU is based on the ROCm/HIP ecosystem, providing a CUDA-compatible interface. Avoid relying on NVIDIA-specific hardware features (e.g. Tensor Core instructions, CUDA-specific intrinsics)
+- Some advanced Triton features may not be supported or may behave differently on the HIP backend. Prefer basic Triton operations
+- Use `allow_tf32=False` for `tl.dot` to ensure precision (TF32 is an NVIDIA-specific feature)
 
 ## Operator Specification
 

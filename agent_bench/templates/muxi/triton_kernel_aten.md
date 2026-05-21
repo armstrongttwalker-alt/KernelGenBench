@@ -1,4 +1,4 @@
-# Triton Kernel Implementation Task
+# Triton Kernel Implementation Task (MetaX MUXI)
 
 You need to implement a Triton kernel for a PyTorch operator.
 
@@ -10,8 +10,18 @@ You need to implement a Triton kernel for a PyTorch operator.
 
 ## Environment
 
-- All GPU commands must be prefixed with `{{DEVICE_ENV}}={{GPU_ID}}`
+- **Hardware**: MetaX (MUXI) GPU
+- **Software**: MACA SDK-based PyTorch
+- All device commands must be prefixed with `MACA_VISIBLE_DEVICES={{GPU_ID}}`
 - Python path: `{{PYTHON_PATH}}`
+
+## MetaX MUXI GPU Requirements (MUST follow)
+
+- Device type is `cuda` (standard PyTorch CUDA API). No special import needed beyond `import torch`
+- MetaX GPUs use the MACA SDK, providing a CUDA-compatible interface but with different hardware architecture. Avoid relying on NVIDIA-specific hardware features (e.g. Tensor Core specific instructions)
+- Some advanced Triton features may not be supported or may behave differently. Prefer basic Triton operations
+- Use `allow_tf32=False` for `tl.dot` to ensure precision
+- Some operators have limited bfloat16 support. When encountering precision issues, prefer float32 accumulation
 
 ## Operator Specification
 
