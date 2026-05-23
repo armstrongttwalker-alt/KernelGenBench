@@ -54,40 +54,42 @@ DEVICE_CONSTRAINTS = {
     "npu": """
 ## Device-Specific Requirements
 The operator runs on Ascend NPU devices.
-1. In the generated operator implementation, `import torch` must be immediately followed by `import torch_npu`.
-2. Device type is `npu`. All device APIs use `npu`: `torch.device("npu:0")`, `torch.npu.synchronize()`, etc.
+1. `import torch` must be immediately followed by `import torch_npu`, otherwise the npu device is unavailable.
+2. Device type is `npu`. All device APIs use `npu`: `torch.device("npu:0")`, `torch.npu.synchronize()`, `tensor.to('npu')`.
 3. Use `ASCEND_RT_VISIBLE_DEVICES` instead of `CUDA_VISIBLE_DEVICES`.
-4. `tl.dot` does NOT support the `allow_tf32` parameter — remove it.
-5. Compile error "error: ub overflow" means Unified Buffer usage too large — split into smaller tiles.
+4. Triton notes: `tl.dot` does NOT support `allow_tf32` — remove it. Prefer basic Triton operations. Compile error "ub overflow" means split into smaller tiles.
 """,
     "musa": """
 ## Device-Specific Requirements
-The operator runs on MUSA devices.
-1. In the generated operator implementation, `import torch` must be immediately followed by `import torch_musa`.
-2. Device type is `musa`. All device APIs use `musa`: `torch.device("musa:0")`, `torch.musa.synchronize()`, etc.
+The operator runs on MUSA devices (Moore Threads).
+1. `import torch` must be immediately followed by `import torch_musa`, otherwise the musa device is unavailable.
+2. Device type is `musa`. All device APIs use `musa`: `torch.device("musa:0")`, `torch.musa.synchronize()`, `tensor.to('musa')`.
 3. Use `MUSA_VISIBLE_DEVICES` instead of `CUDA_VISIBLE_DEVICES`.
+4. Triton notes: prefer basic Triton operations. Avoid CUDA-specific hardware features.
 """,
     "iluvatar": """
 ## Device-Specific Requirements
 The operator runs on Iluvatar GPUs.
-1. Device type is `cuda` (standard PyTorch CUDA API). No special import needed.
-2. Iluvatar GPUs provide a CUDA-compatible interface but differ from NVIDIA hardware. Avoid NVIDIA-specific features.
-3. Use `allow_tf32=False` for `tl.dot` to ensure precision.
+1. Device type is `cuda` (standard PyTorch CUDA API). No special import needed beyond `import torch`.
+2. Iluvatar GPUs provide a CUDA-compatible interface but hardware differs from NVIDIA. Avoid NVIDIA-specific features (e.g. Tensor Core instructions).
+3. Use `CUDA_VISIBLE_DEVICES` for device visibility (same as NVIDIA).
+4. Triton notes: use `allow_tf32=False` for `tl.dot`. Prefer basic Triton operations.
 """,
     "hygon": """
 ## Device-Specific Requirements
 The operator runs on Hygon DCU (Deep Computing Unit).
-1. Device type is `cuda` (PyTorch CUDA API via ROCm/HIP). No special import needed.
-2. Hygon DCU uses ROCm/HIP ecosystem. Avoid NVIDIA-specific hardware features (Tensor Cores, CUDA intrinsics).
-3. Use `allow_tf32=False` for `tl.dot` (TF32 is NVIDIA-specific).
+1. Device type is `cuda` (PyTorch CUDA API via ROCm/HIP). No special import needed beyond `import torch`.
+2. Hygon DCU uses the ROCm/HIP ecosystem with CUDA-compatible interface. Avoid NVIDIA-specific features (Tensor Cores, CUDA intrinsics).
+3. Use `HIP_VISIBLE_DEVICES` instead of `CUDA_VISIBLE_DEVICES`.
+4. Triton notes: use `allow_tf32=False` for `tl.dot` (TF32 is NVIDIA-specific). Some advanced Triton features may behave differently on HIP backend.
 """,
     "muxi": """
 ## Device-Specific Requirements
 The operator runs on MetaX (MUXI) GPUs.
-1. Device type is `cuda` (standard PyTorch CUDA API). No special import needed.
-2. MetaX GPUs use MACA SDK. Avoid NVIDIA-specific hardware features.
-3. Use `allow_tf32=False` for `tl.dot` to ensure precision.
-4. Limited bfloat16 support on some operators — prefer float32 accumulation when needed.
+1. Device type is `cuda` (standard PyTorch CUDA API). No special import needed beyond `import torch`.
+2. MetaX GPUs use MACA SDK with CUDA-compatible interface. Avoid NVIDIA-specific hardware features.
+3. Use `MACA_VISIBLE_DEVICES` instead of `CUDA_VISIBLE_DEVICES`.
+4. Triton notes: use `allow_tf32=False` for `tl.dot`. Limited bfloat16 support — prefer float32 accumulation when encountering precision issues.
 """,
 }
 
