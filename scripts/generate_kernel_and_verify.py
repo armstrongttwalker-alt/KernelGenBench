@@ -728,7 +728,7 @@ def main():
     parser.add_argument("--timeout", type=int, default=300, help="Timeout for each test")
     
     # Generation config
-    parser.add_argument("--server-type", type=str, default="panda")
+    parser.add_argument("--server-type", type=str, default="openai")
     parser.add_argument("--model-name", type=str, default="gpt-4o-mini")
     parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--max-tokens", type=int, default=16384)
