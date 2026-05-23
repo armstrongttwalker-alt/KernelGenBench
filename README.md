@@ -1,22 +1,14 @@
 # KernelGenBench
 
-This repository contains **KernelGenBench** — a benchmark for evaluating LLM and agent-based Triton kernel generation.
+A benchmark framework for evaluating LLM and agent-based Triton kernel generation across multiple hardware platforms.
 
-KernelGenBench includes two variants:
-- **KernelGenBench-MS** (Multi-Source): 210 operators across three sources (aten, vLLM, cuBLAS) on NVIDIA GPUs
-- **KernelGenBench-MC** (Multi-Chip): extends MS to vendor-specific hardware including Ascend NPU, MUSA, Hygon DCU, Iluvatar, and MetaX GPUs
+## Features
 
-## Dataset
-
-210 operators across three sources:
-- `aten::` — 110 PyTorch ATen operators
-- `vllm13::` — 50 vLLM operators
-- `cublas::` — 50 cuBLAS operators
-
-Sub-datasets are available for non-NVIDIA chips that don't support cuBLAS:
-- `KernelGenBench-aten` — 110 ATen operators only
-- `KernelGenBench-vllm` — 50 vLLM operators only
-- `KernelGenBench-nocublas` — 160 operators (ATen + vLLM)
+- **210 operators** across three sources: ATen (110), vLLM (50), cuBLAS (50)
+- **Multi-chip support**: NVIDIA, Ascend NPU, MUSA, Hygon DCU, Iluvatar, MetaX
+- **Two evaluation tracks**: LLM Track (Pass@K) and Agent Track (iterative generation)
+- **Multiple agent methods**: Claude Code, OpenCode, AutoKernel, AKO4ALL, cuda-optimized-skill
+- **Automatic verification**: accuracy testing with tolerance-based comparison
 
 ## Setup
 
@@ -25,62 +17,50 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-Configure your API credentials based on the LLM provider:
-
-**Anthropic Claude:**
-```bash
-export ANTHROPIC_API_KEY=your_key
-```
-
-**OpenAI:**
-```bash
-export OPENAI_API_KEY=your_key
-```
-
-**OpenAI-compatible endpoints (e.g., vLLM, local models):**
-```bash
-export OPENAI_API_KEY=dummy
-export OPENAI_BASE_URL=http://your-endpoint/v1
-```
-
-## Multi-Chip Support
-
-KernelGenBench automatically detects the device type. Supported devices:
-
-| Device | Type | Env Var | Override (`GEMS_VENDOR`) |
-|--------|------|---------|--------------------------|
-| NVIDIA GPU | `cuda` | `CUDA_VISIBLE_DEVICES` | `nvidia` |
-| Ascend NPU | `npu` | `ASCEND_RT_VISIBLE_DEVICES` | `ascend` |
-| MUSA | `musa` | `MUSA_VISIBLE_DEVICES` | `mthreads` |
-| Hygon DCU | `cuda` (HIP) | `HIP_VISIBLE_DEVICES` | `hygon` |
-| Iluvatar GPU | `cuda` | `CUDA_VISIBLE_DEVICES` | `iluvatar` |
-| MetaX GPU | `cuda` | `MACA_VISIBLE_DEVICES` | `muxi` |
-
-For non-NVIDIA chips, use the `KernelGenBench-nocublas` or `KernelGenBench-aten` sub-dataset
-(cuBLAS operators require NVIDIA GPUs):
-
-```bash
-# ATen-only on non-NVIDIA chips
-python scripts/generate_kernel_and_verify.py \
-    --dataset KernelGenBench-aten \
-    --server-type openai \
-    --model-name your-model-name
-```
-
-## LLM Track
-
-Evaluate an LLM on generating Triton kernels (Pass@K):
+Configure API credentials:
 
 ```bash
 # Anthropic Claude
-python scripts/generate_kernel_and_verify.py \
-    --op-name aten::add \
-    --single-test \
-    --server-type anthropic \
-    --model-name your-model-name \
-    --max-rounds 3
+export ANTHROPIC_API_KEY=your_key
 
-# OpenAI
+# OpenAI / OpenAI-compatible
+export OPENAI_API_KEY=your_key
+export OPENAI_BASE_URL=http://your-endpoint/v1  # optional, for custom endpoints
+```
+
+## Supported Devices
+
+Device type is auto-detected. Override with `GEMS_VENDOR` environment variable if needed.
+
+| Device | Type | Visibility Env Var | `GEMS_VENDOR` |
+|--------|------|-------------------|---------------|
+| NVIDIA GPU | `cuda` | `CUDA_VISIBLE_DEVICES` | `nvidia` |
+| Ascend NPU | `npu` | `ASCEND_RT_VISIBLE_DEVICES` | `ascend` |
+| MUSA (Moore Threads) | `musa` | `MUSA_VISIBLE_DEVICES` | `mthreads` |
+| Hygon DCU | `cuda` (HIP) | `HIP_VISIBLE_DEVICES` | `hygon` |
+| Iluvatar GPU | `cuda` | `CUDA_VISIBLE_DEVICES` | `iluvatar` |
+| MetaX (MUXI) GPU | `cuda` | `MACA_VISIBLE_DEVICES` | `muxi` |
+
+All chips use the same commands — the framework handles device differences automatically.
+
+## Datasets
+
+| Dataset | Operators | Description |
+|---------|-----------|-------------|
+| `KernelGenBench` | 210 | Full set (ATen + vLLM + cuBLAS) |
+| `KernelGenBench-aten` | 110 | ATen operators only |
+| `KernelGenBench-vllm` | 50 | vLLM operators only |
+| `KernelGenBench-cublas` | 50 | cuBLAS operators only (NVIDIA-only) |
+| `KernelGenBench-nocublas` | 160 | ATen + vLLM (for non-NVIDIA chips) |
+
+On non-NVIDIA chips, the default dataset is automatically set to `KernelGenBench-aten` (cuBLAS operators require NVIDIA GPUs).
+
+## LLM Track
+
+Evaluate an LLM on generating Triton kernels with Pass@K metric:
+
+```bash
+# Single operator test
 python scripts/generate_kernel_and_verify.py \
     --op-name aten::add \
     --single-test \
@@ -88,56 +68,102 @@ python scripts/generate_kernel_and_verify.py \
     --model-name your-model-name \
     --max-rounds 3
 
-# OpenAI-compatible endpoint
+# Full benchmark (all 210 operators)
 python scripts/generate_kernel_and_verify.py \
-    --op-name aten::add \
-    --single-test \
     --server-type openai \
     --model-name your-model-name \
     --max-rounds 3
 
-# Full benchmark
+# Non-NVIDIA chips (ATen only)
 python scripts/generate_kernel_and_verify.py \
-    --server-type anthropic \
+    --dataset KernelGenBench-aten \
+    --server-type openai \
     --model-name your-model-name \
     --max-rounds 3
 ```
 
 ## Agent Track
 
-Evaluate a coding agent on iteratively generating and verifying kernels:
+Evaluate coding agents that iteratively generate, verify, and fix kernels.
+
+### Setup
 
 ```bash
-# 1. Copy and configure the agent environment
 cp agent_bench/config.example.yaml agent_bench/config.yaml
-
-# 2. Edit agent_bench/config.yaml:
-#    - Set agent.type: claude (requires Claude CLI) or custom
-#    - Set agent.bin: path to your agent executable (e.g., claude, cursor)
-#    - Set paths.python: path to your Python interpreter with dependencies installed
-#      Example: /path/to/conda/envs/myenv/bin/python
-
-# 3. Run single operator test
-cd agent_bench
-bash test_ops.sh add --device-count 1
-
-# 4. Run full benchmark
-bash test_ops.sh --device-count 8
+# Edit config.yaml:
+#   - paths.python: path to Python with torch installed
+#   - agent.bin: path to agent executable
 ```
 
-Results are saved to `agent_bench/runs/`.
+### Methods
 
-An example kernel generated by the agent is provided in `agent_bench/kernel.py`.
+| Method | Description | Command |
+|--------|-------------|---------|
+| `naive_cc` | Single Claude Code call | `bash test_ops.sh add -m naive_cc` |
+| `normal_cc` | Claude Code + self-verification loop | `bash test_ops.sh add -m normal_cc` |
+| `naive_opencode` | Single OpenCode call | `bash test_ops.sh add -m naive_opencode` |
+| `normal_opencode` | OpenCode + self-verification loop | `bash test_ops.sh add -m normal_opencode` |
+| AutoKernel | Automated kernel optimization pipeline | `bash test_autokernel.sh add` |
+| AKO4ALL | Kernel optimization for all operators | `bash test_ako4all.sh add` |
+| cuda-optimized-skill | CUDA optimization with strategy memory | `bash test_cuda_optimized_skill.sh add` |
+
+### Running
+
+```bash
+cd agent_bench
+
+# Single operator
+bash test_ops.sh add --device-count 1
+
+# Multiple operators
+bash test_ops.sh add,softmax,mul --device-count 4
+
+# Full benchmark
+bash test_ops.sh --device-count 8
+
+# Specialized methods
+bash test_autokernel.sh add --device-count 1
+bash test_ako4all.sh add --device-count 1
+bash test_cuda_optimized_skill.sh add --device-count 1
+```
+
+### Results
+
+Results are saved to `agent_bench/runs/<run_name>/`:
+- `progress.json` — real-time progress tracking
+- `kernels/` — generated kernel files
+- `results.json` — verification results
 
 ## Analyzing Results
 
-Both LLM track and Agent track results can be analyzed with `scripts/analyze/analyze.py`:
-
 ```bash
-# LLM track results (in output/pass_at_k/<run_dir>/)
+# LLM track
 python scripts/analyze/analyze.py output/pass_at_k/<run_dir>/
 
-# Agent track results (in agent_bench/runs/<run_dir>/)
+# Agent track
 python scripts/analyze/analyze.py agent_bench/runs/<run_dir>/
 ```
 
+## Project Structure
+
+```
+agent_bench/           # Agent Track framework
+  methods/             # Agent methods (naive_cc, normal_cc, opencode, ...)
+  templates/           # Prompt templates (generic + per-chip)
+  tools/               # Verification tools
+  config.example.yaml  # Configuration template
+sota_agents/           # Specialized kernel generation agents
+  AutoKernel/          # Automated kernel optimization
+  AKO4ALL/             # Kernel optimization for all operators
+  cuda-optimized-skill/  # CUDA optimization with strategy memory
+src/
+  kernelgenbench/      # Core package (accuracy tests, dataset, framework)
+  generator/           # LLM prompt builders and samplers
+  sandbox/             # Kernel verifier and anti-hack
+  runtime/             # Device detection and constraints
+scripts/               # LLM Track entry points and analysis tools
+```
+
+## License
+
+This project is licensed under the MIT License.

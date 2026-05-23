@@ -1,0 +1,169 @@
+# KernelGenBench
+
+跨多种硬件平台评测 LLM 和 Agent 生成 Triton kernel 能力的基准框架。
+
+## 特性
+
+- **210 个算子**，涵盖三个来源：ATen (110)、vLLM (50)、cuBLAS (50)
+- **多芯片支持**：NVIDIA、昇腾 NPU、MUSA、海光 DCU、天数智芯、沐曦
+- **两条评测路径**：LLM Track（Pass@K）和 Agent Track（迭代生成）
+- **多种 Agent 方法**：Claude Code、OpenCode、AutoKernel、AKO4ALL、cuda-optimized-skill
+- **自动化验证**：基于容差的精度测试
+
+## 安装
+
+```bash
+pip install -r requirements.txt
+pip install -e .
+```
+
+配置 API 密钥：
+
+```bash
+# Anthropic Claude
+export ANTHROPIC_API_KEY=your_key
+
+# OpenAI / OpenAI 兼容接口
+export OPENAI_API_KEY=your_key
+export OPENAI_BASE_URL=http://your-endpoint/v1  # 可选，自定义端点
+```
+
+## 支持的设备
+
+设备类型自动检测。可通过 `GEMS_VENDOR` 环境变量手动指定。
+
+| 设备 | 类型 | 可见性环境变量 | `GEMS_VENDOR` |
+|------|------|--------------|---------------|
+| NVIDIA GPU | `cuda` | `CUDA_VISIBLE_DEVICES` | `nvidia` |
+| 昇腾 NPU | `npu` | `ASCEND_RT_VISIBLE_DEVICES` | `ascend` |
+| MUSA（摩尔线程） | `musa` | `MUSA_VISIBLE_DEVICES` | `mthreads` |
+| 海光 DCU | `cuda` (HIP) | `HIP_VISIBLE_DEVICES` | `hygon` |
+| 天数智芯 GPU | `cuda` | `CUDA_VISIBLE_DEVICES` | `iluvatar` |
+| 沐曦 GPU | `cuda` | `MACA_VISIBLE_DEVICES` | `muxi` |
+
+所有芯片使用相同的命令，框架自动处理设备差异。
+
+## 数据集
+
+| 数据集 | 算子数 | 说明 |
+|--------|--------|------|
+| `KernelGenBench` | 210 | 完整集（ATen + vLLM + cuBLAS） |
+| `KernelGenBench-aten` | 110 | 仅 ATen 算子 |
+| `KernelGenBench-vllm` | 50 | 仅 vLLM 算子 |
+| `KernelGenBench-cublas` | 50 | 仅 cuBLAS 算子（需要 NVIDIA GPU） |
+| `KernelGenBench-nocublas` | 160 | ATen + vLLM（适用于非 NVIDIA 芯片） |
+
+在非 NVIDIA 芯片上，默认数据集自动设置为 `KernelGenBench-aten`（cuBLAS 算子需要 NVIDIA GPU）。
+
+## LLM Track
+
+使用 Pass@K 指标评测 LLM 生成 Triton kernel 的能力：
+
+```bash
+# 单算子测试
+python scripts/generate_kernel_and_verify.py \
+    --op-name aten::add \
+    --single-test \
+    --server-type openai \
+    --model-name your-model-name \
+    --max-rounds 3
+
+# 完整测试（全部 210 个算子）
+python scripts/generate_kernel_and_verify.py \
+    --server-type openai \
+    --model-name your-model-name \
+    --max-rounds 3
+
+# 非 NVIDIA 芯片（仅 ATen）
+python scripts/generate_kernel_and_verify.py \
+    --dataset KernelGenBench-aten \
+    --server-type openai \
+    --model-name your-model-name \
+    --max-rounds 3
+```
+
+## Agent Track
+
+评测编程 Agent 迭代生成、验证、修复 kernel 的能力。
+
+### 配置
+
+```bash
+cp agent_bench/config.example.yaml agent_bench/config.yaml
+# 编辑 config.yaml：
+#   - paths.python: 已安装 torch 的 Python 路径
+#   - agent.bin: Agent 可执行文件路径
+```
+
+### 方法
+
+| 方法 | 说明 | 命令 |
+|------|------|------|
+| `naive_cc` | 单次 Claude Code 调用 | `bash test_ops.sh add -m naive_cc` |
+| `normal_cc` | Claude Code + 自验证循环 | `bash test_ops.sh add -m normal_cc` |
+| `naive_opencode` | 单次 OpenCode 调用 | `bash test_ops.sh add -m naive_opencode` |
+| `normal_opencode` | OpenCode + 自验证循环 | `bash test_ops.sh add -m normal_opencode` |
+| AutoKernel | 自动化 kernel 优化流水线 | `bash test_autokernel.sh add` |
+| AKO4ALL | 全算子 kernel 优化 | `bash test_ako4all.sh add` |
+| cuda-optimized-skill | 基于策略记忆的 CUDA 优化 | `bash test_cuda_optimized_skill.sh add` |
+
+### 运行
+
+```bash
+cd agent_bench
+
+# 单算子
+bash test_ops.sh add --device-count 1
+
+# 多算子
+bash test_ops.sh add,softmax,mul --device-count 4
+
+# 完整测试
+bash test_ops.sh --device-count 8
+
+# 专用方法
+bash test_autokernel.sh add --device-count 1
+bash test_ako4all.sh add --device-count 1
+bash test_cuda_optimized_skill.sh add --device-count 1
+```
+
+### 结果
+
+结果保存在 `agent_bench/runs/<run_name>/`：
+- `progress.json` — 实时进度
+- `kernels/` — 生成的 kernel 文件
+- `results.json` — 验证结果
+
+## 结果分析
+
+```bash
+# LLM track
+python scripts/analyze/analyze.py output/pass_at_k/<run_dir>/
+
+# Agent track
+python scripts/analyze/analyze.py agent_bench/runs/<run_dir>/
+```
+
+## 项目结构
+
+```
+agent_bench/           # Agent Track 框架
+  methods/             # Agent 方法 (naive_cc, normal_cc, opencode, ...)
+  templates/           # Prompt 模板（通用 + 各芯片专用）
+  tools/               # 验证工具
+  config.example.yaml  # 配置模板
+sota_agents/           # 专用 kernel 生成 Agent
+  AutoKernel/          # 自动化 kernel 优化
+  AKO4ALL/             # 全算子 kernel 优化
+  cuda-optimized-skill/  # 基于策略记忆的 CUDA 优化
+src/
+  kernelgenbench/      # 核心包（精度测试、数据集、框架）
+  generator/           # LLM prompt 构建器和采样器
+  sandbox/             # Kernel 验证器和反作弊
+  runtime/             # 设备检测和约束
+scripts/               # LLM Track 入口和分析工具
+```
+
+## 许可证
+
+本项目采用 MIT 许可证。
