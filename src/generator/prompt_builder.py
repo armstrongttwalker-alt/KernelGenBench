@@ -6,6 +6,9 @@ Responsible for constructing prompts used by the LLM to generate Triton kernels.
 
 from abc import ABC, abstractmethod
 from kernelgenbench.framework.generate_args import BaseGenerateArgs
+from runtime import get_device_constraints
+
+
 class PromptBuilder(ABC):
     """Base class for prompt builders"""
 
@@ -13,7 +16,8 @@ class PromptBuilder(ABC):
         self.mode = mode
 
     def _get_device_constraints(self) -> str:
-        return ""
+        """Get device-specific prompt constraints for the current hardware."""
+        return get_device_constraints()
 
     @abstractmethod
     def build_new(self, gen_args: BaseGenerateArgs) -> str:

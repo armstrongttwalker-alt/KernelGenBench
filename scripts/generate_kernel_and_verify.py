@@ -714,12 +714,22 @@ class PassAtKTester:
 
 
 def main():
+    # Auto-detect default dataset based on device type
+    # NVIDIA: KernelGenBench (210 ops); Other chips: KernelGenBench-aten (110 ops)
+    try:
+        sys.path.insert(0, str(PROJECT_ROOT / "src"))
+        from runtime import get_device_type
+        _device_type = get_device_type()
+    except Exception:
+        _device_type = "nvidia"
+    _DEFAULT_DATASET = "KernelGenBench" if _device_type == "nvidia" else "KernelGenBench-aten"
+
     parser = argparse.ArgumentParser(description="Test Pass@K for operator generation")
-    
+
     parser.add_argument("--name", type=str, default="aten", help="Namespace to test (default: aten)")
     parser.add_argument("--acc-test-func-path", type=str, default="", help="Path to the accuracy test function directory")
     parser.add_argument("--benchmark-func-path", type=str, default="", help="Path to the performance test function directory")
-    parser.add_argument("--dataset", type=str, default="KernelGenBench", help="Dataset version to use (default: KernelGenBench)", choices=["KernelGenBench", "KernelGenBench-aten", "KernelGenBench-vllm", "KernelGenBench-cublas", "KernelGenBench-nocublas"])
+    parser.add_argument("--dataset", type=str, default=_DEFAULT_DATASET, help=f"Dataset version to use (default: {_DEFAULT_DATASET})", choices=["KernelGenBench", "KernelGenBench-aten", "KernelGenBench-vllm", "KernelGenBench-cublas", "KernelGenBench-nocublas"])
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "output" / "pass_at_k", help="Output directory")
     parser.add_argument("--resume-from", type=Path, help="Resume from existing checkpoint directory")
     parser.add_argument("--test-type", type=str, default="triton", choices=["accuracy", "performance", "triton"])
