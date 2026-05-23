@@ -57,8 +57,8 @@ class GenerationConfig:
     num_workers: int = 1
     api_query_interval: float = 0.0
     # Default values required for dataclass initialization - override via CLI args
-    server_type: str = "qwen"
-    model_name: str = "qwen3-coder-plus"
+    server_type: str = "openai"
+    model_name: str = "gpt-4o"
     max_tokens: int = 16384
     temperature: float = 0.0
     run_dir: str = os.path.join(REPO_TOP_DIR, "runs")
