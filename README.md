@@ -81,6 +81,23 @@ python scripts/generate_kernel_and_verify.py \
     --max-rounds 3
 ```
 
+### Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `--op-name` | Single operator to test (e.g., `aten::add`, `vllm13::rms_norm`) | All operators |
+| `--single-test` | Randomly pick 1 operator for quick testing | Off |
+| `--dataset` | Dataset to use (`KernelGenBench`, `KernelGenBench-aten`, `-vllm`, `-cublas`) | Auto-detect |
+| `--server-type` | LLM provider (`openai`, `anthropic`) | `openai` |
+| `--model-name` | Model name | `gpt-4o` |
+| `--max-rounds` | Number of Pass@K rounds | 10 |
+| `--device-count` | Number of GPUs for verification | 8 |
+| `--timeout` | Timeout per operator (seconds) | 300 |
+| `--temperature` | Sampling temperature | 0.8 |
+| `--reflection` | Use previous round's errors as feedback | Off |
+| `--resume-from` | Resume from existing checkpoint directory | - |
+| `--debug` | Debug mode (only 8 operators) | Off |
+
 ## Agent Track
 
 Evaluate coding agents that iteratively generate, verify, and fix kernels.
@@ -125,6 +142,19 @@ bash test_autokernel.sh add --device-count 1
 bash test_ako4all.sh add --device-count 1
 bash test_cuda_optimized_skill.sh add --device-count 1
 ```
+
+### Parameters (`test_ops.sh`)
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `[operators]` | Comma-separated operator names (positional) | All operators |
+| `-d, --dataset` | Dataset to use | `KernelGenBench` |
+| `-m, --method` | Agent method (`naive_cc`, `normal_cc`, `naive_opencode`, `normal_opencode`) | `normal_cc` |
+| `--device-count` | Number of GPUs for verification | 8 |
+| `--timeout` | Timeout per operator (seconds) | 600 |
+| `--skip-gen` | Skip prompt generation step | Off |
+| `--skip-verify` | Skip verification (only generate kernels) | Off |
+| `-v, --verbose` | Enable verbose output | Off |
 
 ### Results
 

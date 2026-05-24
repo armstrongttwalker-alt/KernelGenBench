@@ -81,6 +81,23 @@ python scripts/generate_kernel_and_verify.py \
     --max-rounds 3
 ```
 
+### 参数说明
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--op-name` | 指定单个算子（如 `aten::add`、`vllm13::rms_norm`） | 全部算子 |
+| `--single-test` | 随机选 1 个算子快速测试 | 关闭 |
+| `--dataset` | 数据集（`KernelGenBench`、`KernelGenBench-aten`、`-vllm`、`-cublas`） | 自动检测 |
+| `--server-type` | LLM 提供商（`openai`、`anthropic`） | `openai` |
+| `--model-name` | 模型名称 | `gpt-4o` |
+| `--max-rounds` | Pass@K 轮数 | 10 |
+| `--device-count` | 验证使用的 GPU 数量 | 8 |
+| `--timeout` | 单算子超时时间（秒） | 300 |
+| `--temperature` | 采样温度 | 0.8 |
+| `--reflection` | 使用上一轮错误作为反馈 | 关闭 |
+| `--resume-from` | 从已有检查点恢复 | - |
+| `--debug` | 调试模式（仅 8 个算子） | 关闭 |
+
 ## Agent Track
 
 评测编程 Agent 迭代生成、验证、修复 kernel 的能力。
@@ -125,6 +142,19 @@ bash test_autokernel.sh add --device-count 1
 bash test_ako4all.sh add --device-count 1
 bash test_cuda_optimized_skill.sh add --device-count 1
 ```
+
+### 参数说明 (`test_ops.sh`)
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `[operators]` | 逗号分隔的算子名（位置参数） | 全部算子 |
+| `-d, --dataset` | 数据集 | `KernelGenBench` |
+| `-m, --method` | Agent 方法（`naive_cc`、`normal_cc`、`naive_opencode`、`normal_opencode`） | `normal_cc` |
+| `--device-count` | 验证使用的 GPU 数量 | 8 |
+| `--timeout` | 单算子超时（秒） | 600 |
+| `--skip-gen` | 跳过 prompt 生成步骤 | 关闭 |
+| `--skip-verify` | 跳过验证（仅生成 kernel） | 关闭 |
+| `-v, --verbose` | 详细输出 | 关闭 |
 
 ### 结果
 
