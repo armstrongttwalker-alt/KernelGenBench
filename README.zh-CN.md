@@ -140,12 +140,34 @@ python scripts/generate_kernel_and_verify.py \
 
 ### 配置
 
+**方式 A：单环境（推荐）**
+
+在同一个环境里安装 Claude Code CLI 和 torch/vllm：
+
+```bash
+# 在 KernelGenBench 环境中
+npm install -g @anthropic-ai/claude-code
+cp agent_bench/config.example.yaml agent_bench/config.yaml
+# 编辑 config.yaml：设置 paths.python 为当前 Python 路径
+```
+
+**方式 B：双环境（已有 Claude Code 环境）**
+
+如果你已有独立的 Claude Code 环境，将 `paths.python` 指向有 torch/vllm 的 Python，运行时 export Claude 环境的 PATH：
+
 ```bash
 cp agent_bench/config.example.yaml agent_bench/config.yaml
-# 编辑 config.yaml：
-#   - paths.python: 已安装 torch 的 Python 路径
-#   - agent.bin: Agent 可执行文件路径
+# 编辑 config.yaml:
+#   paths.python: /path/to/envs/kernelgenbench/bin/python
+
+# 运行时 export Claude Code 环境的 PATH：
+export PATH="/path/to/envs/claude_tool/bin:$PATH"
+cd agent_bench && bash test_ops.sh add --device-count 1
 ```
+
+`config.yaml` 关键配置项：
+- `paths.python` — 已安装 torch + vllm + kernelgenbench 的 Python 解释器（用于验证）
+- `agent.bin` — Agent CLI 可执行文件路径（默认：`claude`，从 PATH 搜索）
 
 ### 方法
 
