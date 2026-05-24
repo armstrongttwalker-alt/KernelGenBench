@@ -51,7 +51,6 @@ export OPENAI_BASE_URL=http://your-endpoint/v1  # 可选，自定义端点
 | `KernelGenBench-aten` | 110 | 仅 ATen 算子 |
 | `KernelGenBench-vllm` | 50 | 仅 vLLM 算子 |
 | `KernelGenBench-cublas` | 50 | 仅 cuBLAS 算子（需要 NVIDIA GPU） |
-| `KernelGenBench-nocublas` | 160 | ATen + vLLM（适用于非 NVIDIA 芯片） |
 
 在非 NVIDIA 芯片上，默认数据集自动设置为 `KernelGenBench-aten`（cuBLAS 算子需要 NVIDIA GPU）。
 

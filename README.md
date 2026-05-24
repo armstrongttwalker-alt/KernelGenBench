@@ -51,7 +51,6 @@ All chips use the same commands — the framework handles device differences aut
 | `KernelGenBench-aten` | 110 | ATen operators only |
 | `KernelGenBench-vllm` | 50 | vLLM operators only |
 | `KernelGenBench-cublas` | 50 | cuBLAS operators only (NVIDIA-only) |
-| `KernelGenBench-nocublas` | 160 | ATen + vLLM (for non-NVIDIA chips) |
 
 On non-NVIDIA chips, the default dataset is automatically set to `KernelGenBench-aten` (cuBLAS operators require NVIDIA GPUs).
 
