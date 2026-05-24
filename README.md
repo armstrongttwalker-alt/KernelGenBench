@@ -216,6 +216,7 @@ KernelGenBench is part of the [FlagOS](https://github.com/flagos-ai) open-source
 | [FlagGems](https://github.com/flagos-ai/FlagGems) | High-performance Triton operator library for multiple hardware backends |
 | [FlagTree](https://github.com/flagos-ai/FlagTree) | Triton language extensions and multi-chip compilation infrastructure |
 | [KernelGen](https://github.com/flagos-ai/KernelGen) | LLM/Agent-based Triton kernel generation method |
+| [awesome-LLM-driven-kernel-generation](https://github.com/flagos-ai/awesome-LLM-driven-kernel-generation) | Survey of AI-driven kernel generation research |
 
 - **FlagGems** provides reference operator implementations and algorithm patterns used in KernelGenBench's accuracy tests.
 - **FlagTree** extends Triton to support diverse hardware, enabling the multi-chip capability of KernelGenBench.
