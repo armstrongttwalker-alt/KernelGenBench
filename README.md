@@ -193,6 +193,20 @@ src/
 scripts/               # LLM Track entry points and analysis tools
 ```
 
+## Evaluating Custom Operators
+
+To benchmark your own operators, add test cases to `src/kernelgenbench/accuracy/` and register them in the dataset. See [CONTRIBUTING.md](CONTRIBUTING.md) for step-by-step instructions.
+
+## Contributing
+
+We welcome contributions! You can:
+- **Add new operators** — expand the benchmark with new test cases
+- **Add new chip backends** — extend support to additional hardware
+- **Add new agents** — integrate coding tools like Codex, Trae, Cursor
+- **Add new agentic methods** — contribute specialized optimization pipelines
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guides.
+
 ## License
 
 This project is licensed under the MIT License.

@@ -193,6 +193,20 @@ src/
 scripts/               # LLM Track 入口和分析工具
 ```
 
+## 评测自定义算子
+
+如需评测自己的算子，在 `src/kernelgenbench/accuracy/` 添加测试用例并注册到数据集。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+## 贡献指南
+
+欢迎社区贡献！你可以：
+- **添加新算子** — 扩展评测集
+- **添加新芯片** — 支持更多硬件平台
+- **添加新 Agent** — 集成 Codex、Trae、Cursor 等编程工具
+- **添加新 Agentic 方法** — 贡献专用优化流水线
+
+详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
 ## 许可证
 
 本项目采用 MIT 许可证。
