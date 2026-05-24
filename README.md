@@ -2,6 +2,8 @@
 
 A benchmark framework for evaluating LLM and agent-based Triton kernel generation across multiple hardware platforms.
 
+![KernelGenBench Overview](assets/overview.png)
+
 ## Features
 
 - **210 operators** across three sources: ATen (110), vLLM (50), cuBLAS (50)

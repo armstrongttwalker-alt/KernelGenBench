@@ -2,6 +2,8 @@
 
 跨多种硬件平台评测 LLM 和 Agent 生成 Triton kernel 能力的基准框架。
 
+![KernelGenBench 架构概览](assets/overview.png)
+
 ## 特性
 
 - **210 个算子**，涵盖三个来源：ATen (110)、vLLM (50)、cuBLAS (50)
