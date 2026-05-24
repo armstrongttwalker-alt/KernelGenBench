@@ -79,6 +79,8 @@ export OPENAI_BASE_URL=http://your-endpoint/v1  # 可选，自定义端点
 | Claude Code | 92 / 0.86 | 89 / 0.18 | 93 / 0.80 | 88 / 0.87 | 96 / 0.89 | 83 / 0.83 |
 | AKO4all | 89 / 1.00 | 84 / 0.30 | 88 / 1.09 | 88 / 1.08 | 86 / 1.12 | 80 / 1.07 |
 
+![跨平台精度、加速比与生态开销](assets/figure_crossplatform.png)
+
 ## LLM Track
 
 使用 Pass@K 指标评测 LLM 生成 Triton kernel 的能力：

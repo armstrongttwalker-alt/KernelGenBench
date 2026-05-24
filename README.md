@@ -79,6 +79,8 @@ All results use Claude Opus-4.6. Platforms A–E are anonymized vendor hardware.
 | Claude Code | 92 / 0.86 | 89 / 0.18 | 93 / 0.80 | 88 / 0.87 | 96 / 0.89 | 83 / 0.83 |
 | AKO4all | 89 / 1.00 | 84 / 0.30 | 88 / 1.09 | 88 / 1.08 | 86 / 1.12 | 80 / 1.07 |
 
+![Cross-platform accuracy, speedup, and ecosystem overhead](assets/figure_crossplatform.png)
+
 ## LLM Track
 
 Evaluate an LLM on generating Triton kernels with Pass@K metric:
