@@ -83,6 +83,8 @@ export OPENAI_BASE_URL=http://your-endpoint/v1  # 可选，自定义端点
 
 ![跨平台精度、加速比与生态开销](assets/figure_crossplatform.png)
 
+*在异构芯片上开展算子生成任务会带来显著的经济成本和时间成本增加——非 NVIDIA 平台最高需要 2 倍的 token 消耗和运行时间。*
+
 ## LLM Track
 
 使用 Pass@K 指标评测 LLM 生成 Triton kernel 的能力：

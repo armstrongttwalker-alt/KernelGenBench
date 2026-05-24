@@ -83,6 +83,8 @@ All results use Claude Opus-4.6. Platforms A–E are anonymized vendor hardware.
 
 ![Cross-platform accuracy, speedup, and ecosystem overhead](assets/figure_crossplatform.png)
 
+*Generating Triton kernels on non-NVIDIA hardware incurs significant additional cost — up to 2× more tokens and time due to immature compilers and incomplete backend support.*
+
 ## LLM Track
 
 Evaluate an LLM on generating Triton kernels with Pass@K metric:
