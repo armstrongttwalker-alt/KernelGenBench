@@ -221,6 +221,19 @@ KernelGenBench is part of the [FlagOS](https://github.com/flagos-ai) open-source
 - **FlagTree** extends Triton to support diverse hardware, enabling the multi-chip capability of KernelGenBench.
 - **KernelGen** is our proposed agent method for automated kernel generation, evaluated on KernelGenBench.
 
+## Citation
+
+If you find KernelGenBench useful in your research or evaluation, please cite:
+
+```bibtex
+@software{kernelgenbench2026,
+  title={KernelGenBench: A Benchmark for LLM and Agent-Based Triton Kernel Generation},
+  author={KernelGen Team},
+  url={https://github.com/flagos-ai/KernelGenBench},
+  year={2026}
+}
+```
+
 ## License
 
 This project is licensed under the MIT License.
