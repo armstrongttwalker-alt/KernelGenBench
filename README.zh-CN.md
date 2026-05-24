@@ -17,7 +17,12 @@
 ```bash
 pip install -r requirements.txt
 pip install -e .
+
+# Agent Track 还需要安装 Claude Code CLI：
+npm install -g @anthropic-ai/claude-code
 ```
+
+> **注意**：requirements.txt 中的 `vllm==0.13.0` 会自动安装兼容版本的 torch 和 triton。
 
 配置 API 密钥：
 

@@ -17,7 +17,12 @@ A benchmark framework for evaluating LLM and agent-based Triton kernel generatio
 ```bash
 pip install -r requirements.txt
 pip install -e .
+
+# For Agent Track, also install Claude Code CLI:
+npm install -g @anthropic-ai/claude-code
 ```
+
+> **Note**: `vllm==0.13.0` in requirements.txt will automatically install compatible versions of torch and triton.
 
 Configure API credentials:
 

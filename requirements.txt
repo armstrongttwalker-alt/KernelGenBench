@@ -11,12 +11,8 @@ uvicorn>=0.41.0
 scipy
 ijson>=3.5.0
 
-# vLLM baseline (required for full 210-operator benchmark)
+# vLLM baseline (pins compatible torch/triton automatically)
 vllm==0.13.0
 
-# Install manually (version depends on your CUDA/device):
-# pip install torch --index-url https://download.pytorch.org/whl/cu121
-# pip install triton
-#
 # For Agent Track, install Claude Code CLI:
 # npm install -g @anthropic-ai/claude-code
