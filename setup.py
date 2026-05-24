@@ -11,12 +11,13 @@ setup(
     install_requires=[
         "anthropic>=0.71.0",
         "openai>=2.24.0",
+        "vllm==0.13.0",
         "fastapi",
         "uvicorn",
         "PyYAML",
         "scipy",
         "rich",
         "tqdm",
-        "httpx",
+        "ijson",
     ],
 )
