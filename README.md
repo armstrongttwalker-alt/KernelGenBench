@@ -140,12 +140,34 @@ Evaluate coding agents that iteratively generate, verify, and fix kernels.
 
 ### Setup
 
+**Option A: Single environment (recommended)**
+
+Install Claude Code CLI into the same environment that has torch/vllm:
+
+```bash
+# In your KernelGenBench environment
+npm install -g @anthropic-ai/claude-code
+cp agent_bench/config.example.yaml agent_bench/config.yaml
+# Edit config.yaml: set paths.python to your current Python path
+```
+
+**Option B: Separate environments (if you already have Claude Code installed elsewhere)**
+
+If you have Claude Code in a different environment, set `paths.python` in config.yaml to point to the Python with torch/vllm, and export the Claude env's PATH:
+
 ```bash
 cp agent_bench/config.example.yaml agent_bench/config.yaml
 # Edit config.yaml:
-#   - paths.python: path to Python with torch installed
-#   - agent.bin: path to agent executable
+#   paths.python: /path/to/envs/kernelgenbench/bin/python
+
+# When running, export PATH to include your Claude Code env:
+export PATH="/path/to/envs/claude_tool/bin:$PATH"
+cd agent_bench && bash test_ops.sh add --device-count 1
 ```
+
+The key config fields in `config.yaml`:
+- `paths.python` — Python interpreter with torch + vllm + kernelgenbench installed (used for verification)
+- `agent.bin` — path to agent CLI executable (default: `claude`, searches PATH)
 
 ### Methods
 
