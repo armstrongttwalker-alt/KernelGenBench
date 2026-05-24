@@ -207,6 +207,20 @@ scripts/               # LLM Track 入口和分析工具
 
 详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+## 相关项目
+
+KernelGenBench 是 [FlagOS](https://github.com/flagos-ai) 开源生态的一部分：
+
+| 项目 | 说明 |
+|------|------|
+| [FlagGems](https://github.com/flagos-ai/FlagGems) | 高性能 Triton 算子库，支持多硬件后端 |
+| [FlagTree](https://github.com/flagos-ai/FlagTree) | Triton 语言扩展与多芯片编译基础设施 |
+| [KernelGen](https://github.com/flagos-ai/KernelGen) | 基于 LLM/Agent 的 Triton kernel 自动生成方法 |
+
+- **FlagGems** 提供参考算子实现和算法模式，用于 KernelGenBench 的精度测试。
+- **FlagTree** 扩展 Triton 以支持多种硬件，为 KernelGenBench 的多芯片能力提供基础。
+- **KernelGen** 是我们提出的 Agent 自动 kernel 生成方法，在 KernelGenBench 上进行评测。
+
 ## 许可证
 
 本项目采用 MIT 许可证。

@@ -207,6 +207,20 @@ We welcome contributions! You can:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guides.
 
+## Related Projects
+
+KernelGenBench is part of the [FlagOS](https://github.com/flagos-ai) open-source ecosystem:
+
+| Project | Description |
+|---------|-------------|
+| [FlagGems](https://github.com/flagos-ai/FlagGems) | High-performance Triton operator library for multiple hardware backends |
+| [FlagTree](https://github.com/flagos-ai/FlagTree) | Triton language extensions and multi-chip compilation infrastructure |
+| [KernelGen](https://github.com/flagos-ai/KernelGen) | LLM/Agent-based Triton kernel generation method |
+
+- **FlagGems** provides reference operator implementations and algorithm patterns used in KernelGenBench's accuracy tests.
+- **FlagTree** extends Triton to support diverse hardware, enabling the multi-chip capability of KernelGenBench.
+- **KernelGen** is our proposed agent method for automated kernel generation, evaluated on KernelGenBench.
+
 ## License
 
 This project is licensed under the MIT License.
