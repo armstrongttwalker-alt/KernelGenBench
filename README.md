@@ -1,6 +1,38 @@
-# KernelGenBench
+[<img width="2182" height="602" alt="github+banner-20260130" src=".github/assets/banner-20260130.png" />](https://flagos.io/)
 
-A benchmark framework for evaluating LLM and agent-based Triton kernel generation across multiple hardware platforms.
+[[中文版](./README_cn.md)|English]
+
+<div align="right">
+  <a href="https://www.linkedin.com/company/flagos-community" target="_blank">
+    <img src="./docs/assets/Linkedin.png" alt="LinkIn" width="32" height="32" />
+  </a>
+
+  <a href="https://www.youtube.com/@FlagOS_Official" target="_blank">
+    <img src="./docs/assets/youtube.png" alt="YouTube" width="32" height="32" />
+  </a>
+
+  <a href="https://x.com/FlagOS_Official" target="_blank">
+    <img src="./docs/assets/x.png" alt="X" width="32" height="32" />
+  </a>
+
+  <a href="https://www.facebook.com/flagosglobalcommunity" target="_blank">
+    <img src="./docs/assets/Facebook.png" alt="Facebook" width="32" height="32" />
+  </a>
+
+  <a href="https://discord.com/invite/ubqGuFMTNE" target="_blank">
+    <img src="./docs/assets/discord.png" alt="Discord" width="32" height="32" />
+  </a>
+</div>
+
+## Overview
+
+KernelGenBench is a component of [FlagOS](https://flagos.io/) — a unified, open-source AI system software stack that
+fosters an open technology ecosystem by seamlessly integrating various models, systems, and chips.
+Following the principle of "develop once, migrate across various chips",
+FlagOS aims to unlock the full computational potential of hardware, break down barriers
+between different chip software stacks, and effectively reduce migration costs.
+
+KernelGenBench is a benchmark framework for evaluating LLM and agent-based Triton kernel generation across multiple hardware platforms.
 
 ![KernelGenBench Overview](assets/overview.png)
 
