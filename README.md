@@ -301,8 +301,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guides.
 
 | Project | Description |
 |---------|-------------|
-| [KernelGen](https://github.com/flagos-ai/KernelGen) | A high-performance platform for automated Triton kernel generation using LLM and Agent |
 | [awesome-LLM-driven-kernel-generation](https://github.com/flagos-ai/awesome-LLM-driven-kernel-generation) | Survey of AI-driven kernel generation research |
+| [KernelGen](https://github.com/flagos-ai/KernelGen) | A high-performance platform for automated Triton kernel generation using LLM and Agent |
 
 ## Citation
 
