@@ -704,7 +704,7 @@ class Verifier:
                             filtered_sources.append(s)
                             filtered_function_names.append(fn_name)
                             filtered_namespaces.append("triton")
-                    elif ns == "triton" and DISPATCH_TORCH_LIB:
+                    elif (ns == "triton" or ns == "") and DISPATCH_TORCH_LIB:
                         # DISPATCH_TORCH_LIB=1: register triton to the "triton" namespace
                         filtered_sources.append(s)
                         filtered_function_names.append(fn_name)

@@ -196,9 +196,12 @@ def verify_single_kernel(
         verifier = Verifier(verify_config)
         verifier.set_modules(modules=[test_module], mode="accuracy")
 
-        # Determine namespace based on dataset
-        namespace = "aten"
-        full_name = f"{namespace}::{operator}"
+        # Determine namespace: extract from operator name if it has ::, otherwise infer from dataset
+        if "::" in operator:
+            full_name = operator
+        else:
+            namespace = "aten"
+            full_name = f"{namespace}::{operator}"
 
         # Prepare verification request
         verify_req = VerifyRequest(
