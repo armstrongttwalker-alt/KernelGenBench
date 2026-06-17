@@ -83,6 +83,52 @@ class HackDetector(ast.NodeVisitor):
         self.blacklist = blacklist or []
         # Track import aliases: {"tr": "torch", "ts": "torch.sum", ...}
         self._aliases: dict = {}
+        # Scope depth for detecting module-level mutable state
+        self._scope_depth: int = 0
+
+    # ---- Scope tracking ----
+    def visit_FunctionDef(self, node):
+        self._scope_depth += 1
+        self.generic_visit(node)
+        self._scope_depth -= 1
+
+    def visit_AsyncFunctionDef(self, node):
+        self._scope_depth += 1
+        self.generic_visit(node)
+        self._scope_depth -= 1
+
+    def visit_ClassDef(self, node):
+        self._scope_depth += 1
+        self.generic_visit(node)
+        self._scope_depth -= 1
+
+    # ---- Module-level mutable state detection ----
+    def visit_Assign(self, node):
+        if self._scope_depth == 0:
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    if isinstance(node.value, (ast.Dict, ast.List, ast.Set)):
+                        self.violations.append(
+                            f"Forbidden module-level mutable state: '{target.id} = {{...}}' "
+                            f"is banned in competition mode (line {node.lineno})"
+                        )
+                    elif isinstance(node.value, ast.Call):
+                        call_name = self._get_attr_chain(node.value.func)
+                        if call_name in ("dict", "list", "set"):
+                            self.violations.append(
+                                f"Forbidden module-level mutable state: '{target.id} = {call_name}()' "
+                                f"is banned in competition mode (line {node.lineno})"
+                            )
+        self.generic_visit(node)
+
+    def visit_AnnAssign(self, node):
+        if self._scope_depth == 0 and isinstance(node.target, ast.Name):
+            if isinstance(node.value, (ast.Dict, ast.List, ast.Set)):
+                self.violations.append(
+                    f"Forbidden module-level mutable state: '{node.target.id}: ... = {{...}}' "
+                    f"is banned in competition mode (line {node.lineno})"
+                )
+        self.generic_visit(node)
 
     # ---- Hard blacklist + alias tracking: imports ----
     def visit_Import(self, node: ast.Import):
@@ -127,6 +173,12 @@ class HackDetector(ast.NodeVisitor):
                     f"Forbidden torch API: '{call_chain}()' not in allowed whitelist (line {node.lineno})"
                 )
 
+        # Detect print() — input sniffing
+        if isinstance(node.func, ast.Name) and node.func.id == "print":
+            self.violations.append(
+                f"Forbidden call: 'print()' is banned in competition mode (line {node.lineno})"
+            )
+
         # Detect getattr(torch, "sum") — dynamic attribute access
         if (
             isinstance(node.func, ast.Name) and node.func.id == "getattr"
@@ -168,12 +220,21 @@ class HackDetector(ast.NodeVisitor):
 
         self.generic_visit(node)
 
-    # ---- Hard blacklist: attribute access ----
+    # ---- Hard blacklist: attribute access + memory pointer detection ----
+    _FORBIDDEN_ATTRS = {
+        "data_ptr", "untyped_storage", "storage", "storage_offset",
+    }
+
     def visit_Attribute(self, node: ast.Attribute):
         attr_chain = self._get_attr_chain(node)
         if attr_chain and self._is_blacklisted(attr_chain):
             self.violations.append(
                 f"Forbidden attribute access: '{attr_chain}' (line {node.lineno})"
+            )
+        # Detect memory pointer access: x.data_ptr(), x.storage(), etc.
+        if node.attr in self._FORBIDDEN_ATTRS:
+            self.violations.append(
+                f"Forbidden memory access: '.{node.attr}' is banned in competition mode (line {node.lineno})"
             )
         self.generic_visit(node)
 
@@ -319,25 +380,63 @@ def dual_execution_check(
     try:
         out_normal = func(**kwargs)
     except Exception:
-        # If normal run fails, can't do comparison
         return False, ""
 
     # Run 2: with triton.jit disabled
     try:
         with disable_triton_jit():
-            # Re-import the module to pick up the patched triton.jit
-            # The kernel functions become plain python functions
+            out_disabled = func(**kwargs)
+    except Exception:
+        return False, ""
+
+    if out_normal is None and out_disabled is None:
+        return False, ""
+
+    if _results_match(out_normal, out_disabled, rtol, atol):
+        return True, (
+            "Dual-execution hack detected: output is identical "
+            "with triton.jit disabled, indicating no real triton kernel is used."
+        )
+
+    return False, ""
+
+
+def dual_execution_check_with_ref(
+    func: Callable,
+    kwargs: dict,
+    ref_output: Any,
+    rtol: float = 1e-3,
+    atol: float = 1e-3,
+) -> Tuple[bool, str]:
+    """
+    Optimized dual-execution: compare against an already-computed reference output.
+
+    Only runs ONCE (with triton.jit disabled), then compares with ref_output
+    from the accuracy test's normal execution. Saves 50% of execution time.
+
+    Args:
+        func: the registered triton function to test
+        kwargs: input parameters for the function
+        ref_output: already-computed output from normal execution
+        rtol/atol: tolerance for "same result" comparison
+
+    Returns:
+        (is_hack, reason): True if hack detected.
+    """
+    import torch
+
+    # Run: with triton.jit disabled only (normal execution already done in verify)
+    try:
+        with disable_triton_jit():
             out_disabled = func(**kwargs)
     except Exception:
         # If disabled run crashes, triton kernel was actually needed -> not hack
         return False, ""
 
-    # Compare results
-    if out_normal is None and out_disabled is None:
-        # Both None - check in-place outputs via kwargs
+    if ref_output is None and out_disabled is None:
         return False, ""
 
-    if _results_match(out_normal, out_disabled, rtol, atol):
+    if _results_match(ref_output, out_disabled, rtol, atol):
         return True, (
             "Dual-execution hack detected: output is identical "
             "with triton.jit disabled, indicating no real triton kernel is used."
