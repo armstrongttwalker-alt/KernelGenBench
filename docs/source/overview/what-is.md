@@ -2,7 +2,7 @@
 
 {term}`KernelGenBench` is a benchmark framework for evaluating {term}`LLM` and agent-based {term}`Triton` kernel generation across multiple hardware platforms. It is a component of [FlagOS](https://flagos.io/) — a unified, open-source AI system software stack.
 
-![KernelGenBench Overview](../../_static/images/figures/overview.png)
+![KernelGenBench Overview](../_static/images/figures/overview.png)
 
 ## Purpose
 
