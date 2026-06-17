@@ -6,7 +6,7 @@ Key findings from KernelGenBench evaluation experiments.
 
 Evaluation of 210 operators from three sources (ATen, vLLM, cuBLAS) on NVIDIA A100.
 
-![Multi-Source Results](../../_static/images/figures/table_multi_source.png)
+![Multi-Source Results](../_static/images/figures/table_multi_source.png)
 
 ### Key Findings
 
@@ -28,9 +28,9 @@ Evaluation of 210 operators from three sources (ATen, vLLM, cuBLAS) on NVIDIA A1
 
 Cross-platform evaluation of 110 ATen operators on 6 hardware platforms.
 
-![Multi-Chip Results](../../_static/images/figures/table_multi_chip.png)
+![Multi-Chip Results](../_static/images/figures/table_multi_chip.png)
 
-![Cross-platform Performance](../../_static/images/figures/figure_crossplatform.png)
+![Cross-platform Performance](../_static/images/figures/figure_crossplatform.png)
 
 ### Key Findings
 

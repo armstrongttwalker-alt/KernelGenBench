@@ -36,7 +36,7 @@ extensions = [
     "sphinx_togglebutton",
 ]
 
-templates_path = ["../_templates"]
+templates_path = ["_templates"]
 exclude_patterns = ["_build", "_includes"]
 master_doc = "index"
 default_role = "obj"
@@ -73,14 +73,14 @@ CURRENT_LANGUAGE = os.getenv("READTHEDOCS_LANGUAGE", language)
 # -- HTML output -------------------------------------------------------------
 
 html_theme = "sphinx_book_theme"
-html_static_path = ["../_static"]
+html_static_path = ["_static"]
 html_css_files = ["css/custom.css"]
 html_js_files = []
 
 # Logo and favicon configuration based on build language
 # Read the Docs sets READTHEDOCS_LANGUAGE environment variable during builds
 if CURRENT_LANGUAGE == "zh_CN":
-    html_logo = "../_static/images/logos/zh-logo.svg"
+    html_logo = "_static/images/logos/zh-logo.svg"
     html_theme_options = {
         "home_page_in_toc": True,
         "use_download_button": False,
@@ -88,13 +88,13 @@ if CURRENT_LANGUAGE == "zh_CN":
         "use_edit_page_button": True,
         "use_repository_button": True,
         "logo": {
-            "image_light": "../_static/images/logos/zh-logo.svg",
-            "image_dark": "../_static/images/logos/zh-logo-dark.svg",
+            "image_light": "_static/images/logos/zh-logo.svg",
+            "image_dark": "_static/images/logos/zh-logo-dark.svg",
         },
     }
 else:
     # Default to English configuration for all other languages
-    html_logo = "../_static/images/logos/en-logo.svg"
+    html_logo = "_static/images/logos/en-logo.svg"
     html_theme_options = {
         "home_page_in_toc": True,
         "use_download_button": False,
@@ -102,12 +102,12 @@ else:
         "use_edit_page_button": True,
         "use_repository_button": True,
         "logo": {
-            "image_light": "../_static/images/logos/en-logo.svg",
-            "image_dark": "../_static/images/logos/en-logo-dark.svg",
+            "image_light": "_static/images/logos/en-logo.svg",
+            "image_dark": "_static/images/logos/en-logo-dark.svg",
         },
     }
 
-html_favicon = "../_static/images/logos/favicon.svg"
+html_favicon = "_static/images/logos/favicon.svg"
 
 htmlhelp_basename = "KernelGenBenchdoc"
 

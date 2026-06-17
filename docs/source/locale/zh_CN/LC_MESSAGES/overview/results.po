@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: KernelGenBench Documentation \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-15 10:42+0800\n"
+"POT-Creation-Date: 2026-06-17 13:36+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -38,11 +38,8 @@ msgid ""
 msgstr "在 NVIDIA A100 上对来自三个来源（ATen、vLLM、cuBLAS）的 210 个算子进行评估。"
 
 #: ../../source/overview/results.md:9
-msgid ""
-"![Multi-Source "
-"Results](../../_static/images/figures/table_multi_source.png)"
-msgstr ""
-"![多源结果](../../_static/images/figures/table_multi_source.png)"
+msgid "![Multi-Source Results](../_static/images/figures/table_multi_source.png)"
+msgstr "![多源结果](../_static/images/figures/table_multi_source.png)"
 
 #: ../../source/overview/results.md:11 ../../source/overview/results.md:35
 msgid "Key Findings"
@@ -141,15 +138,14 @@ msgid "Cross-platform evaluation of 110 ATen operators on 6 hardware platforms."
 msgstr "在 6 个硬件平台上对 110 个 ATen 算子进行跨平台评估。"
 
 #: ../../source/overview/results.md:31
-msgid "![Multi-Chip Results](../../_static/images/figures/table_multi_chip.png)"
-msgstr "![多芯片结果](../../_static/images/figures/table_multi_chip.png)"
+msgid "![Multi-Chip Results](../_static/images/figures/table_multi_chip.png)"
+msgstr "![多芯片结果](../_static/images/figures/table_multi_chip.png)"
 
 #: ../../source/overview/results.md:33
 msgid ""
 "![Cross-platform "
-"Performance](../../_static/images/figures/figure_crossplatform.png)"
-msgstr ""
-"![跨平台性能](../../_static/images/figures/figure_crossplatform.png)"
+"Performance](../_static/images/figures/figure_crossplatform.png)"
+msgstr "![跨平台性能](../_static/images/figures/figure_crossplatform.png)"
 
 #: ../../source/overview/results.md:33
 msgid "Cross-platform Performance"
@@ -288,3 +284,4 @@ msgid ""
 "Large-scale agent evaluations may consume billions of tokens. Plan your "
 "budget accordingly."
 msgstr "大规模智能体评估可能消耗数十亿 Token。请相应规划您的预算。"
+

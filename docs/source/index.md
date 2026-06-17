@@ -83,10 +83,6 @@ Contributing guides, custom operators, and extending the framework.
 :hidden:
 
 overview/index.md
-overview/what-is.md
-overview/why-kernelgenbench.md
-overview/capabilities.md
-overview/results.md
 ```
 
 ```{toctree}
@@ -103,10 +99,6 @@ getting-started/index.md
 :hidden:
 
 features/index.md
-features/multi-source.md
-features/multi-chip.md
-features/anti-hack.md
-features/metrics.md
 ```
 
 ```{toctree}
@@ -115,15 +107,6 @@ features/metrics.md
 :hidden:
 
 operation-guide/index.md
-operation-guide/llm-track/index.md
-operation-guide/llm-track/commands.md
-operation-guide/llm-track/parameters.md
-operation-guide/llm-track/examples.md
-operation-guide/agent-track/index.md
-operation-guide/agent-track/setup.md
-operation-guide/agent-track/methods.md
-operation-guide/agent-track/commands.md
-operation-guide/agent-track/cost-analysis.md
 ```
 
 ```{toctree}
@@ -132,9 +115,6 @@ operation-guide/agent-track/cost-analysis.md
 :hidden:
 
 reference/index.md
-reference/datasets.md
-reference/operators.md
-reference/hardware.md
 ```
 
 ```{toctree}
@@ -143,9 +123,6 @@ reference/hardware.md
 :hidden:
 
 development/index.md
-development/contributing.md
-development/custom-operators.md
-development/extending.md
 ```
 
 ```{toctree}
@@ -156,4 +133,3 @@ development/extending.md
 faq/index.md
 glossary/index.md
 ```
-

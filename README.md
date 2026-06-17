@@ -26,7 +26,7 @@ KernelGenBench is a component of [FlagOS](https://flagos.io/) — a unified, ope
 
 KernelGenBench is a benchmark framework for evaluating LLM and agent-based Triton kernel generation across multiple hardware platforms.
 
-![KernelGenBench Overview](docs/_static/images/figures/overview.png)
+![KernelGenBench Overview](docs/source/_static/images/figures/overview.png)
 
 ## Features
 
