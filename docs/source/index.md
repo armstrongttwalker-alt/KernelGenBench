@@ -43,7 +43,7 @@ Evaluate LLMs on generating Triton kernels with Pass@K metric.
 [Learn more »](operation-guide/llm-track/index)
 :::
 
-:::{grid-item-card} {octicon}`hub;1.5em;sd-mr-1` Agent Track
+:::{grid-item-card} {octicon}`hubot;1.5em;sd-mr-1` Agent Track
 :link: operation-guide/agent-track/index
 :link-type: doc
 
@@ -95,6 +95,66 @@ overview/results.md
 :hidden:
 
 getting-started/index.md
+```
+
+```{toctree}
+:caption: 🔬 Features
+:maxdepth: 2
+:hidden:
+
+features/index.md
+features/multi-source.md
+features/multi-chip.md
+features/anti-hack.md
+features/metrics.md
+```
+
+```{toctree}
+:caption: 📖 Operation Guide
+:maxdepth: 3
+:hidden:
+
+operation-guide/index.md
+operation-guide/llm-track/index.md
+operation-guide/llm-track/commands.md
+operation-guide/llm-track/parameters.md
+operation-guide/llm-track/examples.md
+operation-guide/agent-track/index.md
+operation-guide/agent-track/setup.md
+operation-guide/agent-track/methods.md
+operation-guide/agent-track/commands.md
+operation-guide/agent-track/cost-analysis.md
+```
+
+```{toctree}
+:caption: 📑 Reference
+:maxdepth: 2
+:hidden:
+
+reference/index.md
+reference/datasets.md
+reference/operators.md
+reference/hardware.md
+```
+
+```{toctree}
+:caption: 🔧 Development
+:maxdepth: 2
+:hidden:
+
+development/index.md
+development/contributing.md
+development/custom-operators.md
+development/extending.md
+```
+
+```{toctree}
+:caption: ❓ FAQ & Glossary
+:maxdepth: 2
+:hidden:
+
+faq/index.md
+glossary/index.md
 ```
 
 ```{toctree}
