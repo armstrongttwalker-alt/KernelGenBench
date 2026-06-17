@@ -75,7 +75,7 @@ CURRENT_LANGUAGE = os.getenv("READTHEDOCS_LANGUAGE", language)
 html_theme = "sphinx_book_theme"
 html_static_path = ["_static"]
 html_css_files = ["css/custom.css"]
-html_js_files = []
+# html_js_files = []
 
 # Logo and favicon configuration based on build language
 # Read the Docs sets READTHEDOCS_LANGUAGE environment variable during builds
