@@ -8,3 +8,32 @@
     max-height: 45px !important;
     width: auto !important;
 }
+
+/* ============================================
+    SPHINX-TIPPY BUG FIX
+    Ensures tooltips are visible and layered correctly
+   ============================================ */
+
+.tippy-box {
+    background-color: var(--pst-color-surface) !important;
+    color: var(--pst-color-text-base) !important;
+    border: 1px solid var(--pst-color-border) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    z-index: 10000 !important; /* Forces tooltips above the book-theme sidebar/navbar content */
+}
+
+/* Fix the tooltip arrow color to match the card background */
+.tippy-box[data-placement^='top'] > .tippy-arrow::before {
+    border-top-color: var(--pst-color-surface) !important;
+}
+.tippy-box[data-placement^='bottom'] > .tippy-arrow::before {
+    border-bottom-color: var(--pst-color-surface) !important;
+}
+.tippy-box[data-placement^='left'] > .tippy-arrow::before {
+    border-left-color: var(--pst-color-surface) !important;
+}
+.tippy-box[data-placement^='right'] > .tippy-arrow::before {
+    border-right-color: var(--pst-color-surface) !important;
+}
+
+tippy_tip_selector = "figure, table, img, p, aside, div.admonition, div.literal-block-wrapper, dl.glossary dd"
