@@ -10,7 +10,7 @@ sphinxext.rediraffe~=0.3.0
 sphinxcontrib.mermaid~=0.7.1
 sphinxext.opengraph~=0.13.0
 sphinx-pyscript
-sphinx-tippy>=0.4.3
+sphinx-tippy
 sphinx-togglebutton
 sphinx-tabs==3.4.7
 sphinx-prompt==1.10.2
