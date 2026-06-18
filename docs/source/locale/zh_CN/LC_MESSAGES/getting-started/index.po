@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: KernelGenBench Documentation \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-17 11:11+0800\n"
+"POT-Creation-Date: 2026-06-18 11:36+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -40,8 +40,8 @@ msgid "Before installing {term}`KernelGenBench`, ensure you have:"
 msgstr "在安装 {term}`KernelGenBench` 之前，请确保您具备："
 
 #: ../../source/getting-started/index.md:9
-msgid "Python 3.8 or higher"
-msgstr "Python 3.8 或更高版本"
+msgid "Python 3.10 or higher"
+msgstr "Python 3.10 或更高版本"
 
 #: ../../source/getting-started/index.md:10
 #, python-brace-format
@@ -149,56 +149,48 @@ msgid "Description"
 msgstr "描述"
 
 #: ../../source/getting-started/index.md
-#, python-brace-format
-msgid "`{term}`KernelGenBench``"
-msgstr "{term}`KernelGenBench`"
+msgid "`KernelGenBench`"
+msgstr "`KernelGenBench`"
 
 #: ../../source/getting-started/index.md
 msgid "210"
 msgstr "210"
 
 #: ../../source/getting-started/index.md
-#, python-brace-format
-msgid "Full set ({term}`ATen` + {term}`vLLM` + {term}`cuBLAS`)"
-msgstr "完整集合（{term}`ATen` + {term}`vLLM` + {term}`cuBLAS`）"
+msgid "Full set (ATen + vLLM + cuBLAS, NVIDIA)"
+msgstr "完整集合 (ATen + vLLM + cuBLAS, NVIDIA)"
 
 #: ../../source/getting-started/index.md
-#, python-brace-format
-msgid "`{term}`KernelGenBench-aten``"
-msgstr "{term}`KernelGenBench-aten`"
+msgid "`KernelGenBench-aten`"
+msgstr "`KernelGenBench-aten`"
 
 #: ../../source/getting-started/index.md
 msgid "110"
 msgstr "110"
 
 #: ../../source/getting-started/index.md
-#, python-brace-format
-msgid "{term}`ATen` operators only"
-msgstr "仅 {term}`ATen` 算子"
+msgid "ATen operators only"
+msgstr "仅 ATen 算子"
 
 #: ../../source/getting-started/index.md
-#, python-brace-format
-msgid "`{term}`KernelGenBench-vllm``"
-msgstr "{term}`KernelGenBench-vllm`"
+msgid "`KernelGenBench-vllm`"
+msgstr "`KernelGenBench-vllm`"
 
 #: ../../source/getting-started/index.md
 msgid "50"
 msgstr "50"
 
 #: ../../source/getting-started/index.md
-#, python-brace-format
-msgid "{term}`vLLM` operators only (NVIDIA only)"
-msgstr "仅 {term}`vLLM` 算子（仅限 NVIDIA）"
+msgid "vLLM operators only (NVIDIA only)"
+msgstr "仅 vLLM 算子 (仅限 NVIDIA)"
 
 #: ../../source/getting-started/index.md
-#, python-brace-format
-msgid "`{term}`KernelGenBench-cublas``"
-msgstr "{term}`KernelGenBench-cublas`"
+msgid "`KernelGenBench-cublas`"
+msgstr "`KernelGenBench-cublas`"
 
 #: ../../source/getting-started/index.md
-#, python-brace-format
-msgid "{term}`cuBLAS` operators only (NVIDIA only)"
-msgstr "仅 {term}`cuBLAS` 算子（仅限 NVIDIA）"
+msgid "cuBLAS operators only (NVIDIA only)"
+msgstr "仅 cuBLAS 算子 (仅限 NVIDIA)"
 
 #: ../../source/getting-started/index.md:124
 #, python-brace-format

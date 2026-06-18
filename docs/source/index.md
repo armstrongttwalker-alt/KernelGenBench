@@ -3,7 +3,7 @@
 A benchmark framework for evaluating LLM and agent-based Triton kernel generation across multiple hardware platforms.
 
 ```{button-ref} getting-started/index
-:ref-type: myst
+:ref-type: doc
 :color: primary
 :class: sd-btn-lg sd-px-4 sd-py-2 sd-fw-bold
 
